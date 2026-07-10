@@ -29,10 +29,20 @@ const isSmtpConfigured = () => {
 export async function sendMail(to: string, subject: string, text: string, html?: string) {
   if (isSmtpConfigured()) {
     try {
+      let activePort = smtpPort;
+      let isSecure = smtpPort === 465;
+      
+      // Auto-fallback: Gmail on 465 is often blocked. Force 587 with STARTTLS.
+      if (smtpHost.includes('smtp.gmail.com') && smtpPort === 465) {
+        console.log('[Email Service] Auto-redirecting Gmail connection from 465 to 587.');
+        activePort = 587;
+        isSecure = false;
+      }
+
       const transporter = nodemailer.createTransport({
         host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
+        port: activePort,
+        secure: isSecure,
         auth: {
           user: smtpUser,
           pass: smtpPass,
