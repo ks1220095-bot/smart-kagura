@@ -269,11 +269,11 @@ router.post('/', async (req, res) => {
 TEL: 047-351-5417 (受付時間: 9:30〜15:30)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
-      await sendMail(visitorEmail, subject, text);
+      sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending visitor mail:', err));
     }
 
     // Send admin notification email
-    await sendAdminNotification(fullBooking);
+    sendAdminNotification(fullBooking).catch(err => console.error('Error sending admin mail:', err));
 
     res.status(201).json(fullBooking);
   } catch (error: any) {
