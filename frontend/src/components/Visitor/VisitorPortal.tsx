@@ -119,6 +119,29 @@ export const VisitorPortal: React.FC = () => {
   const [changeSuccessMsg, setChangeSuccessMsg] = useState('');
 
 
+  const [isBookingActive, setIsBookingActive] = useState(true);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/settings`);
+        if (res.ok) {
+          const settings = await res.json();
+          setIsBookingActive(settings.is_booking_active !== 'false');
+          setMaintenanceMessage(settings.maintenance_message || '現在、オンラインでのご祈祷予約の受付を一時的に停止しております。');
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   // Form editing mode states (For full reschedule updates)
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBookingId, setEditBookingId] = useState<number | null>(null);
@@ -492,6 +515,64 @@ export const VisitorPortal: React.FC = () => {
 
   if (step === 4 && createdBooking) {
     return <BookingSuccess booking={createdBooking} onReset={handleReset} />;
+  }
+
+  if (settingsLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+        <p style={{ color: 'var(--color-accent-gray)', fontFamily: 'var(--font-serif)' }}>読み込み中...</p>
+      </div>
+    );
+  }
+
+  // If booking is stopped (except when in editMode or changeId mode)
+  if (!isBookingActive && !isEditMode && !changeId) {
+    return (
+      <div style={{ padding: '3rem 0' }}>
+        <div className="container" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="card kamidana-border washi-bg" style={{ padding: '2.5rem', textAlign: 'center', border: '2px solid var(--color-urushi)' }}>
+            <div style={{ 
+              width: '60px', 
+              height: '60px', 
+              borderRadius: '50%', 
+              backgroundColor: 'rgba(211, 56, 28, 0.1)', 
+              color: 'var(--color-shu)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              margin: '0 auto 1.5rem auto',
+              fontSize: '2rem'
+            }}>
+              ⚠️
+            </div>
+            <h3 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+              オンライン予約受付 停止中のお知らせ
+            </h3>
+            <p style={{ 
+              fontSize: '0.95rem', 
+              lineHeight: '1.8', 
+              color: 'var(--color-urushi-light)', 
+              textAlign: 'left', 
+              whiteSpace: 'pre-wrap',
+              backgroundColor: 'rgba(255,255,255,0.7)',
+              padding: '1.25rem',
+              border: '1px solid var(--color-border)',
+              borderRadius: '4px',
+              marginBottom: '1.5rem'
+            }}>
+              {maintenanceMessage}
+            </p>
+            <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-accent-gray)', marginBottom: '0.5rem' }}>お急ぎの場合のお問い合わせ：</p>
+              <h4 style={{ fontSize: '1.5rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)', margin: 0 }}>
+                📞 047-351-5417
+              </h4>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.25rem' }}>(受付時間: 9:30 〜 15:30)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Self Reschedule / Cancel View

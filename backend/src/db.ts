@@ -26,7 +26,10 @@ export async function initDb() {
     // Insert default config
     await client.query(`
       INSERT INTO settings (key, value)
-      VALUES ('max_groups_per_slot', '8')
+      VALUES 
+        ('max_groups_per_slot', '8'),
+        ('is_booking_active', 'true'),
+        ('maintenance_message', '現在、オンラインでのご祈祷予約の受付を一時的に停止しております。お急ぎの場合は、神社社務所まで直接お電話（047-351-5417）にてお問い合わせください。')
       ON CONFLICT (key) DO NOTHING
     `);
 
