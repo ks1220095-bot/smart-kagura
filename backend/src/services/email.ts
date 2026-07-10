@@ -39,7 +39,9 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: smtpFrom || 'onboarding@resend.dev',
+          from: (smtpFrom && !smtpFrom.includes('example.com')) 
+            ? smtpFrom 
+            : '清瀧神社ご祈祷予約 <onboarding@resend.dev>',
           to,
           subject,
           text,
