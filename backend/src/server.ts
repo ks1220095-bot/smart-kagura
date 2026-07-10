@@ -29,6 +29,10 @@ async function startServer() {
     startReminderScheduler();
     app.listen(port, () => {
       console.log(`[Smart-Kagura Backend] Running on http://localhost:${port}`);
+      console.log(`=== SERVER STARTING (Version 1.1.2 - IPv4 / Resend Support) ===`);
+      console.log(`SMTP_HOST Configured:`, !!process.env.SMTP_HOST);
+      console.log(`SMTP_PORT Value:`, process.env.SMTP_PORT);
+      console.log(`RESEND_API_KEY Configured:`, !!process.env.RESEND_API_KEY);
     });
   } catch (error) {
     console.error('Fatal: Failed to initialize server:', error);
