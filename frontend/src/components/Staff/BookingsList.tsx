@@ -24,6 +24,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [customHatsuhoryo, setCustomHatsuhoryo] = useState<number>(0);
   const [customReceiptAmount, setCustomReceiptAmount] = useState<number>(0);
+  const [customNotes, setCustomNotes] = useState<string>('');
   const [savingPayment, setSavingPayment] = useState(false);
 
   // Filter logic
@@ -61,6 +62,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     setSelectedBooking(booking);
     setCustomHatsuhoryo(booking.hatsuhoryo);
     setCustomReceiptAmount(booking.receipt_amount || booking.hatsuhoryo);
+    setCustomNotes(booking.notes || '');
   };
 
   const handleUpdatePayment = async (status: 'paid' | 'unpaid') => {
@@ -75,11 +77,12 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         body: JSON.stringify({
           payment_status: status,
           hatsuhoryo: status === 'paid' ? customHatsuhoryo : selectedBooking.hatsuhoryo,
-          receipt_amount: status === 'paid' && selectedBooking.wants_receipt ? customReceiptAmount : undefined
+          receipt_amount: status === 'paid' && selectedBooking.wants_receipt ? customReceiptAmount : undefined,
+          notes: customNotes
         })
       });
 
-      if (!res.ok) throw new Error('支払情報の更新に失敗しました。');
+      if (!res.ok) throw new Error('情報（支払・備考）の更新に失敗しました。');
       
       setSelectedBooking(null);
       onRefresh();
@@ -220,6 +223,24 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
                         {isIndiv ? b.phone : `${b.staff_dept_title_name} (${b.staff_phone})`}
                       </div>
+                      {b.notes && (
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          backgroundColor: '#f5f5f5', 
+                          padding: '0.2rem 0.4rem', 
+                          borderRadius: '2px', 
+                          marginTop: '0.25rem', 
+                          color: '#555',
+                          borderLeft: '2px solid var(--color-gold)',
+                          display: 'inline-block',
+                          maxWidth: '220px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }} title={b.notes}>
+                          📝 {b.notes}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div>{b.prayer1}</div>
@@ -373,6 +394,18 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 </span>
               </div>
             )}
+
+            <div className="form-group" style={{ marginTop: '0.75rem' }}>
+              <label>管理者用備考（メモ・コメント）</label>
+              <textarea
+                className="form-control"
+                value={customNotes}
+                onChange={(e) => setCustomNotes(e.target.value)}
+                rows={3}
+                placeholder="祈祷に関する特記事項やメモ"
+                style={{ border: '1px solid var(--color-border)', resize: 'vertical', fontSize: '0.85rem' }}
+              />
+            </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
               <button

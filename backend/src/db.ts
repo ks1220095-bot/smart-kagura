@@ -98,8 +98,14 @@ export async function initDb() {
         construction_period VARCHAR(255),
         
         reminder_sent INTEGER DEFAULT 0,
+        notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Alter bookings table to add notes column if it doesn't exist (For dynamic migration)
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS notes TEXT
     `);
 
     // Create events table

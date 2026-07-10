@@ -135,8 +135,8 @@ router.post('/', async (req, res) => {
         wants_receipt, receipt_name, receipt_amount,
         yakudoshi_type, father_name, father_kana, mother_name, mother_kana, child_name, child_kana, child_birthday,
         kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
-        construction_name, construction_designer, construction_builder, construction_period
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44)
+        construction_name, construction_designer, construction_builder, construction_period, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45)
       RETURNING id
     `, [
       booking.receipt_number, booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.payment_status, booking.attending_count,
@@ -146,7 +146,8 @@ router.post('/', async (req, res) => {
       booking.wants_receipt || 0, booking.receipt_name || null, booking.receipt_amount || null,
       booking.yakudoshi_type || null, booking.father_name || null, booking.father_kana || null, booking.mother_name || null, booking.mother_kana || null, booking.child_name || null, booking.child_kana || null, booking.child_birthday || null,
       booking.kotobuki_type || null, booking.kotobuki_other_text || null, booking.tournament_name || null, booking.tournament_schedule || null,
-      booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null
+      booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null,
+      booking.notes || null
     ]);
 
     const createdId = result.rows[0].id;
@@ -357,7 +358,7 @@ router.get('/export-csv', async (req, res) => {
     const result = await db.query(query, params);
     const bookings = result.rows;
 
-    let csv = '\ufeff受付番号,予約日,予約時間,区分,氏名/企業名,フリガナ,願意1,願意2,初穂料,支払状況,参列人数,電話番号,メール,代表者名,担当者名,領収書希望,領収書宛名,領収書金額,追加守札\n';
+    let csv = '\ufeff受付番号,予約日,予約時間,区分,氏名/企業名,フリガナ,願意1,願意2,初穂料,支払状況,参列人数,電話番号,メール,代表者名,担当者名,領収書希望,領収書宛名,領収書金額,追加守札,備考\n';
     
     bookings.forEach((b: Booking) => {
       const typeStr = b.booking_type === 'individual' ? '個人' : '団体';
@@ -386,7 +387,8 @@ router.get('/export-csv', async (req, res) => {
         b.wants_receipt ? '要' : '不要',
         `"${(b.receipt_name || '').replace(/"/g, '""')}"`,
         b.receipt_amount || '',
-        `"${(b.additional_talismans || '').replace(/"/g, '""')}"`
+        `"${(b.additional_talismans || '').replace(/"/g, '""')}"`,
+        `"${(b.notes || '').replace(/"/g, '""')}"`
       ].join(',');
       csv += row + '\n';
     });
@@ -417,7 +419,7 @@ router.get('/:id', async (req, res) => {
 
 // 6. Update payment status and custom hatsuhoryo (Admin)
 router.patch('/:id/payment', async (req, res) => {
-  const { payment_status, hatsuhoryo, receipt_amount } = req.body;
+  const { payment_status, hatsuhoryo, receipt_amount, notes } = req.body;
   if (!payment_status || (payment_status !== 'paid' && payment_status !== 'unpaid')) {
     return res.status(400).json({ error: '有効な支払状況を指定してください。' });
   }
@@ -442,6 +444,10 @@ router.patch('/:id/payment', async (req, res) => {
     if (receipt_amount !== undefined && typeof receipt_amount === 'number') {
       query += `, receipt_amount = $${pIdx++}`;
       params.push(receipt_amount);
+    }
+    if (notes !== undefined && (typeof notes === 'string' || notes === null)) {
+      query += `, notes = $${pIdx++}`;
+      params.push(notes);
     }
 
     query += ` WHERE id = $${pIdx}`;
