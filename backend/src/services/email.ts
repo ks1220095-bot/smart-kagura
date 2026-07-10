@@ -47,7 +47,10 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           user: smtpUser,
           pass: smtpPass,
         },
-      });
+        family: 4, // Force IPv4 to bypass Render container IPv6 network unreachable error
+        connectionTimeout: 10000,
+        greetingTimeout: 10000
+      } as any);
 
       const info = await transporter.sendMail({
         from: smtpFrom,
