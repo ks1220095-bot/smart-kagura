@@ -46,7 +46,7 @@ export async function sendDayBeforeReminders() {
       const time = booking.booking_time;
       const prayer = booking.prayer1 + (booking.prayer2 ? ` / ${booking.prayer2}` : '');
 
-      const subject = `【清瀧神社】明日ご祈祷予約の事前確認（受付番号: ${receiptNum}）`;
+      const subject = `【清瀧神社】明日ご祈祷予約の事前確認`;
       const text = `${isIndiv ? `${name} 様` : `${name}\n担当 ${booking.staff_dept_title_name} 様`}
 
 清瀧神社でございます。
@@ -57,7 +57,6 @@ export async function sendDayBeforeReminders() {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご予約内容
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-·受付番号　: ${receiptNum}
 ·予約日時　: ${tomorrowStr} ${time}の回
 ·ご祈祷種類: ${isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}
 ·願意　　　: ${prayer}
@@ -70,7 +69,7 @@ export async function sendDayBeforeReminders() {
 1. ご来社時刻と遅刻について
    ご祈祷の準備の関係上、開始時刻の15分前にはご来社いただきますようお願いいたします。
    ※ご祈祷の開始時刻5分前を過ぎると、当日の神事スケジュールの都合上、その時間のご祈祷は受け付けない場合がございます。あらかじめご了承願います。
-   到着されましたら、社務所受付にて「受付番号: ${receiptNum}」をお知らせください。
+   到着されましたら、社務所受付にてご予約された方のお名前をお伝えください。
 
 2. カメラマン同行について
    プロ・アマチュア問わず、外部の専属カメラマンの方の神社社殿（拝殿）内へのお立ち入り・同伴撮影はご遠慮いただきます。

@@ -70,11 +70,11 @@ export async function sendMail(to: string, subject: string, text: string, html?:
  */
 export async function sendAdminNotification(booking: any) {
   const isIndiv = booking.booking_type === 'individual';
-  const subject = `【Smart-かぐら】新規ご祈祷予約通知 (${isIndiv ? '個人' : '団体'}) - ${booking.booking_date}`;
+  const subject = `【清瀧神社】新規ご祈祷予約通知 (${isIndiv ? '個人' : '団体'}) - ${booking.booking_date}`;
   
   let text = `清瀧神社 御中
 
-オンライン祈祷予約システム「Smart-かぐら」より、以下の通り新規の予約を受け付けました。
+オンライン祈祷予約システムより、以下の通り新規の予約を受け付けました。
 
 ■ 予約内容
 ・予約日時: ${booking.booking_date} ${booking.booking_time}の回

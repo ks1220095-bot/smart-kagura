@@ -156,17 +156,16 @@ router.post('/', async (req, res) => {
     const visitorEmail = booking.booking_type === 'individual' ? booking.email : booking.staff_email;
     if (visitorEmail) {
       const isIndiv = booking.booking_type === 'individual';
-      const subject = `【清瀧神社】ご祈祷予約完了のお知らせ（受付番号: ${receiptNum}）`;
+      const subject = `【清瀧神社】ご祈祷予約完了のお知らせ`;
       
       let text = `${isIndiv ? `${booking.name} 様` : `${booking.company_name}\n担当 ${booking.staff_dept_title_name} 様`}
 
 この度は、清瀧神社オンライン祈祷予約システムをご利用いただき、誠にありがとうございます。
-ご祈祷の予約が完了いたしましたので、詳細をお知らせいたします。
+ご祈祷のご予約が完了いたしましたので、詳細をお知らせいたします。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご予約内容
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-・受付番号　: ${receiptNum}
 ・予約日時　: ${booking.booking_date} ${booking.booking_time}の回
 ・ご祈祷種類: ${isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}
 ・主願意　　: ${booking.prayer1}
@@ -229,13 +228,13 @@ router.post('/', async (req, res) => {
 1. ご来社時刻と遅刻について
    ご祈祷の準備の関係上、開始時刻の15分前にはご来社いただきますようお願いいたします。
    ※ご祈祷の開始時刻5分前を過ぎるとその時間のご祈祷は受け付けない場合がございます、ご了承願います。
-   到着されましたら、社務所受付にて「受付番号: ${receiptNum}」をお伝えください。
+   到着されましたら、社務所受付にてご予約された方のお名前をお伝えください。
 
 2. カメラマン同行について
    プロ・アマチュア問わず、外部のカメラマンの方の神社社殿（拝殿）内へのお立ち入り・同伴撮影はご遠慮いただきます。
 
 3. 所要時間について
-   ご祈祷の時間は、おおむね20〜30分ほどかかります。
+   ご祈祷の時間は、おおむね20分ほどかかります。
 
 4. 初穂料について
    お初穂料はご神前にお供えいたしますので、のし袋か封筒などに入れ、当日受付にて現金でお納めください。
