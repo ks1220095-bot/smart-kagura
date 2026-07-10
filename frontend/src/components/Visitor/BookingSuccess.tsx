@@ -9,7 +9,6 @@ interface BookingSuccessProps {
 
 export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset }) => {
   const isIndiv = booking.booking_type === 'individual';
-  const receiptNum = booking.receipt_number || '';
 
   return (
     <div className="card kamidana-border" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
@@ -64,19 +63,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
         boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
         position: 'relative'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          borderBottom: '1px dashed var(--color-gold)', 
-          paddingBottom: '0.75rem', 
-          marginBottom: '1.25rem' 
-        }}>
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>ご予約受付番号</span>
-            <h3 style={{ fontSize: '1.4rem', letterSpacing: '0.05em', color: 'var(--color-mizuiro)', margin: 0 }}>{receiptNum}</h3>
-          </div>
-        </div>
+
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <tbody>
