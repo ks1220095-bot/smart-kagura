@@ -469,6 +469,123 @@ router.patch('/:id/payment', async (req, res) => {
   }
 });
 
+// 6.5. Update a booking completely (Visitor self-service change)
+router.put('/:id', async (req, res) => {
+  const booking: Booking = req.body;
+  if (!booking.booking_date || !booking.booking_time || !booking.prayer1) {
+    return res.status(400).json({ error: '必須項目が不足しています。' });
+  }
+
+  try {
+    const db = getDb();
+    
+    // Check if booking exists
+    const checkResult = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '予約情報が見つかりません。' });
+    }
+
+    // Capacity checks (only check if date/time changed)
+    const existing = checkResult.rows[0];
+    if (existing.booking_date !== booking.booking_date || existing.booking_time !== booking.booking_time) {
+      const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
+      const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
+
+      const bookedCount = await db.query(
+        `SELECT COUNT(*) as count FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND id <> $3`,
+        [booking.booking_date, booking.booking_time, req.params.id]
+      );
+
+      if (parseInt(bookedCount.rows[0]?.count || '0') >= maxCapacity) {
+        return res.status(400).json({ error: '申し訳ございません。変更先の日時は満席となっております。' });
+      }
+
+      // Check Closed event
+      const isClosedEvent = await db.query(
+        `SELECT COUNT(*) as count FROM events WHERE event_date = $1 AND is_closed_slot = 1 AND $2 >= start_time AND $3 < end_time`,
+        [booking.booking_date, booking.booking_time, booking.booking_time]
+      );
+      if (isClosedEvent.rows.length > 0 && parseInt(isClosedEvent.rows[0].count || '0') > 0) {
+        return res.status(400).json({ error: '変更先の日時は祭典・行事等により受付停止中です。' });
+      }
+    }
+
+    // Update Query
+    await db.query(`
+      UPDATE bookings SET
+        booking_type = $1, booking_date = $2, booking_time = $3, prayer1 = $4, prayer2 = $5, hatsuhoryo = $6, attending_count = $7,
+        name = $8, kana = $9, address = $10, address_kana = $11, phone = $12, email = $13,
+        company_name = $14, company_kana = $15, company_address = $16, company_address_kana = $17, representative_title_name = $18,
+        staff_dept_title_name = $19, staff_phone = $20, staff_email = $21, talisman_name = $22, additional_talismans = $23,
+        wants_receipt = $24, receipt_name = $25, receipt_amount = $26,
+        yakudoshi_type = $27, father_name = $28, father_kana = $29, mother_name = $30, mother_kana = $31, child_name = $32, child_kana = $33, child_birthday = $34,
+        kotobuki_type = $35, kotobuki_other_text = $36, tournament_name = $37, tournament_schedule = $38,
+        construction_name = $39, construction_designer = $40, construction_builder = $41, construction_period = $42, notes = $43
+      WHERE id = $44
+    `, [
+      booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
+      booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
+      booking.company_name || null, booking.company_kana || null, booking.company_address || null, booking.company_address_kana || null, booking.representative_title_name || null,
+      booking.staff_dept_title_name || null, booking.staff_phone || null, booking.staff_email || null, booking.talisman_name || null, booking.additional_talismans || null,
+      booking.wants_receipt || 0, booking.receipt_name || null, booking.receipt_amount || null,
+      booking.yakudoshi_type || null, booking.father_name || null, booking.father_kana || null, booking.mother_name || null, booking.mother_kana || null, booking.child_name || null, booking.child_kana || null, booking.child_birthday || null,
+      booking.kotobuki_type || null, booking.kotobuki_other_text || null, booking.tournament_name || null, booking.tournament_schedule || null,
+      booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null,
+      booking.notes || null, req.params.id
+    ]);
+
+    const updatedBooking = { ...booking, id: parseInt(req.params.id) };
+
+    // Send rescheduling confirmation mail
+    const visitorEmail = booking.booking_type === 'individual' ? booking.email : booking.staff_email;
+    if (visitorEmail) {
+      const isIndiv = booking.booking_type === 'individual';
+      const subject = `【清瀧神社】ご祈祷予約の「変更」完了のお知らせ`;
+      let text = `${isIndiv ? `${booking.name} 様` : `${booking.company_name}\n担当 ${booking.staff_dept_title_name} 様`}
+
+いつも清瀧神社をご拝礼いただき、誠にありがとうございます。
+ご予約内容の「変更」が完了いたしましたので、最新の詳細内容をお知らせいたします。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ ご変更後の予約内容
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+・予約日時　: ${booking.booking_date} ${booking.booking_time}の回
+・ご祈祷種類: ${isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}
+・主願意　　: ${booking.prayer1}
+`;
+
+      if (booking.prayer2) {
+        text += `・副願意　　: ${booking.prayer2}\n`;
+      }
+
+      text += `・お初穂料　: ${booking.hatsuhoryo.toLocaleString()}円以上（当日現金納め、お気持ち）
+・参列予定者: ${booking.attending_count}名
+`;
+      
+      text += `
+ご不明な点などがございましたら、以下までお気軽にご連絡くださいませ。
+
+清瀧神社
+住所: 〒279-0041 千葉県浦安市堀江4-1-5
+TEL: 047-351-5417 (受付時間: 9:30〜15:30)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ ご予約の日程変更・キャンセルについて
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+再度変更・キャンセルされる場合は、引き続き以下のURLからオンラインで行うことができます。
+https://seiryu-gokitou.vercel.app/?changeId=${req.params.id}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending change confirmation mail:', err));
+    }
+
+    res.json(updatedBooking);
+  } catch (error) {
+    console.error('Booking PUT update error:', error);
+    res.status(500).json({ error: '予約内容の更新に失敗しました。' });
+  }
+});
+
 // 7. Delete booking (Cancel)
 router.delete('/:id', async (req, res) => {
   try {

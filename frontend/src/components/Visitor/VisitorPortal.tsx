@@ -117,9 +117,77 @@ export const VisitorPortal: React.FC = () => {
   const [changeLoading, setChangeLoading] = useState(false);
   const [changeError, setChangeError] = useState('');
   const [changeSuccessMsg, setChangeSuccessMsg] = useState('');
-  const [isRescheduling, setIsRescheduling] = useState(false);
-  const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('');
+
+
+  // Form editing mode states (For full reschedule updates)
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editBookingId, setEditBookingId] = useState<number | null>(null);
+
+  const loadBookingIntoForm = (b: Booking) => {
+    setBookingType(b.booking_type);
+    setSelectedDate(b.booking_date);
+    setSelectedTime(b.booking_time);
+    setPrayer1(b.prayer1);
+    setPrayer2(b.prayer2 || '');
+    setHatsuhoryo(b.hatsuhoryo);
+    setAttendingCount(b.attending_count);
+
+    if (b.booking_type === 'individual') {
+      setName(b.name || '');
+      setKana(b.kana || '');
+      setAddress(b.address || '');
+      setAddressKana(b.address_kana || '');
+      setPhone(b.phone || '');
+      setEmail(b.email || '');
+
+      setYakudoshiType(b.yakudoshi_type || '');
+      setFatherName(b.father_name || '');
+      setFatherKana(b.father_kana || '');
+      setMotherName(b.mother_name || '');
+      setMotherKana(b.mother_kana || '');
+      setChildName(b.child_name || '');
+      setChildKana(b.child_kana || '');
+      setChildBirthday(b.child_birthday || '');
+      setKotobukiType(b.kotobuki_type || '');
+      setKotobukiOtherText(b.kotobuki_other_text || '');
+    } else {
+      setCompanyName(b.company_name || '');
+      setCompanyKana(b.company_kana || '');
+      setCompanyAddress(b.company_address || '');
+      setCompanyAddressKana(b.company_address_kana || '');
+      setRepresentativeTitleName(b.representative_title_name || '');
+      setStaffDeptTitleName(b.staff_dept_title_name || '');
+      setStaffPhone(b.staff_phone || '');
+      setStaffEmail(b.staff_email || '');
+      setTalismanName(b.talisman_name || '');
+      setAdditionalTalismans(b.additional_talismans || '');
+      setWantsReceipt(b.wants_receipt === 1);
+      setReceiptName(b.receipt_name || '');
+      setReceiptAmount(b.receipt_amount || 0);
+
+      // Org dynamic fields
+      if (b.prayer1 !== '社運隆盛' && b.prayer1 !== '商売繁昌' && b.prayer1 !== '安全祈願' && b.prayer1 !== '必勝祈願' && b.prayer1 !== '工事安全') {
+        setOrgCustomPrayer1(b.prayer1);
+      }
+      if (b.prayer2 && b.prayer2 !== '社運隆盛' && b.prayer2 !== '商売繁昌' && b.prayer2 !== '安全祈願' && b.prayer2 !== '必勝祈願' && b.prayer2 !== '工事安全') {
+        setOrgCustomPrayer2(b.prayer2);
+      }
+      setTournamentName(b.tournament_name || '');
+      setTournamentSchedule(b.tournament_schedule || '');
+      setConstructionName(b.construction_name || '');
+      setConstructionDesigner(b.construction_designer || '');
+      setConstructionBuilder(b.construction_builder || '');
+      setConstructionPeriod(b.construction_period || '');
+    }
+
+    setIsEditMode(true);
+    setEditBookingId(b.id || null);
+    
+    // Clear URL parameters and changeId to close self-service overview portal
+    window.history.replaceState({}, '', window.location.origin);
+    setChangeId(null);
+    setStep(1); // Redirect back to slot/type selector
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -165,33 +233,7 @@ export const VisitorPortal: React.FC = () => {
     }
   };
 
-  const handleRescheduleBooking = async () => {
-    if (!targetBooking || !targetBooking.id || !newDate || !newTime) return;
 
-    setChangeLoading(true);
-    setChangeError('');
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/bookings/${targetBooking.id}/reschedule`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ booking_date: newDate, booking_time: newTime })
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || '日程の変更に失敗しました。');
-      }
-
-      setChangeSuccessMsg(`ご予約の日程変更手続きが完了いたしました。新しい日時: ${newDate} ${newTime}の回`);
-      setTargetBooking(null);
-      setIsRescheduling(false);
-    } catch (err: any) {
-      setChangeError(err.message || '通信エラーが発生しました。');
-    } finally {
-      setChangeLoading(false);
-    }
-  };
 
   // 1. Manage Hatsuhoryo changes based on willingness and organization headcount
   useEffect(() => {
@@ -373,15 +415,20 @@ export const VisitorPortal: React.FC = () => {
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/bookings`, {
-        method: 'POST',
+      const url = isEditMode && editBookingId 
+        ? `${apiUrl}/api/bookings/${editBookingId}`
+        : `${apiUrl}/api/bookings`;
+      const method = isEditMode && editBookingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || '予約の登録に失敗しました。');
+        throw new Error(errData.error || (isEditMode ? '予約内容の変更に失敗しました。' : '予約の登録に失敗しました。'));
       }
 
       const created = await res.json();
@@ -485,56 +532,22 @@ export const VisitorPortal: React.FC = () => {
                     <p style={{ margin: 0 }}><strong>現在のご希望日時:</strong> {targetBooking.booking_date} {targetBooking.booking_time}の回</p>
                   </div>
 
-                  {!isRescheduling ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
-                      <button 
-                        onClick={() => {
-                          setNewDate(targetBooking.booking_date);
-                          setNewTime('');
-                          setIsRescheduling(true);
-                        }} 
-                        className="btn btn-primary"
-                        style={{ padding: '0.75rem' }}
-                      >
-                        ご希望日時を変更する
-                      </button>
-                      <button 
-                        onClick={handleCancelBooking} 
-                        className="btn btn-secondary"
-                        style={{ padding: '0.75rem', color: '#d3381c', borderColor: '#ffa39e', backgroundColor: '#fdf3f2' }}
-                      >
-                        ご予約をキャンセルする
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', fontFamily: 'var(--font-serif)', marginBottom: '1rem' }}>新しい希望日時を選択してください</h4>
-                      <SlotSelector
-                        selectedDate={newDate}
-                        onDateChange={setNewDate}
-                        selectedTime={newTime}
-                        onTimeChange={setNewTime}
-                      />
-
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                        <button 
-                          onClick={() => setIsRescheduling(false)} 
-                          className="btn btn-secondary"
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                        >
-                          戻る
-                        </button>
-                        <button 
-                          onClick={handleRescheduleBooking} 
-                          className="btn btn-primary"
-                          disabled={!newDate || !newTime}
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                        >
-                          日程を変更する
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                    <button 
+                      onClick={() => loadBookingIntoForm(targetBooking)} 
+                      className="btn btn-primary"
+                      style={{ padding: '0.75rem' }}
+                    >
+                      ご予約内容（日時・お名前等）を変更する
+                    </button>
+                    <button 
+                      onClick={handleCancelBooking} 
+                      className="btn btn-secondary"
+                      style={{ padding: '0.75rem', color: '#d3381c', borderColor: '#ffa39e', backgroundColor: '#fdf3f2' }}
+                    >
+                      ご予約をキャンセルする
+                    </button>
+                  </div>
                 </div>
               )
             )}
@@ -1424,7 +1437,11 @@ export const VisitorPortal: React.FC = () => {
                 onClick={handleSubmitBooking}
                 disabled={submitting}
               >
-                {submitting ? '予約送信中...' : 'この内容で予約を確定する'}
+                {submitting 
+                  ? '変更内容を送信中...' 
+                  : isEditMode 
+                    ? 'この内容で予約変更を確定する' 
+                    : 'この内容で予約を確定する'}
               </button>
             </div>
           </div>
