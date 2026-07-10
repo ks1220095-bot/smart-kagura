@@ -111,6 +111,88 @@ export const VisitorPortal: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Self Rescheduling / Cancel Status
+  const [changeId, setChangeId] = useState<string | null>(null);
+  const [targetBooking, setTargetBooking] = useState<Booking | null>(null);
+  const [changeLoading, setChangeLoading] = useState(false);
+  const [changeError, setChangeError] = useState('');
+  const [changeSuccessMsg, setChangeSuccessMsg] = useState('');
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cId = params.get('changeId');
+    if (cId) {
+      setChangeId(cId);
+      fetchTargetBooking(cId);
+    }
+  }, []);
+
+  const fetchTargetBooking = async (id: string) => {
+    setChangeLoading(true);
+    setChangeError('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${id}`);
+      if (!res.ok) throw new Error('ご予約情報が見つかりません。すでにキャンセルされている可能性があります。');
+      const data = await res.json();
+      setTargetBooking(data);
+    } catch (err: any) {
+      setChangeError(err.message || '情報の読み込みに失敗しました。');
+    } finally {
+      setChangeLoading(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!targetBooking || !targetBooking.id) return;
+    if (!confirm('ご予約をキャンセルしてもよろしいですか？この操作は取り消せません。')) return;
+
+    setChangeLoading(true);
+    setChangeError('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${targetBooking.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('キャンセル処理に失敗しました。');
+      setChangeSuccessMsg('ご予約のキャンセル手続きが完了いたしました。またのご予約を心よりお待ちしております。');
+      setTargetBooking(null);
+    } catch (err: any) {
+      setChangeError(err.message || '通信エラーが発生しました。');
+    } finally {
+      setChangeLoading(false);
+    }
+  };
+
+  const handleRescheduleBooking = async () => {
+    if (!targetBooking || !targetBooking.id || !newDate || !newTime) return;
+
+    setChangeLoading(true);
+    setChangeError('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${targetBooking.id}/reschedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_date: newDate, booking_time: newTime })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || '日程の変更に失敗しました。');
+      }
+
+      setChangeSuccessMsg(`ご予約の日程変更手続きが完了いたしました。新しい日時: ${newDate} ${newTime}の回`);
+      setTargetBooking(null);
+      setIsRescheduling(false);
+    } catch (err: any) {
+      setChangeError(err.message || '通信エラーが発生しました。');
+    } finally {
+      setChangeLoading(false);
+    }
+  };
+
   // 1. Manage Hatsuhoryo changes based on willingness and organization headcount
   useEffect(() => {
     if (bookingType === 'individual') {
@@ -363,6 +445,103 @@ export const VisitorPortal: React.FC = () => {
 
   if (step === 4 && createdBooking) {
     return <BookingSuccess booking={createdBooking} onReset={handleReset} />;
+  }
+
+  // Self Reschedule / Cancel View
+  if (changeId) {
+    return (
+      <div style={{ padding: '3rem 0' }}>
+        <div className="container" style={{ maxWidth: '650px', margin: '0 auto' }}>
+          <div className="card kamidana-border" style={{ padding: '2rem' }}>
+            <h3 style={{ fontSize: '1.4rem', textAlign: 'center', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>
+              ご予約の日程変更・キャンセル
+            </h3>
+
+            {changeLoading && <p style={{ color: 'var(--color-accent-gray)', textAlign: 'center' }}>処理中...</p>}
+            {changeError && (
+              <p style={{ color: '#d3381c', backgroundColor: '#fdf3f2', padding: '0.75rem', border: '1px solid #ffa39e', borderRadius: '4px', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                エラー: {changeError}
+              </p>
+            )}
+
+            {changeSuccessMsg ? (
+              <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                <p style={{ color: 'var(--color-accent-green)', fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '2rem' }}>
+                  {changeSuccessMsg}
+                </p>
+                <button 
+                  onClick={() => { window.location.href = window.location.origin; }} 
+                  className="btn btn-primary"
+                >
+                  トップページへ戻る
+                </button>
+              </div>
+            ) : (
+              targetBooking && (
+                <div>
+                  <div style={{ backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', padding: '1rem', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0' }}><strong>お名前:</strong> {targetBooking.booking_type === 'individual' ? targetBooking.name : targetBooking.company_name} 様</p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}><strong>ご祈祷:</strong> {targetBooking.prayer1}</p>
+                    <p style={{ margin: 0 }}><strong>現在のご希望日時:</strong> {targetBooking.booking_date} {targetBooking.booking_time}の回</p>
+                  </div>
+
+                  {!isRescheduling ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                      <button 
+                        onClick={() => {
+                          setNewDate(targetBooking.booking_date);
+                          setNewTime('');
+                          setIsRescheduling(true);
+                        }} 
+                        className="btn btn-primary"
+                        style={{ padding: '0.75rem' }}
+                      >
+                        ご希望日時を変更する
+                      </button>
+                      <button 
+                        onClick={handleCancelBooking} 
+                        className="btn btn-secondary"
+                        style={{ padding: '0.75rem', color: '#d3381c', borderColor: '#ffa39e', backgroundColor: '#fdf3f2' }}
+                      >
+                        ご予約をキャンセルする
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+                      <h4 style={{ fontSize: '1rem', fontFamily: 'var(--font-serif)', marginBottom: '1rem' }}>新しい希望日時を選択してください</h4>
+                      <SlotSelector
+                        selectedDate={newDate}
+                        onDateChange={setNewDate}
+                        selectedTime={newTime}
+                        onTimeChange={setNewTime}
+                      />
+
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                        <button 
+                          onClick={() => setIsRescheduling(false)} 
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                        >
+                          戻る
+                        </button>
+                        <button 
+                          onClick={handleRescheduleBooking} 
+                          className="btn btn-primary"
+                          disabled={!newDate || !newTime}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                        >
+                          日程を変更する
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

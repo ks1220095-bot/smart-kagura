@@ -211,7 +211,12 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       {b.receipt_number}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      {b.booking_date} {b.booking_time}
+                      <div style={{ fontWeight: 600 }}>{b.booking_date} {b.booking_time}</div>
+                      {b.created_at && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }} title="予約受付日時">
+                          受付: {new Date(b.created_at).toLocaleString('ja-JP', { hour12: false }).slice(0, 16)}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <span className={`badge ${isIndiv ? 'badge-paid' : 'badge-unpaid'}`} style={{ borderColor: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', backgroundColor: 'transparent' }}>

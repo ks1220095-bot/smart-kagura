@@ -262,11 +262,17 @@ router.post('/', async (req, res) => {
       }
 
       text += `
-ご不明な点や日時の変更などがございましたら、以下までお気軽にご連絡くださいませ。
+ご不明な点などがございましたら、以下までお気軽にご連絡くださいませ。
 
 清瀧神社
 住所: 〒279-0041 千葉県浦安市堀江4-1-5
 TEL: 047-351-5417 (受付時間: 9:30〜15:30)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ ご予約の日程変更・キャンセルについて
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ご都合が悪くなった場合の日程変更やキャンセルは、以下のURLからオンラインで行うことができます。
+https://seiryu-gokitou.vercel.app/?changeId=${createdId}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
       sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending visitor mail:', err));
@@ -477,6 +483,50 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Booking cancellation error:', error);
     res.status(500).json({ error: '予約のキャンセルに失敗しました。' });
+  }
+});
+
+// 8. Reschedule booking (Visitor self-service)
+router.patch('/:id/reschedule', async (req, res) => {
+  const { booking_date, booking_time } = req.body;
+  if (!booking_date || !booking_time) {
+    return res.status(400).json({ error: '変更後の日付と時間が必要です。' });
+  }
+
+  try {
+    const db = getDb();
+    
+    // Check capacity
+    const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
+    const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
+
+    const bookedCount = await db.query(
+      `SELECT COUNT(*) as count FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND id <> $3`,
+      [booking_date, booking_time, req.params.id]
+    );
+
+    if (parseInt(bookedCount.rows[0]?.count || '0') >= maxCapacity) {
+      return res.status(400).json({ error: '申し訳ございません。変更先の枠は満席となっております。' });
+    }
+
+    // Check if slot is closed by festival
+    const isClosedEvent = await db.query(
+      `SELECT COUNT(*) as count FROM events WHERE event_date = $1 AND is_closed_slot = 1 AND $2 >= start_time AND $3 < end_time`,
+      [booking_date, booking_time, booking_time]
+    );
+    if (isClosedEvent.rows.length > 0 && parseInt(isClosedEvent.rows[0].count || '0') > 0) {
+      return res.status(400).json({ error: '変更先の枠は祭典・行事等により受付停止中です。' });
+    }
+
+    await db.query(
+      `UPDATE bookings SET booking_date = $1, booking_time = $2 WHERE id = $3`,
+      [booking_date, booking_time, req.params.id]
+    );
+
+    res.json({ success: true, booking_date, booking_time });
+  } catch (error) {
+    console.error('Booking reschedule error:', error);
+    res.status(500).json({ error: '日程の変更に失敗しました。' });
   }
 });
 
