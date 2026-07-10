@@ -83,8 +83,6 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             width: '182mm',   // B5 Width
             height: '257mm',  // B5 Height
             padding: '18mm 12mm',
-            display: 'flex',
-            flexDirection: 'row-reverse', // Flow elements from right to left (vertical writing)
             fontFamily: 'var(--font-serif)',
             color: '#000000',
             writingMode: 'vertical-rl',
@@ -95,12 +93,12 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
           <div style={{ position: 'absolute', top: '10mm', bottom: '10mm', left: '10mm', right: '10mm', border: '1px solid rgba(50,136,163,0.12)', pointerEvents: 'none' }} />
 
           {/* 1. Date Column */}
-          <div style={{ fontSize: '0.95rem', marginRight: '0.5rem', letterSpacing: '0.1em' }}>
+          <div style={{ fontSize: '0.95rem', display: 'inline-block', verticalAlign: 'top', marginLeft: '0.75rem', letterSpacing: '0.1em' }}>
             奉修祈願日： {formatImperialDate(booking.booking_date)}
           </div>
 
           {/* 2. Address / Meta Column */}
-          <div style={{ fontSize: '1rem', marginRight: '1.25rem', letterSpacing: '0.1em', maxWidth: '35mm' }}>
+          <div style={{ fontSize: '1rem', display: 'inline-block', verticalAlign: 'top', marginLeft: '1.5rem', letterSpacing: '0.1em', width: '12mm' }}>
             {isIndiv ? (
               <>住所： {booking.address}</>
             ) : (
@@ -110,21 +108,21 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
 
           {/* 3. Main Names Section */}
           <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            marginRight: '2.5rem', 
-            flexGrow: 1
+            display: 'inline-block', 
+            verticalAlign: 'top',
+            marginLeft: '3rem',
+            height: '100%',
+            width: '24mm'
           }}>
             {isIndiv ? (
-              <>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', height: '100%', justifyContent: 'flex-start' }}>
                 <span style={{ fontSize: '1.1rem', color: '#555' }}>({booking.kana})</span>
                 <span style={{ fontSize: '2.1rem', fontWeight: 'bold', marginTop: '0.4rem', letterSpacing: '0.1em' }}>
                   {booking.name} 殿
                 </span>
                 
                 {booking.child_name && (
-                  <div style={{ display: 'flex', flexDirection: 'column', marginTop: '1.5rem', borderRight: '1px dashed #bbb', paddingRight: '1rem', fontSize: '1.1rem' }}>
+                  <div style={{ display: 'inline-flex', flexDirection: 'column', marginTop: '1.5rem', borderRight: '1px dashed #bbb', paddingRight: '0.5rem', fontSize: '1.1rem' }}>
                     <span>お祝子：</span>
                     <span style={{ fontSize: '0.8rem', color: '#555' }}>({booking.child_kana})</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{booking.child_name}</span>
@@ -135,9 +133,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                     {booking.mother_name && <span>母： {booking.mother_name}</span>}
                   </div>
                 )}
-              </>
+              </div>
             ) : (
-              <>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', height: '100%', justifyContent: 'flex-start' }}>
                 <span style={{ fontSize: '1rem', color: '#555' }}>({booking.company_kana})</span>
                 <span style={{ fontSize: '1.75rem', fontWeight: 'bold', marginTop: '0.4rem' }}>
                   {booking.company_name}
@@ -149,8 +147,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 <div style={{ 
                   marginTop: '1.5rem', 
                   borderRight: '2px solid var(--color-gold)', 
-                  paddingRight: '1rem', 
-                  display: 'flex', 
+                  paddingRight: '0.5rem', 
+                  display: 'inline-flex', 
                   flexDirection: 'column' 
                 }}>
                   <span style={{ fontSize: '0.9rem', color: 'var(--color-gold)' }}>神札染筆名：</span>
@@ -158,43 +156,45 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                     {booking.talisman_name || booking.company_name}
                   </span>
                 </div>
-              </>
+              </div>
             )}
           </div>
 
           {/* 4. Willing / Prayers (Center position) */}
           <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            marginRight: '2.5rem',
-            width: '45mm',
+            display: 'inline-block', 
+            verticalAlign: 'top',
+            marginLeft: '3rem',
+            width: '32mm',
             borderRight: '1px double #000',
             borderLeft: '1px double #000',
-            padding: '0 0.5rem'
+            padding: '0 0.5rem',
+            height: '100%',
+            textAlign: 'center'
           }}>
-            <span style={{ fontSize: '2.4rem', fontWeight: 'bold', letterSpacing: '0.15em', textDecoration: 'underline', textDecorationColor: 'var(--color-gold)' }}>
-              {isIndiv && booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}
-            </span>
-            
-            {booking.prayer2 && (
-              <span style={{ fontSize: '1.8rem', fontWeight: 'bold', marginTop: '1.5rem', letterSpacing: '0.1em' }}>
-                並びに {booking.prayer2}
+            <div style={{ display: 'inline-flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+              <span style={{ fontSize: '2.4rem', fontWeight: 'bold', letterSpacing: '0.15em', textDecoration: 'underline', textDecorationColor: 'var(--color-gold)' }}>
+                {isIndiv && booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}
               </span>
-            )}
+              
+              {booking.prayer2 && (
+                <span style={{ fontSize: '1.8rem', fontWeight: 'bold', marginTop: '1.5rem', letterSpacing: '0.1em' }}>
+                  並びに {booking.prayer2}
+                </span>
+              )}
 
-            {isIndiv && booking.prayer1 === '厄年のお祓い' && booking.yakudoshi_type && (
-              <span style={{ fontSize: '1.4rem', marginTop: '1rem', border: '1px solid #000', padding: '0.4rem 0.2rem', borderRadius: '2px' }}>
-                {booking.yakudoshi_type === 'maeyaku' ? '前厄祈願' : booking.yakudoshi_type === 'honyaku' ? '本厄祈願' : '後厄祈願'}
-              </span>
-            )}
+              {isIndiv && booking.prayer1 === '厄年のお祓い' && booking.yakudoshi_type && (
+                <span style={{ fontSize: '1.4rem', marginTop: '1rem', border: '1px solid #000', padding: '0.4rem 0.2rem', borderRadius: '2px' }}>
+                  {booking.yakudoshi_type === 'maeyaku' ? '前厄祈願' : booking.yakudoshi_type === 'honyaku' ? '本厄祈願' : '後厄祈願'}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 5. Special contexts */}
-          <div style={{ fontSize: '0.95rem', marginRight: '2rem', width: '35mm', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '0.95rem', display: 'inline-block', verticalAlign: 'top', marginLeft: '2rem', width: '22mm', letterSpacing: '0.05em' }}>
             {booking.tournament_name && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px dashed #ccc', paddingLeft: '0.75rem' }}>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px dashed #ccc', paddingLeft: '0.5rem' }}>
                 <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>【大会必勝】</span>
                 <span>大会名：{booking.tournament_name}</span>
                 <span>日程：{booking.tournament_schedule}</span>
@@ -202,7 +202,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             )}
 
             {booking.construction_name && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px dashed #ccc', paddingLeft: '0.75rem' }}>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px dashed #ccc', paddingLeft: '0.5rem' }}>
                 <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>【工事安全】</span>
                 <span>工事名：{booking.construction_name}</span>
                 <span>設計：{booking.construction_designer}</span>
@@ -212,7 +212,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             )}
 
             {!isIndiv && booking.additional_talismans && (
-              <div style={{ display: 'flex', flexDirection: 'column', marginTop: '1.5rem', color: '#444' }}>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', marginTop: '1.5rem', color: '#444' }}>
                 <span>【追加守札】</span>
                 <span>{booking.additional_talismans}</span>
               </div>
@@ -221,58 +221,59 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
 
           {/* 6. Issuing Office */}
           <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'flex-end', 
-            alignItems: 'center',
+            display: 'inline-block', 
+            verticalAlign: 'bottom',
             fontSize: '1.15rem', 
             letterSpacing: '0.15em',
-            marginRight: '1rem',
+            marginLeft: '1.5rem',
             height: '100%',
             color: '#333'
           }}>
-            <span>清瀧神社社務所奉仕</span>
+            <div style={{ display: 'inline-flex', flexDirection: 'column', height: '100%', justifyContent: 'flex-end', paddingBottom: '20mm' }}>
+              <span>清瀧神社社務所奉仕</span>
+            </div>
           </div>
 
           {/* 7. STAFF POST-PRINT HANDWRITE CHECK BOXES (Far Left) */}
           <div style={{ 
-            marginRight: 'auto',
+            display: 'inline-block',
+            verticalAlign: 'top',
             borderLeft: '1px dashed #999',
             paddingLeft: '0.75rem',
             height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
             fontSize: '0.85rem',
             color: '#444',
-            width: '25mm'
+            width: '25mm',
+            float: 'left' // Push to the far left
           }}>
-            <div>
-              <div style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)', borderBottom: '1px solid #ccc', paddingBottom: '0.2rem', marginBottom: '0.75rem' }}>
-                社務処理欄
-              </div>
-              
-              <div style={{ marginBottom: '1.5rem' }}>
-                No. ＿＿＿＿＿＿
+            <div style={{ display: 'inline-flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)', borderBottom: '1px solid #ccc', paddingBottom: '0.2rem', marginBottom: '0.75rem' }}>
+                  社務処理欄
+                </div>
+                
+                <div style={{ marginBottom: '1.5rem' }}>
+                  No. ＿＿＿＿＿＿
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span>初穂料：</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    ［　］済（領収証）
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    ［　］済（現金受）
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    ［　］未納
+                  </span>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <span>初穂料：</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  ［　］済（領収証）
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  ［　］済（現金受）
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  ［　］未納
-                </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '1.5rem' }}>
+                <span>備考：</span>
+                <div style={{ borderRight: '1px solid #ccc', height: '60mm', marginRight: '0.5rem' }} />
               </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '1.5rem' }}>
-              <span>備考：</span>
-              <div style={{ borderRight: '1px solid #ccc', height: '60mm', marginRight: '0.5rem' }} />
             </div>
           </div>
 

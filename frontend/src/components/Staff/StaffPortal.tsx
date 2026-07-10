@@ -385,7 +385,7 @@ export const StaffPortal: React.FC = () => {
                   <div className="form-group">
                     <label>希望時間割 <span className="required">*</span></label>
                     <select className="form-control" value={manualTime} onChange={(e) => setManualTime(e.target.value)} required>
-                      {['09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30'].map(t => (
+                      {['07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'].map(t => (
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>

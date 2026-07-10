@@ -11,33 +11,6 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
   const isIndiv = booking.booking_type === 'individual';
   const receiptNum = booking.receipt_number || '';
 
-  // Render a simple mock QR code SVG
-  const renderMockQR = () => {
-    return (
-      <svg width="100" height="100" viewBox="0 0 100 100" style={{ border: '1px solid #d3d3d3', padding: '4px', backgroundColor: 'white' }}>
-        <rect x="5" y="5" width="22" height="22" fill="black" />
-        <rect x="9" y="9" width="14" height="14" fill="white" />
-        <rect x="11" y="11" width="10" height="10" fill="black" />
-        
-        <rect x="73" y="5" width="22" height="22" fill="black" />
-        <rect x="77" y="9" width="14" height="14" fill="white" />
-        <rect x="79" y="11" width="10" height="10" fill="black" />
-
-        <rect x="5" y="73" width="22" height="22" fill="black" />
-        <rect x="9" y="77" width="14" height="14" fill="white" />
-        <rect x="11" y="79" width="10" height="10" fill="black" />
-
-        <rect x="35" y="15" width="8" height="8" fill="black" />
-        <rect x="50" y="30" width="12" height="12" fill="black" />
-        <rect x="40" y="50" width="10" height="6" fill="black" />
-        <rect x="65" y="65" width="8" height="15" fill="black" />
-        <rect x="80" y="45" width="10" height="10" fill="black" />
-        <rect x="45" y="75" width="15" height="10" fill="black" />
-        <rect x="75" y="80" width="15" height="15" fill="black" />
-      </svg>
-    );
-  };
-
   return (
     <div className="card kamidana-border" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
       <div style={{
@@ -62,6 +35,23 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
         ご入力いただいたメールアドレス宛に、予約完了メールを自動送信いたしました。
       </p>
 
+      {/* Screen Save Guideline Warning Banner */}
+      <div style={{
+        color: '#d3381c',
+        backgroundColor: '#fff1f0',
+        border: '1px solid #ffa39e',
+        borderRadius: '4px',
+        padding: '0.75rem 1rem',
+        maxWidth: '520px',
+        margin: '0 auto 1.5rem auto',
+        fontWeight: 'bold',
+        fontSize: '0.95rem',
+        textAlign: 'center',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.02)'
+      }}>
+        ⚠️ この画面をスクリーンショット等で保存していただきますようお願いします。
+      </div>
+
       {/* Confirmation Card UI */}
       <div style={{
         backgroundColor: 'var(--color-washi-dark)',
@@ -85,9 +75,6 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>ご予約受付番号</span>
             <h3 style={{ fontSize: '1.4rem', letterSpacing: '0.05em', color: 'var(--color-mizuiro)', margin: 0 }}>{receiptNum}</h3>
-          </div>
-          <div>
-            {renderMockQR()}
           </div>
         </div>
 
