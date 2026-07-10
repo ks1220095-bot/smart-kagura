@@ -1,0 +1,141 @@
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const smtpHost = process.env.SMTP_HOST || '';
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+const smtpUser = process.env.SMTP_USER || '';
+const smtpPass = process.env.SMTP_PASS || '';
+const smtpFrom = process.env.SMTP_FROM || 'no-reply@example.com';
+const adminEmail = process.env.ADMIN_EMAIL || '';
+
+// Check if SMTP environment variables are properly configured
+const isSmtpConfigured = () => {
+  return (
+    smtpHost &&
+    smtpHost !== 'smtp.example.com' &&
+    smtpUser &&
+    smtpUser !== 'your-email@example.com' &&
+    smtpPass &&
+    smtpPass !== 'your-email-password'
+  );
+};
+
+/**
+ * Sends an email. If SMTP credentials are not configured,
+ * it will fallback to printing the email contents to the console log.
+ */
+export async function sendMail(to: string, subject: string, text: string, html?: string) {
+  if (isSmtpConfigured()) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: smtpFrom,
+        to,
+        subject,
+        text,
+        html,
+      });
+
+      console.log(`[Email Sent] Message ID: ${info.messageId} to ${to}`);
+      return true;
+    } catch (error) {
+      console.error('[Email Error] Failed to send email via SMTP:', error);
+    }
+  }
+
+  // Fallback Mock Outbox in developer environment
+  console.log('\n=================== [MOCK EMAIL OUTBOX] ===================');
+  console.log(`To:      ${to}`);
+  console.log(`From:    ${smtpFrom}`);
+  console.log(`Subject: ${subject}`);
+  console.log('-----------------------------------------------------------');
+  console.log(text);
+  console.log('===========================================================\n');
+  return true;
+}
+
+/**
+ * Sends a notification email to the shrine administrator.
+ */
+export async function sendAdminNotification(booking: any) {
+  const isIndiv = booking.booking_type === 'individual';
+  const subject = `【Smart-かぐら】新規ご祈祷予約通知 (${isIndiv ? '個人' : '団体'}) - ${booking.booking_date}`;
+  
+  let text = `清瀧神社 御中
+
+オンライン祈祷予約システム「Smart-かぐら」より、以下の通り新規の予約を受け付けました。
+
+■ 予約内容
+・予約日時: ${booking.booking_date} ${booking.booking_time}の回
+・ご祈祷種類: ${isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}
+・主願意: ${booking.prayer1}
+${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基準値）: ${booking.hatsuhoryo.toLocaleString()}円 (当日現金納め)
+・参列予定人数: ${booking.attending_count}名
+
+■ 申込者情報
+`;
+
+  if (isIndiv) {
+    text += `・お名前: ${booking.name} 様 (${booking.kana})
+・ご住所: ${booking.address} (${booking.address_kana})
+・電話番号: ${booking.phone}
+・メールアドレス: ${booking.email}
+`;
+    // Detailed options for individual
+    if (booking.yakudoshi_type) {
+      const yakudoshiMap: any = { maeyaku: '前厄', honyaku: '本厄', atoyaku: '後厄' };
+      text += `・厄年区分: ${yakudoshiMap[booking.yakudoshi_type] || booking.yakudoshi_type}\n`;
+    }
+    if (booking.child_name) {
+      text += `・お祝いのお子様: ${booking.child_name} 様 (${booking.child_kana})
+・お子様生年月日: ${booking.child_birthday}
+・ご両親氏名: ${[
+        booking.father_name ? `父: ${booking.father_name}(${booking.father_kana})` : '',
+        booking.mother_name ? `母: ${booking.mother_name}(${booking.mother_kana})` : ''
+      ].filter(Boolean).join('、')}
+`;
+    }
+    if (booking.kotobuki_type) {
+      text += `・寿祝い区分: ${booking.kotobuki_type === 'other' ? `その他 (${booking.kotobuki_other_text})` : booking.kotobuki_type}\n`;
+    }
+  } else {
+    text += `・団体（企業）名: ${booking.company_name} (${booking.company_kana})
+・所在地: ${booking.company_address} (${booking.company_address_kana})
+・代表者役職氏名: ${booking.representative_title_name}
+・申込担当者部署役職氏名: ${booking.staff_dept_title_name}
+・担当者電話番号: ${booking.staff_phone}
+・担当者メールアドレス: ${booking.staff_email}
+・お札に書かれるお名前: ${booking.talisman_name || '（未入力）'}
+・追加希望の守札: ${booking.additional_talismans || '（なし）'}
+・領収証の発行希望: ${booking.wants_receipt ? `希望する (宛名: ${booking.receipt_name} / 金額: ${booking.receipt_amount?.toLocaleString()}円)` : '希望しない'}
+`;
+    // Detailed options for organization
+    if (booking.tournament_name) {
+      text += `・大会名称: ${booking.tournament_name}\n・大会日程: ${booking.tournament_schedule}\n`;
+    }
+    if (booking.construction_name) {
+      text += `・工事名称: ${booking.construction_name}
+・設計監理者名: ${booking.construction_designer}
+・施工者名: ${booking.construction_builder}
+・工期: ${booking.construction_period}
+`;
+    }
+  }
+
+  text += `\n神社管理画面より詳細の確認、および読み札の印刷準備をお願いいたします。`;
+
+  if (adminEmail) {
+    await sendMail(adminEmail, subject, text);
+  }
+}

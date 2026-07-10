@@ -1,0 +1,358 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;600;700&display=swap');
+
+:root {
+  /* Colors - Water theme (Mizuiro / Asagi) */
+  --color-mizuiro: #3288a3;        /* 浅葱・千草色 (基調の水色) */
+  --color-mizuiro-hover: #215d70;
+  --color-mizuiro-light: #eef7f9;
+  --color-urushi: #1c1c1c;         /* 漆黒 */
+  --color-urushi-light: #2c2c2c;
+  --color-washi: #fbfaf5;          /* 和紙背景 */
+  --color-washi-dark: #f5f2e6;
+  --color-gold: #b29356;           /* 金泥 */
+  --color-gold-light: #c9ab6d;
+  --color-accent-green: #3e7a5c;   /* 松葉色 (成功/空き) */
+  --color-accent-orange: #c87a2d;   /* 琥珀色 (残りわずか) */
+  --color-accent-gray: #7d7a74;    /* 鼠色 */
+  --color-border: #e0dbcd;
+  
+  /* Fonts */
+  --font-serif: 'Noto Serif JP', '游明朝', 'Yu Mincho', serif;
+  --font-sans: 'Noto Sans JP', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-washi);
+  color: var(--color-urushi);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6, .font-serif {
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
+
+/* Layout Utilities */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 1px dashed var(--color-border);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+/* Washi Background texture */
+.washi-bg {
+  background-color: var(--color-washi);
+  background-image: radial-gradient(rgba(50, 136, 163, 0.03) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: none;
+  font-size: 1rem;
+}
+
+.btn-primary {
+  background-color: var(--color-mizuiro);
+  color: #ffffff;
+  border: 1px solid var(--color-mizuiro);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-mizuiro-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(50, 136, 163, 0.2);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-urushi);
+  border: 1px solid var(--color-urushi);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-urushi);
+  color: #ffffff;
+}
+
+.btn-gold {
+  background-color: var(--color-gold);
+  color: #ffffff;
+  border: 1px solid var(--color-gold);
+}
+
+.btn-gold:hover {
+  background-color: var(--color-gold-light);
+}
+
+.btn-outline-gold {
+  background-color: transparent;
+  color: var(--color-gold);
+  border: 1px solid var(--color-gold);
+}
+
+.btn-outline-gold:hover {
+  background-color: var(--color-gold);
+  color: #ffffff;
+}
+
+.btn-disabled {
+  background-color: #e0e0e0;
+  color: #8c8c8c;
+  cursor: not-allowed;
+  border: 1px solid #d3d3d3;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.badge-paid {
+  background-color: rgba(62, 122, 92, 0.1);
+  color: var(--color-accent-green);
+  border: 1px solid var(--color-accent-green);
+}
+
+.badge-unpaid {
+  background-color: rgba(50, 136, 163, 0.1);
+  color: var(--color-mizuiro);
+  border: 1px solid var(--color-mizuiro);
+}
+
+/* Shinto Decorative Borders */
+.kamidana-border {
+  border-top: 5px solid var(--color-mizuiro);
+}
+
+.shimenawa-divider {
+  height: 8px;
+  background-image: repeating-linear-gradient(45deg, var(--color-gold) 0, var(--color-gold) 4px, transparent 0, transparent 8px);
+  margin: 1.5rem 0;
+  border-radius: 2px;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-urushi-light);
+}
+
+.form-group label .required {
+  color: #d3381c; /* Keep strict warning red */
+  margin-left: 0.25rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  background-color: #ffffff;
+  color: var(--color-urushi);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  border-radius: 2px;
+  transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-mizuiro);
+  box-shadow: 0 0 0 2px rgba(50, 136, 163, 0.15);
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-row > .form-group {
+  flex: 1;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.checkbox-label input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--color-mizuiro);
+}
+
+/* Warning & Alerts */
+.alert-warning {
+  background-color: var(--color-mizuiro-light);
+  border-left: 4px solid var(--color-mizuiro);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 2px;
+}
+
+.alert-warning h5 {
+  color: var(--color-mizuiro-hover);
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Grid & Layouts */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+/* Hover effects */
+.hover-gold-border:hover {
+  border-color: var(--color-gold) !important;
+}
+
+.hover-row:hover {
+  background-color: #f7f9fa;
+}
+
+@media (max-width: 768px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .container {
+    padding: 0 0.75rem;
+  }
+  .card {
+    padding: 1.25rem;
+  }
+}
+
+/* Print Layouts */
+@media print {
+  body {
+    background: #ffffff;
+    color: #000000;
+    font-family: var(--font-serif);
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  /* B5 portrait for Yomifuda */
+  .yomifuda-sheet {
+    width: 182mm !important; 
+    height: 257mm !important; 
+    padding: 15mm 12mm !important;
+    page-break-after: always;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+  }
+  
+  .receipt-sheet {
+    width: 210mm;
+    height: 148mm; 
+    padding: 15mm;
+    page-break-after: always;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+  }
+
+  /* Dashboard Schedule list print */
+  .schedule-print-sheet {
+    width: 297mm !important;
+    height: 210mm !important;
+    padding: 15mm !important;
+    background: white !important;
+  }
+}
+
+/* Print specifications size definition */
+@page {
+  /* Default browser setting fallback */
+  margin: 0;
+}
+
+.print-yomifuda-page {
+  /* Class to force B5 size print in Chrome */
+  page: yomifuda;
+}
+
+@page yomifuda {
+  size: B5 portrait;
+  margin: 10mm;
+}
+
+.print-landscape-page {
+  page: landscape-layout;
+}
+
+@page landscape-layout {
+  size: A4 landscape;
+  margin: 10mm;
+}
