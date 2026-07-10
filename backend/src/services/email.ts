@@ -27,6 +27,39 @@ const isSmtpConfigured = () => {
  * it will fallback to printing the email contents to the console log.
  */
 export async function sendMail(to: string, subject: string, text: string, html?: string) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (resendApiKey) {
+    try {
+      console.log(`[Email Service] Attempting to send mail via Resend API to ${to}...`);
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: smtpFrom || 'onboarding@resend.dev',
+          to,
+          subject,
+          text,
+          html
+        })
+      });
+
+      if (response.ok) {
+        const data: any = await response.json();
+        console.log(`[Email Sent via Resend] ID: ${data.id} to ${to}`);
+        return true;
+      } else {
+        const errText = await response.text();
+        console.error('[Email Error] Resend API responded with error:', errText);
+      }
+    } catch (err) {
+      console.error('[Email Error] Failed to send email via Resend API:', err);
+    }
+  }
+
   if (isSmtpConfigured()) {
     try {
       let activePort = smtpPort;
