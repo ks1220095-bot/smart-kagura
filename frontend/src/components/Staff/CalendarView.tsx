@@ -32,7 +32,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
     try {
       const year = currentDate.getFullYear();
       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-      const res = await fetch(`http://localhost:5000/api/events?month=${year}-${month}`);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/events?month=${year}-${month}`);
       if (!res.ok) throw new Error('行事情報の取得に失敗しました。');
       const data = await res.json();
       setEvents(data);
@@ -75,7 +76,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
     if (!title || !eventDate || !startTime || !endTime) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/events', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,7 +109,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
 
   const handleDeleteEvent = async (id: number) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/events/${id}`, { method: 'DELETE' });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/events/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('削除に失敗しました。');
       fetchEvents();
       onRefreshBookings();
@@ -132,7 +135,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
         const endHourStr = String(endHour).padStart(2, '0');
         const nextTime = `${endHourStr}:${endMinStr}`;
 
-        const res = await fetch('http://localhost:5000/api/events', {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/events`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

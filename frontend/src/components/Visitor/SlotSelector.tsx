@@ -26,8 +26,8 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
       setLoading(true);
       setError('');
       try {
-        // Backend URL fallback for local development
-        const res = await fetch(`http://localhost:5000/api/bookings/slots-availability?date=${selectedDate}`);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/bookings/slots-availability?date=${selectedDate}`);
         if (!res.ok) throw new Error('空き状況の取得に失敗しました。');
         const data = await res.json();
         setSlots(data);

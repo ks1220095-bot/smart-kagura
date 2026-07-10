@@ -52,7 +52,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       search: searchText
     }).toString();
     
-    window.open(`http://localhost:5000/api/bookings/export-csv?${query}`, '_blank');
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    window.open(`${apiUrl}/api/bookings/export-csv?${query}`, '_blank');
   };
 
   // Toggle paid status
@@ -67,7 +68,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     setSavingPayment(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${selectedBooking.id}/payment`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${selectedBooking.id}/payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -92,7 +94,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const handleDeleteBooking = async (id: number) => {
     if (!confirm('この予約をキャンセル（削除）しますか？この操作は取り消せません。')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, { method: 'DELETE' });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
       onRefresh();
     } catch (error) {
