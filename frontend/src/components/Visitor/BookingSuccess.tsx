@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Printer } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { Booking } from '../../types';
 
 interface BookingSuccessProps {
@@ -130,11 +130,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
         </p>
       </div>
 
-      <div className="no-print" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-        <button onClick={() => window.print()} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Printer size={16} />
-          予約票を印刷する
-        </button>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'center' }}>
         <button onClick={onReset} className="btn btn-primary">
           新しい予約を行う
         </button>
