@@ -88,7 +88,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
 
           {/* Header Title */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>No. {booking.receipt_number}</span>
+            <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>No. ＿＿＿＿＿＿</span>
             <h2 style={{ 
               fontSize: '2.2rem', 
               textAlign: 'center', 

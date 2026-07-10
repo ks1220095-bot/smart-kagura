@@ -181,7 +181,6 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--color-urushi)', color: '#ffffff', borderBottom: '2px solid var(--color-gold)' }}>
-              <th style={{ padding: '0.75rem 1rem' }}>受付番号</th>
               <th style={{ padding: '0.75rem 1rem' }}>参拝日時</th>
               <th style={{ padding: '0.75rem 1rem' }}>区分</th>
               <th style={{ padding: '0.75rem 1rem' }}>氏名 / 会社名</th>
@@ -207,9 +206,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
                 return (
                   <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.15s' }} className="hover-row">
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--color-urushi-light)' }}>
-                      {b.receipt_number}
-                    </td>
+
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{b.booking_date} {b.booking_time}</div>
                       {b.created_at && (
@@ -360,7 +357,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
             boxShadow: '0 8px 30px rgba(0,0,0,0.15)'
           }}>
             <h4 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-serif)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-              支払情報の更新 ({selectedBooking.receipt_number})
+              備考・支払情報の更新
             </h4>
             
             <p style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--color-urushi-light)' }}>
