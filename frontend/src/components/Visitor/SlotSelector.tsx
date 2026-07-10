@@ -50,6 +50,8 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
     return local.toISOString().split('T')[0];
   };
 
+  const visitorSlots = slots.filter(slot => slot.time >= '09:30' && slot.time <= '15:30');
+
   return (
     <div style={{ marginBottom: '1.5rem' }}>
       <div className="form-group">
@@ -86,14 +88,14 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
           {loading && <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>空き状況を読み込み中...</p>}
           {error && <p style={{ color: 'var(--color-shu)', fontSize: '0.9rem' }}>{error}</p>}
 
-          {!loading && !error && slots.length > 0 && (
+          {!loading && !error && visitorSlots.length > 0 && (
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', 
               gap: '0.75rem', 
               marginTop: '0.5rem' 
             }}>
-              {slots.map((slot) => {
+              {visitorSlots.map((slot) => {
                 const isSelected = selectedTime === slot.time;
                 const isFull = slot.status === 'X';
 
