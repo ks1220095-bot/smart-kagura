@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Download, Trash2, Printer, DollarSign } from 'lucide-react';
+import { Search, Download, Trash2, Printer, Edit3 } from 'lucide-react';
 import type { Booking } from '../../types';
 
 interface BookingsListProps {
@@ -187,7 +187,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               <th style={{ padding: '0.75rem 1rem' }}>氏名 / 会社名</th>
               <th style={{ padding: '0.75rem 1rem' }}>願意</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>初穂料</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>支払</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>備考</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>書面</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>操作</th>
             </tr>
@@ -266,8 +266,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           gap: '0.25rem'
                         }}
                       >
-                        <DollarSign size={12} />
-                        {b.payment_status === 'paid' ? '支払済' : '未払い'}
+                        <Edit3 size={12} />
+                        備考
                       </button>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
