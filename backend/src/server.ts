@@ -27,9 +27,9 @@ async function startServer() {
     await initDb();
     // Start automated day-before reminder task
     startReminderScheduler();
-    app.listen(port, () => {
-      console.log(`[Smart-Kagura Backend] Running on http://localhost:${port}`);
-      console.log(`=== SERVER STARTING (Version 1.1.2 - IPv4 / Resend Support) ===`);
+    app.listen(Number(port), '0.0.0.0', () => {
+      console.log(`[Smart-Kagura Backend] Running on http://0.0.0.0:${port}`);
+      console.log(`=== SERVER STARTING (Version 1.1.3 - IPv4 / Bind 0.0.0.0) ===`);
       console.log(`SMTP_HOST Configured:`, !!process.env.SMTP_HOST);
       console.log(`SMTP_PORT Value:`, process.env.SMTP_PORT);
       console.log(`RESEND_API_KEY Configured:`, !!process.env.RESEND_API_KEY);
