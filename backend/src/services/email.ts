@@ -30,6 +30,7 @@ const isSmtpConfigured = () => {
  */
 export async function sendMail(to: string, subject: string, text: string, html?: string, attachments?: { filename: string; content: string }[], throwOnError: boolean = false) {
   const resendApiKey = process.env.RESEND_API_KEY;
+  let smtpError: any = null;
 
   // 1. Primary: SMTP (Shrine mail server) if configured
   if (isSmtpConfigured()) {
@@ -96,7 +97,7 @@ export async function sendMail(to: string, subject: string, text: string, html?:
       return true;
     } catch (error: any) {
       console.error('[Email Error] Failed to send email via SMTP, will fallback if Resend configured:', error);
-      if (throwOnError) throw new Error(`SMTP接続エラー: ${error.message || error}`);
+      smtpError = error;
     }
   }
 
@@ -131,10 +132,21 @@ export async function sendMail(to: string, subject: string, text: string, html?:
       } else {
         const errText = await response.text();
         console.error('[Email Error] Resend API fallback responded with error:', errText);
+        if (throwOnError) {
+          throw new Error(`Resend APIエラー: ${errText} (SMTPエラー: ${smtpError?.message || smtpError || 'なし'})`);
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Email Error] Failed to send email via Resend API fallback:', err);
+      if (throwOnError) {
+        throw new Error(`Resend送信失敗: ${err.message || err} (SMTPエラー: ${smtpError?.message || smtpError || 'なし'})`);
+      }
     }
+  }
+
+  // If both failed (or SMTP failed and Resend not configured) and throwOnError is true, throw the primary SMTP error
+  if (throwOnError && smtpError) {
+    throw new Error(`SMTP接続エラー: ${smtpError.message || smtpError}`);
   }
 
   // 3. Last Fallback: Mock Outbox in developer environment
