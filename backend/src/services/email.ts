@@ -111,13 +111,12 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: (smtpFrom && !smtpFrom.includes('example.com')) 
-            ? smtpFrom 
-            : '清瀧神社ご祈祷予約 <onboarding@resend.dev>',
+          from: '清瀧神社ご祈祷予約 <onboarding@resend.dev>', // Force onboarding domain to avoid 403 unverified custom domain errors
           to,
           subject,
           text,
           html,
+          reply_to: (smtpFrom && !smtpFrom.includes('example.com')) ? smtpFrom : undefined, // Allow visitors to reply to the shrine's actual address
           attachments: attachments?.map(att => ({
             filename: att.filename,
             content: att.content // Base64 content
