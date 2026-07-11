@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import dns from 'dns';
 
 dotenv.config();
 
@@ -55,7 +56,10 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           rejectUnauthorized: false // Bypasses self-signed certificates or host mismatch errors
         },
         requireTLS: activePort === 587,
-        family: 4, // Force IPv4 to bypass Render container IPv6 network unreachable error
+        lookup: (hostname: string, options: any, callback: any) => {
+          dns.lookup(hostname, { family: 4 }, callback); // Strongly forces IPv4 resolving to bypass Render IPv6 unreachable blocks
+        },
+        family: 4, // Backup directive
         connectionTimeout: 15000,
         greetingTimeout: 15000
       } as any);
