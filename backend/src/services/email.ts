@@ -34,6 +34,20 @@ export async function sendMail(to: string, subject: string, text: string, html?:
   // 1. Primary: SMTP (Shrine mail server) if configured
   if (isSmtpConfigured()) {
     try {
+      console.log(`[Email Service] Attempting manual DNS lookup for SMTP host: ${smtpHost}...`);
+      let targetHost = smtpHost;
+      try {
+        const { promisify } = require('util');
+        const resolve4Async = promisify(dns.resolve4);
+        const addresses = await resolve4Async(smtpHost);
+        if (addresses && addresses.length > 0) {
+          targetHost = addresses[0];
+          console.log(`[Email Service] Resolved ${smtpHost} to IPv4: ${targetHost}`);
+        }
+      } catch (dnsErr) {
+        console.warn(`[Email Service] Manual IPv4 resolution failed for ${smtpHost}, using original host:`, dnsErr);
+      }
+
       console.log(`[Email Service] Attempting to send mail via SMTP (Shrine mail server) to ${to}...`);
       let activePort = smtpPort;
       let isSecure = smtpPort === 465;
@@ -46,7 +60,7 @@ export async function sendMail(to: string, subject: string, text: string, html?:
       }
 
       const transporter = nodemailer.createTransport({
-        host: smtpHost,
+        host: targetHost, // IP address (IPv4)
         port: activePort,
         secure: isSecure,
         auth: {
@@ -54,11 +68,12 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           pass: smtpPass,
         },
         tls: {
-          rejectUnauthorized: false // Bypasses self-signed certificates or host mismatch errors
+          rejectUnauthorized: false, // Bypasses self-signed certificates
+          servername: smtpHost // Pass original domain name to prevent hostname mismatch errors
         },
         requireTLS: activePort === 587,
         lookup: (hostname: string, options: any, callback: any) => {
-          dns.lookup(hostname, { family: 4 }, callback); // Strongly forces IPv4 resolving to bypass Render IPv6 unreachable blocks
+          dns.lookup(hostname, { family: 4 }, callback);
         },
         family: 4, // Backup directive
         connectionTimeout: 15000,
@@ -133,7 +148,7 @@ export async function sendMail(to: string, subject: string, text: string, html?:
     console.log(`Attachments: ${attachments.map(a => a.filename).join(', ')}`);
   }
   console.log('===========================================================\n');
-  return true;
+  return false;
 }
 
 /**
