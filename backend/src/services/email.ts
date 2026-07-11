@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import dns from 'dns';
 
 dotenv.config();
+dns.setDefaultResultOrder('ipv4first'); // Forces the entire Node process to prioritize IPv4 resolving over IPv6
 
 const smtpHost = process.env.SMTP_HOST || '';
 const smtpPort = parseInt(process.env.SMTP_PORT || '587');
