@@ -125,44 +125,73 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
           </div>
 
           {/* Names Section (Main highlighted for Priest chanting) */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お札墨書・お名前</span>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お札墨書・お申込名</span>
             <span style={{ fontSize: '0.65rem', color: '#888' }}>フリガナ: {displayKana}</span>
-            <strong style={{ fontSize: '1.5rem', color: '#111', display: 'block', margin: '0.15rem 0', lineHeight: '1.2' }}>
+            <strong style={{ fontSize: '1.45rem', color: '#111', display: 'block', margin: '0.1rem 0', lineHeight: '1.2' }}>
               {displayName}
             </strong>
 
-            {/* Individual child metadata */}
+            {/* Individual child metadata (Highlight child & parents info with Ruby) */}
             {isIndiv && booking.child_name && (
               <div style={{ 
-                marginTop: '0.25rem', 
-                padding: '0.3rem', 
+                marginTop: '0.3rem', 
+                padding: '0.45rem 0.55rem', 
                 backgroundColor: 'rgba(216, 1, 0, 0.02)', 
-                border: '1px dashed rgba(216, 1, 0, 0.2)', 
-                borderRadius: '2px',
-                fontSize: '0.75rem', 
-                lineHeight: '1.3' 
+                border: '1.5px solid rgba(216, 1, 0, 0.12)', 
+                borderRadius: '4px',
+                fontSize: '0.8rem', 
+                lineHeight: '1.35' 
               }}>
-                <span style={{ fontSize: '0.65rem', color: '#d80100', fontWeight: 'bold' }}>お子様情報:</span>{' '}
-                <strong>{booking.child_name}</strong> ({booking.child_kana}) | 生年月日: {booking.child_birthday}
-                {(booking.father_name || booking.mother_name) && (
-                  <div style={{ marginTop: '0.15rem', color: '#555' }}>
-                    {booking.father_name && <span>父親: {booking.father_name}　</span>}
-                    {booking.mother_name && <span>母親: {booking.mother_name}</span>}
-                  </div>
-                )}
+                <div style={{ borderBottom: '1px dashed rgba(216, 1, 0, 0.1)', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
+                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報</span>
+                  <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana}</span>
+                  <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name}</strong>
+                  <span style={{ fontSize: '0.7rem', color: '#777' }}>生年月日: {booking.child_birthday}</span>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                  {booking.father_name && (
+                    <div>
+                      <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>父親フリガナ</span>
+                      <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.father_kana || '（ふりがな無）'}</span>
+                      <strong style={{ fontSize: '0.95rem' }}>{booking.father_name}</strong>
+                    </div>
+                  )}
+                  {booking.mother_name && (
+                    <div>
+                      <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>母親フリガナ</span>
+                      <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.mother_kana || '（ふりがな無）'}</span>
+                      <strong style={{ fontSize: '0.95rem' }}>{booking.mother_name}</strong>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Representative Details */}
-            {!isIndiv && booking.representative_title_name && (
-              <div style={{ fontSize: '0.75rem', color: '#333' }}>
-                <strong>代表者名:</strong> {booking.representative_title_name}
-              </div>
-            )}
-            {!isIndiv && booking.talisman_name && (
-              <div style={{ fontSize: '0.75rem', color: '#d80100' }}>
-                <strong>墨書名:</strong> {booking.talisman_name}
+            {/* Representative & Talisman Name Details (Gold highlight border block) */}
+            {!isIndiv && (
+              <div style={{ 
+                marginTop: '0.3rem', 
+                padding: '0.45rem 0.55rem', 
+                backgroundColor: 'rgba(197, 160, 89, 0.03)', 
+                border: '1.5px solid rgba(197, 160, 89, 0.25)', 
+                borderRadius: '4px',
+                fontSize: '0.8rem', 
+                lineHeight: '1.35' 
+              }}>
+                {booking.talisman_name && (
+                  <div style={{ borderBottom: booking.representative_title_name ? '1px dashed rgba(197, 160, 89, 0.15)' : 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>神札染筆名（お札墨書き正式名）</span>
+                    <strong style={{ fontSize: '1.15rem', color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
+                  </div>
+                )}
+                {booking.representative_title_name && (
+                  <div>
+                    <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>参拝代表者役職・氏名</span>
+                    <strong style={{ fontSize: '1.0rem' }}>{booking.representative_title_name}</strong>
+                  </div>
+                )}
               </div>
             )}
 
