@@ -138,10 +138,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       
       let payload: any = {};
       if (field === 'is_accepted') {
-        payload.is_accepted = booking.is_accepted === 1 ? 0 : 1;
+        payload.is_accepted = Number(booking.is_accepted) === 1 ? 0 : 1;
         payload.payment_status = booking.payment_status;
       } else if (field === 'is_receipt_issued') {
-        payload.is_receipt_issued = booking.is_receipt_issued === 1 ? 0 : 1;
+        payload.is_receipt_issued = Number(booking.is_receipt_issued) === 1 ? 0 : 1;
         payload.payment_status = booking.payment_status;
       } else if (field === 'payment_status') {
         payload.payment_status = booking.payment_status === 'paid' ? 'unpaid' : 'paid';
@@ -336,7 +336,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
                           <input 
                             type="checkbox" 
-                            checked={b.is_accepted === 1} 
+                            checked={Number(b.is_accepted) === 1} 
                             onChange={() => handleToggleCheckbox(b, 'is_accepted')} 
                             style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
                           />
@@ -354,7 +354,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
                           <input 
                             type="checkbox" 
-                            checked={b.is_receipt_issued === 1} 
+                            checked={Number(b.is_receipt_issued) === 1} 
                             onChange={() => handleToggleCheckbox(b, 'is_receipt_issued')} 
                             style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
                           />

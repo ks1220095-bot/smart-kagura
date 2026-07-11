@@ -20,7 +20,7 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+    <div className="washi-bg" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Universal navigation header */}
       <Header 
         currentPortal={currentPortal} 

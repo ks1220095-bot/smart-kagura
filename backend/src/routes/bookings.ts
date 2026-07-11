@@ -589,13 +589,13 @@ router.patch('/:id/payment', async (req, res) => {
       query += `, notes = $${pIdx++}`;
       params.push(notes);
     }
-    if (is_accepted !== undefined && typeof is_accepted === 'number') {
+    if (is_accepted !== undefined && is_accepted !== null) {
       query += `, is_accepted = $${pIdx++}`;
-      params.push(is_accepted);
+      params.push(Number(is_accepted));
     }
-    if (is_receipt_issued !== undefined && typeof is_receipt_issued === 'number') {
+    if (is_receipt_issued !== undefined && is_receipt_issued !== null) {
       query += `, is_receipt_issued = $${pIdx++}`;
-      params.push(is_receipt_issued);
+      params.push(Number(is_receipt_issued));
     }
 
     query += ` WHERE id = $${pIdx}`;
