@@ -51,9 +51,13 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           user: smtpUser,
           pass: smtpPass,
         },
+        tls: {
+          rejectUnauthorized: false // Bypasses self-signed certificates or host mismatch errors
+        },
+        requireTLS: activePort === 587,
         family: 4, // Force IPv4 to bypass Render container IPv6 network unreachable error
-        connectionTimeout: 10000,
-        greetingTimeout: 10000
+        connectionTimeout: 15000,
+        greetingTimeout: 15000
       } as any);
 
       const info = await transporter.sendMail({

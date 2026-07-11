@@ -10,6 +10,12 @@ export const SettingsView: React.FC = () => {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  // Email Server Testing States
+  const [testEmailAddr, setTestEmailAddr] = useState('');
+  const [testLoading, setTestLoading] = useState(false);
+  const [testSuccess, setTestSuccess] = useState('');
+  const [testError, setTestError] = useState('');
+
   const fetchSettings = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -26,6 +32,36 @@ export const SettingsView: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Settings fetch error:', err);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!testEmailAddr) {
+      setTestError('送信先メールアドレスを入力してください。');
+      return;
+    }
+    setTestLoading(true);
+    setTestSuccess('');
+    setTestError('');
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/settings/test-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: testEmailAddr })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'テストメールの送信に失敗しました。');
+      }
+
+      setTestSuccess(data.message || '接続テストは正常に成功しました。');
+    } catch (err: any) {
+      setTestError(err.message || '接続テスト中に通信エラーが発生しました。');
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -237,7 +273,68 @@ export const SettingsView: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Email SMTP Server Test Connection Panel */}
+      <div className="card kamidana-border" style={{ marginTop: '2rem' }}>
+        <h3 style={{ 
+          fontSize: '1.15rem', 
+          fontFamily: 'var(--font-serif)', 
+          borderBottom: '1px solid var(--color-border)', 
+          paddingBottom: '0.4rem', 
+          marginBottom: '1rem' 
+        }}>
+          メール送信サーバー接続テスト (SMTP)
+        </h3>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', lineHeight: '1.5', marginBottom: '1.25rem' }}>
+          Renderの環境設定（<code>SMTP_HOST</code> や <code>SMTP_PASS</code>等）で指定された神社側のメールサーバーが、正しくオンライン接続してメールを送信できるか動作テストを行います。
+        </p>
+
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>
+              テスト送信先メールアドレス
+            </label>
+            <input 
+              type="email" 
+              className="form-control"
+              placeholder="shrine-admin@example.com"
+              value={testEmailAddr}
+              onChange={(e) => setTestEmailAddr(e.target.value)}
+              style={{ width: '100%', fontSize: '0.85rem', padding: '0.4rem', border: '1px solid var(--color-gold)' }}
+            />
+          </div>
+          <button 
+            type="button"
+            disabled={testLoading}
+            onClick={handleTestEmail}
+            className="btn btn-primary"
+            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+          >
+            {testLoading ? '接続テスト中...' : '接続テストメールを送信'}
+          </button>
+        </div>
+
+        {testSuccess && (
+          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(62, 122, 92, 0.05)', border: '1px solid var(--color-accent-green)', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--color-accent-green)', lineHeight: '1.5' }}>
+            <strong>送信成功:</strong> {testSuccess}
+          </div>
+        )}
+
+        {testError && (
+          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(211, 56, 28, 0.05)', border: '1px solid var(--color-shu)', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--color-shu)', lineHeight: '1.5' }}>
+            <strong>送信エラー発生:</strong> {testError}
+            <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#666', borderTop: '1px dashed rgba(211, 56, 28, 0.2)', paddingTop: '0.4rem' }}>
+              【考えられる原因】<br/>
+              ・SMTPのユーザー名（ID）やパスワードの誤り<br/>
+              ・ポート番号（587 または 465）の誤り<br/>
+              ・神社側のサーバーがRender（米国ホスト）からの送信接続をセキュリティ制限でブロックしている<br/>
+              ・差出人メールアドレス（SMTP_FROM）と送信アカウントのドメイン不一致
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
 export default SettingsView;
