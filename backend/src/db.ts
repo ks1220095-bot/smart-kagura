@@ -1,8 +1,6 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import path from 'path';
-import { open, Database } from 'sqlite';
-import sqlite3 from 'sqlite3';
 
 dotenv.config();
 
@@ -10,9 +8,9 @@ let pool: Pool;
 
 // SQLite Pool Emulator mimicking pg Pool interface
 class SQLitePoolMock {
-  private db: Database;
+  private db: any;
 
-  constructor(db: Database) {
+  constructor(db: any) {
     this.db = db;
   }
 
@@ -104,6 +102,9 @@ export async function initDb() {
 
 async function initSqlite() {
   try {
+    const { open } = require('sqlite');
+    const sqlite3 = require('sqlite3');
+
     const dbPath = path.resolve(__dirname, '../../database.sqlite');
     const db = await open({
       filename: dbPath,
