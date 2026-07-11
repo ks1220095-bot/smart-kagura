@@ -5,6 +5,7 @@ export const SettingsView: React.FC = () => {
   const [maxCapacity, setMaxCapacity] = useState<number>(8);
   const [isBookingActive, setIsBookingActive] = useState<boolean>(true);
   const [maintenanceMessage, setMaintenanceMessage] = useState<string>('');
+  const [bookingPeriodMonths, setBookingPeriodMonths] = useState<number>(2);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +21,9 @@ export const SettingsView: React.FC = () => {
       }
       setIsBookingActive(data.is_booking_active !== 'false');
       setMaintenanceMessage(data.maintenance_message || '現在、オンラインでのご祈祷予約の受付を一時的に停止しております。お急ぎの場合は、神社社務所まで直接お電話（047-351-5417）にてお問い合わせください。');
+      if (data.booking_period_months) {
+        setBookingPeriodMonths(parseInt(data.booking_period_months) || 2);
+      }
     } catch (err: any) {
       console.error('Settings fetch error:', err);
     }
@@ -61,6 +65,14 @@ export const SettingsView: React.FC = () => {
         body: JSON.stringify({ key: 'maintenance_message', value: maintenanceMessage })
       });
       if (!res3.ok) throw new Error('案内メッセージの保存に失敗しました。');
+
+      // 4. Save booking period months
+      const res4 = await fetch(`${apiUrl}/api/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'booking_period_months', value: String(bookingPeriodMonths) })
+      });
+      if (!res4.ok) throw new Error('予約可能期間の保存に失敗しました。');
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -166,7 +178,36 @@ export const SettingsView: React.FC = () => {
               required
             />
             <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block', marginTop: '0.4rem', lineHeight: '1.5' }}>
-              ※清瀧神社の30分間枠ごとの最大予約可能組数です。この上限に達した時間枠は、参拝者の日時選択画面で自動的に「満席（受付終了）」表示に切り替わります。（デフォルト値: 8）
+              ※清瀧神社の30分間枠ごとの最大予約可能組数です。この上限に達した時間枠は, 参拝者の日時選択画面で自動的に「満席（受付終了）」表示に切り替わります。（デフォルト値: 8）
+            </span>
+          </div>
+
+          {/* Booking period months limit settings */}
+          <div className="form-group" style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1.5rem' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+              一般向け予約の受付可能期間（本日より何ヶ月先まで受付するか） <span className="required">*</span>
+            </label>
+            <select
+              className="form-control"
+              value={bookingPeriodMonths}
+              onChange={(e) => setBookingPeriodMonths(parseInt(e.target.value) || 2)}
+              style={{ 
+                maxWidth: '240px', 
+                border: '1px solid var(--color-gold)', 
+                fontWeight: 'bold', 
+                fontSize: '1rem', 
+                marginTop: '0.4rem' 
+              }}
+              required
+            >
+              <option value="1">1ヶ月先まで受付</option>
+              <option value="2">2ヶ月先まで受付 (デフォルト)</option>
+              <option value="3">3ヶ月先まで受付</option>
+              <option value="6">6ヶ月先まで受付</option>
+              <option value="12">12ヶ月先まで（1年間）受付</option>
+            </select>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block', marginTop: '0.4rem', lineHeight: '1.5' }}>
+              ※参拝者がカレンダーで選択できる最大日数が自動的に制限されます。（例：「2ヶ月先」の場合、本日が7月11日なら9月11日までの枠しか選択できません）
             </span>
           </div>
 

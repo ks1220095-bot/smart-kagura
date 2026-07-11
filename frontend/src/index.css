@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;600;700&display=swap');
 
 :root {
-  /* Colors - Water theme (Mizuiro / Asagi) */
-  --color-mizuiro: #3288a3;        /* 浅葱・千草色 (基調の水色) */
-  --color-mizuiro-hover: #215d70;
-  --color-mizuiro-light: #eef7f9;
+  /* Colors - Seiryuu Red theme (Replacing old mizuiro names to prevent code breaking) */
+  --color-mizuiro: #d80100;        /* 清瀧神社公式の赤 */
+  --color-mizuiro-hover: #a80000;
+  --color-mizuiro-light: #fff5f5;
   --color-urushi: #1c1c1c;         /* 漆黒 */
   --color-urushi-light: #2c2c2c;
   --color-washi: #fbfaf5;          /* 和紙背景 */
@@ -28,7 +28,11 @@
 }
 
 body {
-  background-color: var(--color-washi);
+  background-color: #e6e6fa; /* 薄紫色 (Lavender) */
+  background-image:
+    radial-gradient(20px circle at 50% 150%, #ffffff 0% 12.5%, #e6e6fa 12.5% 25%, #ffffff 25% 37.5%, #e6e6fa 37.5% 50%, #ffffff 50% 62.5%, #e6e6fa 62.5% 75%, #ffffff 75% 87.5%, #e6e6fa 87.5% 99.9%, transparent 99.9% 100%) 20px 0px / 40px 20px,
+    radial-gradient(20px circle at 50% 100%, #ffffff 0% 12.5%, #e6e6fa 12.5% 25%, #ffffff 25% 37.5%, #e6e6fa 37.5% 50%, #ffffff 50% 62.5%, #e6e6fa 62.5% 75%, #ffffff 75% 87.5%, #e6e6fa 87.5% 99.9%, transparent 99.9% 100%) 0px 0px / 40px 20px,
+    radial-gradient(20px circle at 50% 100%, #ffffff 0% 12.5%, #e6e6fa 12.5% 25%, #ffffff 25% 37.5%, #e6e6fa 37.5% 50%, #ffffff 50% 62.5%, #e6e6fa 62.5% 75%, #ffffff 75% 87.5%, #e6e6fa 87.5% 99.9%, transparent 99.9% 100%) 20px 10px / 40px 20px;
   color: var(--color-urushi);
   font-family: var(--font-sans);
   line-height: 1.6;
@@ -355,4 +359,31 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 @page landscape-layout {
   size: A4 landscape;
   margin: 10mm;
+}
+
+/* Mobile responsive enhancements to prevent horizontal scroll */
+@media (max-width: 600px) {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  .container {
+    padding: 0 0.5rem !important;
+  }
+  .card {
+    padding: 1.25rem 0.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+  .form-row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent automatic iOS zoom-in on focus */
+  }
+  /* Calendar responsive fixes */
+  .slot-calendar {
+    width: 100% !important;
+    overflow-x: auto !important;
+  }
 }

@@ -8,11 +8,57 @@ import SettingsView from './SettingsView';
 import YomifudaPrint from './YomifudaPrint';
 import ReceiptPrint from './ReceiptPrint';
 
+// Synthesize a clean shrine bell chime using Web Audio API
+function playBellSound() {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    // Polyphonic high frequency sine oscillators mimicking metallic bell ring
+    const frequencies = [2200, 2600, 3100, 3900];
+    frequencies.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq + 30, now + 0.1);
+      osc.frequency.exponentialRampToValueAtTime(freq - 30, now + 0.3);
+      
+      gain.gain.setValueAtTime(idx === 0 ? 0.25 : 0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3 + (idx * 0.15));
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.8);
+    });
+  } catch (err) {
+    console.error('Failed to play bell sound:', err);
+  }
+}
+
+// Fire system notification on desktop
+function sendDesktopNotification(booking: Booking) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    const isIndiv = booking.booking_type === 'individual';
+    const name = isIndiv ? booking.name : booking.company_name;
+    new Notification('【清瀧神社】新しいご祈祷予約', {
+      body: `日時: ${booking.booking_date} ${booking.booking_time}\n名前: ${name} 様\n願意: ${booking.prayer1}`,
+      icon: window.location.origin + '/logo.png'
+    });
+  }
+}
+
 export const StaffPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'calendar' | 'list' | 'settings'>('dashboard');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lastMaxId, setLastMaxId] = useState<number | null>(null);
 
   // Security - PIN code authorization
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -31,7 +77,7 @@ export const StaffPortal: React.FC = () => {
   const [manualPrayer1, setManualPrayer1] = useState('家内安全');
   const [manualPrayer2, setManualPrayer2] = useState('');
   const [manualHatsuhoryo, setManualHatsuhoryo] = useState(5000);
-  const [manualAttendingCount, setManualAttendingCount] = useState(1);
+  const [manualAttendingCount, setManualAttendingCount] = useState<number | ''>(1);
   const [manualName, setManualName] = useState('');
   const [manualKana, setManualKana] = useState('');
   const [manualAddress, setManualAddress] = useState('');
@@ -56,12 +102,63 @@ export const StaffPortal: React.FC = () => {
       if (!res.ok) throw new Error('予約一覧の取得に失敗しました。');
       const data = await res.json();
       setBookings(data);
+      
+      // Initialize lastMaxId with the current highest booking ID to prevent alert spam on load
+      if (data.length > 0 && lastMaxId === null) {
+        const maxId = Math.max(...data.map((b: Booking) => b.id || 0));
+        setLastMaxId(maxId);
+      }
     } catch (err: any) {
       setError(err.message || '接続エラーが発生しました。');
     } finally {
       setLoading(false);
     }
   };
+
+  // Ask for desktop notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Set up 30-second automated polling for new bookings when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/bookings`);
+        if (res.ok) {
+          const data = await res.json();
+          
+          // Detect new entries using lastMaxId boundary
+          if (data.length > 0 && lastMaxId !== null) {
+            const newBookings = data.filter((b: Booking) => b.id && b.id > lastMaxId);
+            if (newBookings.length > 0) {
+              playBellSound();
+              newBookings.forEach((b: Booking) => {
+                sendDesktopNotification(b);
+              });
+            }
+          }
+          
+          // Seed/update maximum ID tracker
+          if (data.length > 0) {
+            const maxId = Math.max(...data.map((b: Booking) => b.id || 0));
+            setLastMaxId(maxId);
+          }
+          
+          setBookings(data);
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, lastMaxId]);
 
   // Only fetch when authenticated
   useEffect(() => {
@@ -76,7 +173,7 @@ export const StaffPortal: React.FC = () => {
       const isSpecial = ['初宮詣（お宮参り）', '七五三詣', '車祓（お車のお祓い）'].includes(manualPrayer1);
       setManualHatsuhoryo(isSpecial ? 10000 : 5000);
     } else {
-      setManualHatsuhoryo(manualAttendingCount < 5 ? 20000 : 30000);
+      setManualHatsuhoryo(Number(manualAttendingCount) < 5 ? 20000 : 30000);
     }
   }, [manualPrayer1, manualType, manualAttendingCount]);
 
@@ -109,7 +206,7 @@ export const StaffPortal: React.FC = () => {
       prayer2: manualType === 'organization' ? manualPrayer2 || undefined : undefined,
       hatsuhoryo: manualHatsuhoryo,
       payment_status: 'unpaid',
-      attending_count: manualAttendingCount,
+      attending_count: manualAttendingCount === '' ? 1 : manualAttendingCount,
       
       name: manualType === 'individual' ? manualName : undefined,
       kana: manualType === 'individual' ? manualKana : undefined,
@@ -426,7 +523,15 @@ export const StaffPortal: React.FC = () => {
                 <div className="grid-2">
                   <div className="form-group">
                     <label>参列予定人数 <span className="required">*</span></label>
-                    <input type="number" className="form-control" min="1" value={manualAttendingCount} onChange={(e) => setManualAttendingCount(Math.max(1, parseInt(e.target.value) || 1))} required />
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="1"
+                      value={manualAttendingCount}
+                      onChange={(e) => setManualAttendingCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1))}
+                      onBlur={() => { if (manualAttendingCount === '') setManualAttendingCount(1); }}
+                      required
+                    />
                   </div>
                   <div className="form-group">
                     <label>初穂料 (目安自動判定)</label>

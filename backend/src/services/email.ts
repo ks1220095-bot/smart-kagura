@@ -26,7 +26,7 @@ const isSmtpConfigured = () => {
  * Sends an email. If SMTP credentials are not configured,
  * it will fallback to printing the email contents to the console log.
  */
-export async function sendMail(to: string, subject: string, text: string, html?: string) {
+export async function sendMail(to: string, subject: string, text: string, html?: string, attachments?: { filename: string; content: string }[]) {
   const resendApiKey = process.env.RESEND_API_KEY;
 
   if (resendApiKey) {
@@ -45,7 +45,11 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           to,
           subject,
           text,
-          html
+          html,
+          attachments: attachments?.map(att => ({
+            filename: att.filename,
+            content: att.content // Base64 content
+          }))
         })
       });
 
@@ -93,6 +97,10 @@ export async function sendMail(to: string, subject: string, text: string, html?:
         subject,
         text,
         html,
+        attachments: attachments?.map(att => ({
+          filename: att.filename,
+          content: Buffer.from(att.content, 'base64') // Nodemailer requires Buffer or string
+        }))
       });
 
       console.log(`[Email Sent] Message ID: ${info.messageId} to ${to}`);
@@ -109,6 +117,9 @@ export async function sendMail(to: string, subject: string, text: string, html?:
   console.log(`Subject: ${subject}`);
   console.log('-----------------------------------------------------------');
   console.log(text);
+  if (attachments && attachments.length > 0) {
+    console.log(`Attachments: ${attachments.map(a => a.filename).join(', ')}`);
+  }
   console.log('===========================================================\n');
   return true;
 }
@@ -183,7 +194,8 @@ ${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基
 
   text += `\n神社管理画面より詳細の確認、および読み札の印刷準備をお願いいたします。`;
 
-  if (adminEmail) {
-    await sendMail(adminEmail, subject, text);
+  const to = adminEmail || smtpUser || (smtpFrom && !smtpFrom.includes('example.com') ? smtpFrom : '') || 'seiryuujinja@gmail.com';
+  if (to) {
+    await sendMail(to, subject, text);
   }
 }

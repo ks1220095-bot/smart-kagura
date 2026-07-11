@@ -63,6 +63,8 @@ export interface Booking {
   construction_builder?: string;
   construction_period?: string;
 
+  is_accepted?: number;
+  is_receipt_issued?: number;
   notes?: string;
   created_at?: string;
 }

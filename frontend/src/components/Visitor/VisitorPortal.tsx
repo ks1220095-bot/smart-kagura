@@ -23,7 +23,13 @@ const INDIVIDUAL_PRAYERS = [
   { value: '十三参り', price: 5000 },
   { value: '神棚のお祓い（御霊入れ）', price: 5000 },
   { value: '成人祝い', price: 5000 },
-  { value: '寿祝い', price: 5000 }
+  { value: '寿祝い', price: 5000 },
+  { value: '交通安全', price: 5000 },
+  { value: '良縁祈願（縁結び）', price: 5000 },
+  { value: '子授け（子宝）祈願', price: 5000 },
+  { value: '留学安全', price: 5000 },
+  { value: '渡航安全', price: 5000 },
+  { value: '就職祈願', price: 5000 }
 ];
 
 const ORGANIZATION_PRAYERS = [
@@ -45,6 +51,25 @@ const LONGEVITY_TYPES = [
   '米寿（88歳）', '卒寿（90歳）', '白寿（99歳）', '百寿（100歳）', 'その他'
 ];
 
+interface PrayerItem {
+  id: string;
+  prayer1: string;
+  prayer2?: string;
+  hatsuhoryo: number;
+  name: string;
+  kana: string;
+  yakudoshi_type?: 'maeyaku' | 'honyaku' | 'atoyaku' | '';
+  child_name?: string;
+  child_kana?: string;
+  child_birthday?: string;
+  father_name?: string;
+  father_kana?: string;
+  mother_name?: string;
+  mother_kana?: string;
+  kotobuki_type?: string;
+  kotobuki_other_text?: string;
+}
+
 export const VisitorPortal: React.FC = () => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [bookingType, setBookingType] = useState<'individual' | 'organization'>('individual');
@@ -55,11 +80,33 @@ export const VisitorPortal: React.FC = () => {
   const [prayer1, setPrayer1] = useState('');
   const [prayer2, setPrayer2] = useState('');
   const [hatsuhoryo, setHatsuhoryo] = useState(5000);
-  const [attendingCount, setAttendingCount] = useState(1);
+  const [attendingCount, setAttendingCount] = useState<number | ''>(1);
+  const [prayerItems, setPrayerItems] = useState<PrayerItem[]>([]);
+
+  // Reset dynamic fields when main prayer changes to prevent leftover data
+  useEffect(() => {
+    setYakudoshiType('');
+    setFatherName('');
+    setFatherKana('');
+    setMotherName('');
+    setMotherKana('');
+    setChildName('');
+    setChildKana('');
+    setChildBirthday('');
+    setKotobukiType('');
+    setKotobukiOtherText('');
+    // Auto-fill typical price
+    const found = INDIVIDUAL_PRAYERS.find(p => p.value === prayer1);
+    if (found) {
+      setHatsuhoryo(found.price);
+    }
+  }, [prayer1]);
 
   // Individual Form fields
   const [name, setName] = useState('');
   const [kana, setKana] = useState('');
+  const [prayerName, setPrayerName] = useState('');
+  const [prayerKana, setPrayerKana] = useState('');
   const [address, setAddress] = useState('');
   const [addressKana, setAddressKana] = useState('');
   const [phone, setPhone] = useState('');
@@ -105,6 +152,9 @@ export const VisitorPortal: React.FC = () => {
   const [constructionDesigner, setConstructionDesigner] = useState('');
   const [constructionBuilder, setConstructionBuilder] = useState('');
   const [constructionPeriod, setConstructionPeriod] = useState('');
+
+  const [skipVictoryDetails, setSkipVictoryDetails] = useState(false);
+  const [skipConstructionDetails, setSkipConstructionDetails] = useState(false);
 
   // Submission Status
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
@@ -265,7 +315,7 @@ export const VisitorPortal: React.FC = () => {
       setHatsuhoryo(match ? match.price : 5000);
     } else {
       // Organization base pricing: under 5 people = 20k, 5 or more = 30k
-      const basePrice = attendingCount < 5 ? 20000 : 30000;
+      const basePrice = Number(attendingCount) < 5 ? 20000 : 30000;
       setHatsuhoryo(basePrice);
       // Auto sync receipt amount
       setReceiptAmount(basePrice);
@@ -302,45 +352,26 @@ export const VisitorPortal: React.FC = () => {
     if (!selectedDate || !selectedTime) {
       return 'ご参拝の希望日時を選択してください。';
     }
-    if (!prayer1) {
-      return '主願意を選択してください。';
-    }
-    if (bookingType === 'organization' && prayer1 === 'その他（自由入力）' && !orgCustomPrayer1.trim()) {
-      return '自由入力の願意を記載してください。';
-    }
 
     if (bookingType === 'individual') {
+      if (prayerItems.length === 0) {
+        return 'ご祈祷内容（願意と受ける方のお名前）を入力し、「ご祈祷を予約リストに追加」ボタンを押してリストに1件以上追加してください。';
+      }
       if (!name.trim() || !kana.trim() || !address.trim() || !addressKana.trim() || !phone.trim() || !email.trim()) {
-        return '必須のお名前・フリガナ・ご住所・電話番号・メールアドレスをご入力ください。';
-      }
-      if (prayer1 === '厄年のお祓い' && !yakudoshiType) {
-        return '厄年区分（前厄・本厄・後厄）を選択してください。';
-      }
-      if ((prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣')) {
-        if (!childName.trim() || !childKana.trim() || !childBirthday) {
-          return 'お子様の氏名・フリガナ・生年月日を入力してください。';
-        }
-        if (!fatherName.trim() && !motherName.trim()) {
-          return 'ご両親の氏名はいずれか一方の入力が必須です。';
-        }
-        if (fatherName.trim() && !fatherKana.trim()) {
-          return '父親氏名のフリガナを入力してください。';
-        }
-        if (motherName.trim() && !motherKana.trim()) {
-          return '母親氏名のフリガナを入力してください。';
-        }
-      }
-      if (prayer1 === '寿祝い') {
-        if (!kotobukiType) return '長寿祝いの区分を選択してください。';
-        if (kotobukiType === 'その他' && !kotobukiOtherText.trim()) {
-          return 'その他のお祝い内容をご記入ください。';
-        }
+        return '必須のご予約者様情報（お名前・フリガナ・ご住所・電話番号・メールアドレス）をご入力ください。';
       }
     } else {
       // Organization validation
+      if (!prayer1) {
+        return '主願意を選択してください。';
+      }
+      if (prayer1 === 'その他（自由入力）' && !orgCustomPrayer1.trim()) {
+        return '自由入力の願意を記載してください。';
+      }
       if (!companyName.trim() || !companyKana.trim() || !companyAddress.trim() || !companyAddressKana.trim() || 
-          !representativeTitleName.trim() || !staffDeptTitleName.trim() || !staffPhone.trim() || !staffEmail.trim()) {
-        return '企業情報（企業名・所在地・代表者・担当者氏名・連絡先等）をすべてご入力ください。';
+          !representativeTitleName.trim() || !staffDeptTitleName.trim() || !staffPhone.trim() || !staffEmail.trim() ||
+          !talismanName.trim()) {
+        return '企業情報（企業名・所在地・代表者・担当者氏名・連絡先等）および神札墨書名をすべてご入力ください。';
       }
       if (wantsReceipt && (!receiptName.trim() || receiptAmount <= 0)) {
         return '領収証の発行に必要な宛名および金額を正しくご入力ください。';
@@ -351,14 +382,87 @@ export const VisitorPortal: React.FC = () => {
       const needsVictory = p1 === '必勝祈願' || p2 === '必勝祈願';
       const needsConstruction = p1 === '工事安全' || p2 === '工事安全';
 
-      if (needsVictory && (!tournamentName.trim() || !tournamentSchedule.trim())) {
+      if (needsVictory && !skipVictoryDetails && (!tournamentName.trim() || !tournamentSchedule.trim())) {
         return '必勝祈願に伴う大会名称および大会日程をご入力ください。';
       }
-      if (needsConstruction && (!constructionName.trim() || !constructionDesigner.trim() || !constructionBuilder.trim() || !constructionPeriod.trim())) {
+      if (needsConstruction && !skipConstructionDetails && (!constructionName.trim() || !constructionDesigner.trim() || !constructionBuilder.trim() || !constructionPeriod.trim())) {
         return '工事安全祈願に伴う工事名称・設計監理者名・施工者名・工期をすべてご入力ください。';
       }
     }
     return '';
+  };
+
+  const handleAddPrayerItem = () => {
+    if (!prayer1) {
+      alert('願意を選択してください。');
+      return;
+    }
+    if (!prayerName.trim() || !prayerKana.trim()) {
+      alert('ご祈祷を受けられる方のお名前とフリガナを入力してください。');
+      return;
+    }
+
+    // Dynamic field validation
+    if (prayer1 === '厄年のお祓い' && !yakudoshiType) {
+      alert('厄年区分を選択してください。');
+      return;
+    }
+    if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') {
+      if (!childName.trim() || !childKana.trim() || !childBirthday) {
+        alert('お子様のお名前、フリガナ、生年月日は必須です。');
+        return;
+      }
+      if (!fatherName.trim() && !motherName.trim()) {
+        alert('ご両親（父親または母親）のいずれか一方の氏名は入力してください。');
+        return;
+      }
+    }
+    if (prayer1 === '寿祝い' && !kotobukiType) {
+      alert('長寿祝いの区分を選択してください。');
+      return;
+    }
+    if (prayer1 === '寿祝い' && kotobukiType === 'その他' && !kotobukiOtherText.trim()) {
+      alert('長寿祝いの内容を入力してください。');
+      return;
+    }
+
+    // Add to prayerItems
+    const newItem: PrayerItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      prayer1,
+      hatsuhoryo,
+      name: prayerName,
+      kana: prayerKana,
+      yakudoshi_type: prayer1 === '厄年のお祓い' ? yakudoshiType : undefined,
+      child_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childName : undefined,
+      child_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childKana : undefined,
+      child_birthday: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childBirthday : undefined,
+      father_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherName : undefined,
+      father_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherKana : undefined,
+      mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五参詣') ? motherName : undefined,
+      mother_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherKana : undefined,
+      kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
+      kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
+    };
+
+    setPrayerItems([...prayerItems, newItem]);
+
+    // Auto-fill representative name if empty
+    if (prayerItems.length === 0) {
+      if (!name) setName(prayerName);
+      if (!kana) setKana(prayerKana);
+    }
+
+    // Reset current prayer fields
+    setPrayer1('');
+    setPrayer2('');
+    setPrayerName('');
+    setPrayerKana('');
+    setHatsuhoryo(5000);
+  };
+
+  const handleRemovePrayerItem = (id: string) => {
+    setPrayerItems(prayerItems.filter(item => item.id !== id));
   };
 
   const handleNextStep = () => {
@@ -381,7 +485,7 @@ export const VisitorPortal: React.FC = () => {
     const p1 = getActivePrayer1();
     const p2 = getActivePrayer2();
 
-    const payload: Booking = {
+    const singlePayload: Booking = {
       booking_type: bookingType,
       booking_date: selectedDate,
       booking_time: selectedTime,
@@ -389,10 +493,10 @@ export const VisitorPortal: React.FC = () => {
       prayer2: bookingType === 'organization' ? p2 : undefined,
       hatsuhoryo,
       payment_status: 'unpaid',
-      attending_count: attendingCount,
+      attending_count: attendingCount === '' ? 1 : attendingCount,
       
-      name: bookingType === 'individual' ? name : undefined,
-      kana: bookingType === 'individual' ? kana : undefined,
+      name: bookingType === 'individual' ? (prayerName || name) : undefined,
+      kana: bookingType === 'individual' ? (prayerKana || kana) : undefined,
       address: bookingType === 'individual' ? address : undefined,
       address_kana: bookingType === 'individual' ? addressKana : undefined,
       phone: bookingType === 'individual' ? phone : undefined,
@@ -425,7 +529,7 @@ export const VisitorPortal: React.FC = () => {
       child_birthday: bookingType === 'individual' && (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childBirthday : undefined,
 
       kotobuki_type: bookingType === 'individual' && prayer1 === '寿祝い' ? kotobukiType : undefined,
-      kotobuki_other_text: bookingType === 'individual' && prayer1 === '寿祝い' && kotobukiType === 'その他' ? kotobukiOtherText : undefined,
+      kotobuki_other_text: bookingType === 'individual' && prayer1 === '寿祝い' && kotobukiType === 'selected' ? kotobukiOtherText : undefined,
 
       tournament_name: bookingType === 'organization' && (p1 === '必勝祈願' || p2 === '必勝祈願') ? tournamentName : undefined,
       tournament_schedule: bookingType === 'organization' && (p1 === '必勝祈願' || p2 === '必勝祈願') ? tournamentSchedule : undefined,
@@ -436,17 +540,48 @@ export const VisitorPortal: React.FC = () => {
       construction_period: bookingType === 'organization' && (p1 === '工事安全' || p2 === '工事安全') ? constructionPeriod : undefined
     };
 
+    // If batching mode, map cart items to full bookings array
+    const batchPayloads: Booking[] = bookingType === 'individual'
+      ? prayerItems.map(item => ({
+          booking_type: 'individual',
+          booking_date: selectedDate,
+          booking_time: selectedTime,
+          prayer1: item.prayer1,
+          hatsuhoryo: item.hatsuhoryo,
+          payment_status: 'unpaid',
+          attending_count: attendingCount === '' ? 1 : attendingCount,
+          name: item.name,
+          kana: item.kana,
+          address,
+          address_kana: addressKana,
+          phone,
+          email,
+          yakudoshi_type: item.yakudoshi_type,
+          child_name: item.child_name,
+          child_kana: item.child_kana,
+          child_birthday: item.child_birthday,
+          father_name: item.father_name,
+          father_kana: item.father_kana,
+          mother_name: item.mother_name,
+          mother_kana: item.mother_kana,
+          kotobuki_type: item.kotobuki_type,
+          kotobuki_other_text: item.kotobuki_other_text,
+          notes: `申込代表者: ${name} (${kana})`
+        }))
+      : [singlePayload];
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const url = isEditMode && editBookingId 
         ? `${apiUrl}/api/bookings/${editBookingId}`
         : `${apiUrl}/api/bookings`;
       const method = isEditMode && editBookingId ? 'PUT' : 'POST';
+      const sendBody: any = isEditMode && editBookingId ? singlePayload : batchPayloads;
 
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(sendBody)
       });
 
       if (!res.ok) {
@@ -455,7 +590,8 @@ export const VisitorPortal: React.FC = () => {
       }
 
       const created = await res.json();
-      setCreatedBooking(created);
+      // Set the first created booking for success screen mapping
+      setCreatedBooking(Array.isArray(created) ? created[0] : created);
       setStep(4);
       window.scrollTo(0, 0);
     } catch (err: any) {
@@ -639,35 +775,46 @@ export const VisitorPortal: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '2rem 0' }}>
-      <div className="container">
+    <div style={{ padding: '1.5rem 0' }}>
+      <div className="container" style={{ maxWidth: '800px' }}>
+        
+        {/* Shrine Header Title Only (Logo image deleted) */}
+        <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.65rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)', marginTop: '0.5rem', letterSpacing: '0.15em', fontWeight: 600 }}>
+            清瀧神社 ご祈祷予約受付
+          </h2>
+        </div>
         
         {/* Step Indicator */}
         <div className="no-print" style={{ 
           display: 'flex', 
           justifyContent: 'center', 
-          gap: '2rem', 
+          gap: '1.25rem', 
           marginBottom: '2rem',
           fontFamily: 'var(--font-serif)',
-          fontSize: '0.95rem'
+          fontSize: '0.85rem',
+          flexWrap: 'wrap'
         }}>
           <span style={{ 
             color: step === 1 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
             fontWeight: step === 1 ? 'bold' : 'normal',
             borderBottom: step === 1 ? '2px solid var(--color-mizuiro)' : 'none',
-            paddingBottom: '0.25rem'
+            paddingBottom: '0.25rem',
+            whiteSpace: 'nowrap'
           }}>1. 祈祷区分の選択</span>
           <span style={{ 
             color: step === 2 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
             fontWeight: step === 2 ? 'bold' : 'normal',
             borderBottom: step === 2 ? '2px solid var(--color-mizuiro)' : 'none',
-            paddingBottom: '0.25rem'
+            paddingBottom: '0.25rem',
+            whiteSpace: 'nowrap'
           }}>2. 予約情報の入力</span>
           <span style={{ 
             color: step === 3 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
             fontWeight: step === 3 ? 'bold' : 'normal',
             borderBottom: step === 3 ? '2px solid var(--color-mizuiro)' : 'none',
-            paddingBottom: '0.25rem'
+            paddingBottom: '0.25rem',
+            whiteSpace: 'nowrap'
           }}>3. 入力内容の確認</span>
         </div>
 
@@ -808,6 +955,7 @@ export const VisitorPortal: React.FC = () => {
                 onDateChange={setSelectedDate}
                 selectedTime={selectedTime}
                 onTimeChange={setSelectedTime}
+                bookingType={bookingType}
               />
             </div>
 
@@ -818,20 +966,105 @@ export const VisitorPortal: React.FC = () => {
               </h4>
               
               {bookingType === 'individual' ? (
-                // Individual willing select (Max 1)
-                <div className="form-group">
-                  <label>主願意 <span className="required">*</span></label>
-                  <select
-                    className="form-control"
-                    value={prayer1}
-                    onChange={(e) => setPrayer1(e.target.value)}
-                    style={{ border: '1px solid var(--color-gold)' }}
-                  >
-                    <option value="">-- 選択してください --</option>
-                    {INDIVIDUAL_PRAYERS.map(p => (
-                      <option key={p.value} value={p.value}>{p.value}</option>
-                    ))}
-                  </select>
+                <div>
+                  {/* Cart Display */}
+                  <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                    <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '0.95rem', marginBottom: '0.75rem', color: 'var(--color-urushi)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.5rem' }}>
+                      📋 追加されたご祈祷の内容（{prayerItems.length}件）
+                    </h5>
+                    {prayerItems.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', margin: 0, padding: '0.5rem 0' }}>
+                        ※現在、追加されたご祈祷はありません。下のフォームから願意（お願い事）と受ける方の情報を入力し、追加してください。
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {prayerItems.map((item) => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
+                            <div style={{ fontSize: '0.85rem' }}>
+                              <strong>【願意】</strong> {item.prayer1} 
+                              <span style={{ margin: '0 0.5rem', color: 'var(--color-border)' }}>|</span> 
+                              <strong>【氏名】</strong> {item.name} 様
+                              <span style={{ margin: '0 0.5rem', color: 'var(--color-border)' }}>|</span> 
+                              <strong>【初穂料】</strong> {item.hatsuhoryo.toLocaleString()}円
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePrayerItem(item.id)}
+                              className="btn"
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#fdf3f2', color: '#d3381c', border: '1px solid #ffa39e' }}
+                            >
+                              削除
+                            </button>
+                          </div>
+                        ))}
+                        <div style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 'bold', borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                          お初穂料 合計: <span style={{ color: 'var(--color-mizuiro)', fontSize: '1.1rem' }}>{prayerItems.reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}</span> 円より
+                        </div>
+                        <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.25rem', lineHeight: '1.4' }}>
+                          お気持ち（当日現金納め）<br />
+                          ※選択された願意の基準額です。のし袋か封筒などに包み、ご持参ください。
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add New Prayer Form */}
+                  <div style={{ border: '1px solid var(--color-border)', padding: '1.25rem 1rem', borderRadius: '4px', position: 'relative', backgroundColor: '#ffffff', marginBottom: '1rem' }}>
+                    <div style={{ position: 'absolute', top: '-10px', left: '15px', backgroundColor: '#ffffff', padding: '0 0.5rem', fontSize: '0.75rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>
+                      ご祈祷内容の入力
+                    </div>
+                    
+                    <div className="grid-2" style={{ marginTop: '0.5rem' }}>
+                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                        <label>願意（お願い事） <span className="required">*</span></label>
+                        <select
+                          className="form-control"
+                          value={prayer1}
+                          onChange={(e) => setPrayer1(e.target.value)}
+                          style={{ border: '1px solid var(--color-gold)' }}
+                        >
+                          <option value="">-- 選択してください --</option>
+                          {INDIVIDUAL_PRAYERS.map(p => (
+                            <option key={p.value} value={p.value}>{p.value}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                        <label>初穂料 (目安自動設定) <span className="required">*</span></label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min="0"
+                          value={hatsuhoryo}
+                          onChange={(e) => setHatsuhoryo(parseInt(e.target.value) || 0)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid-2">
+                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                        <label>ご祈祷を受ける方の氏名 <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="例：清瀧 太郎"
+                          value={prayerName}
+                          onChange={(e) => setPrayerName(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                        <label>氏名フリガナ <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="例：セイリュウ タロウ"
+                          value={prayerKana}
+                          onChange={(e) => setPrayerKana(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 // Organization willing select (Max 2 + custom text)
@@ -923,7 +1156,7 @@ export const VisitorPortal: React.FC = () => {
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>お子様フリガナ <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：きよたき たろう" value={childKana} onChange={(e) => setChildKana(e.target.value)} />
+                      <input type="text" className="form-control" placeholder="例：セイリュウ タロウ" value={childKana} onChange={(e) => setChildKana(e.target.value)} />
                     </div>
                   </div>
 
@@ -943,7 +1176,7 @@ export const VisitorPortal: React.FC = () => {
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>父親氏名フリガナ</label>
-                      <input type="text" className="form-control" placeholder="例：きよたき けんじ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
+                      <input type="text" className="form-control" placeholder="例：セイリュウ ケンジ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
                     </div>
                   </div>
 
@@ -954,7 +1187,7 @@ export const VisitorPortal: React.FC = () => {
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>母親氏名フリガナ</label>
-                      <input type="text" className="form-control" placeholder="例：きよたき はなこ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
+                      <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -990,43 +1223,96 @@ export const VisitorPortal: React.FC = () => {
               {/* Dynamic Sub-forms for Organization willing */}
               {bookingType === 'organization' && (getActivePrayer1() === '必勝祈願' || getActivePrayer2() === '必勝祈願') && (
                 <div className="alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>必勝祈願 詳細情報</h5>
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>大会名称 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：第108回 全国甲子園大会" value={tournamentName} onChange={(e) => setTournamentName(e.target.value)} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>大会日程 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：令和8年8月5日〜" value={tournamentSchedule} onChange={(e) => setTournamentSchedule(e.target.value)} />
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>必勝祈願 詳細情報</h5>
+                    <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'normal', cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={skipVictoryDetails} 
+                        onChange={(e) => { 
+                          setSkipVictoryDetails(e.target.checked); 
+                          if (e.target.checked) {
+                            setTournamentName('');
+                            setTournamentSchedule('');
+                          }
+                        }} 
+                      />
+                      詳細情報の入力をスキップする
+                    </label>
                   </div>
+                  {!skipVictoryDetails && (
+                    <div className="form-row">
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>大会名称 <span className="required">*</span></label>
+                        <input type="text" className="form-control" placeholder="例：第108回 全国甲子園大会" value={tournamentName} onChange={(e) => setTournamentName(e.target.value)} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>大会日程 <span className="required">*</span></label>
+                        <input type="text" className="form-control" placeholder="例：令和8年8月5日〜" value={tournamentSchedule} onChange={(e) => setTournamentSchedule(e.target.value)} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {bookingType === 'organization' && (getActivePrayer1() === '工事安全' || getActivePrayer2() === '工事安全') && (
                 <div className="alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>工事安全祈願 詳細情報</h5>
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>工事名称 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：〇〇ビル新築工事" value={constructionName} onChange={(e) => setConstructionName(e.target.value)} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>設計監理者名 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：〇〇設計事務所" value={constructionDesigner} onChange={(e) => setConstructionDesigner(e.target.value)} />
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>工事安全祈願 詳細情報</h5>
+                    <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'normal', cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={skipConstructionDetails} 
+                        onChange={(e) => { 
+                          setSkipConstructionDetails(e.target.checked); 
+                          if (e.target.checked) {
+                            setConstructionName('');
+                            setConstructionDesigner('');
+                            setConstructionBuilder('');
+                            setConstructionPeriod('');
+                          }
+                        }} 
+                      />
+                      詳細情報の入力をスキップする
+                    </label>
                   </div>
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>施工者名 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：〇〇建設株式会社" value={constructionBuilder} onChange={(e) => setConstructionBuilder(e.target.value)} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>工期 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：令和8年10月〜令和9年6月" value={constructionPeriod} onChange={(e) => setConstructionPeriod(e.target.value)} />
-                    </div>
-                  </div>
+                  {!skipConstructionDetails && (
+                    <>
+                      <div className="form-row">
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>工事名称 <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：〇〇ビル新築工事" value={constructionName} onChange={(e) => setConstructionName(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>設計監理者名 <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：〇〇設計事務所" value={constructionDesigner} onChange={(e) => setConstructionDesigner(e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>施工者名 <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：〇〇建設株式会社" value={constructionBuilder} onChange={(e) => setConstructionBuilder(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>工期 <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：令和8年10月〜令和9年6月" value={constructionPeriod} onChange={(e) => setConstructionPeriod(e.target.value)} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {bookingType === 'individual' && (
+                <div style={{ marginTop: '1.25rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1rem', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddPrayerItem}
+                    className="btn btn-gold"
+                    style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}
+                  >
+                    ➕ このご祈祷（願意）を予約リストに追加
+                  </button>
                 </div>
               )}
 
@@ -1034,12 +1320,12 @@ export const VisitorPortal: React.FC = () => {
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--color-accent-gray)', fontWeight: 500 }}>お初穂料のご案内</span>
                 <div style={{ fontSize: '1.25rem', color: 'var(--color-mizuiro)', fontWeight: 'bold', fontFamily: 'var(--font-serif)', marginTop: '0.25rem' }}>
-                  {hatsuhoryo.toLocaleString()} 円以上 （お気持ち、当日現金納め）
+                  {hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.25rem' }}>
                   {bookingType === 'individual' 
                     ? '※選択された願意の基準額です。のし袋か封筒などに包み、ご持参ください。' 
-                    : '※団体参拝は5名未満は20,000円以上、5名以上は30,000円以上のお気持ちとさせていただいております。'}
+                    : '※団体参拝は5名未満は20,000円より、5名以上は30,000円よりのお気持ち（当日現金納め）とさせていただいております。'}
                 </p>
               </div>
             </div>
@@ -1070,7 +1356,7 @@ export const VisitorPortal: React.FC = () => {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="例：きよたき たろう"
+                        placeholder="例：セイリュウ タロウ"
                         value={kana}
                         onChange={(e) => setKana(e.target.value)}
                         required
@@ -1095,7 +1381,7 @@ export const VisitorPortal: React.FC = () => {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="例：うらやすしほりえ"
+                        placeholder="例：ウラヤスシホリエ"
                         value={addressKana}
                         onChange={(e) => setAddressKana(e.target.value)}
                         required
@@ -1135,7 +1421,8 @@ export const VisitorPortal: React.FC = () => {
                       className="form-control"
                       min="1"
                       value={attendingCount}
-                      onChange={(e) => setAttendingCount(Math.max(1, parseInt(e.target.value) || 1))}
+                      onChange={(e) => setAttendingCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1))}
+                      onBlur={() => { if (attendingCount === '') setAttendingCount(1); }}
                       required
                     />
                   </div>
@@ -1160,7 +1447,7 @@ export const VisitorPortal: React.FC = () => {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="例：きよたきかぶしきがいしゃ"
+                        placeholder="例：セイリュウカブシキガイシャ"
                         value={companyKana}
                         onChange={(e) => setCompanyKana(e.target.value)}
                         required
@@ -1169,13 +1456,14 @@ export const VisitorPortal: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>お札に書かれるお名前 （お札に墨書きする正式名称）</label>
+                    <label>お札に書かれるお名前 （お札に墨書きする正式名称） <span className="required">*</span></label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="未入力の場合は会社名が入ります。例: 清瀧株式会社 代表取締役 清瀧太郎"
+                      placeholder="例: 清瀧株式会社 代表取締役 清瀧太郎"
                       value={talismanName}
                       onChange={(e) => setTalismanName(e.target.value)}
+                      required
                     />
                   </div>
 
@@ -1196,7 +1484,7 @@ export const VisitorPortal: React.FC = () => {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="例：うらやすしほりえ"
+                        placeholder="例：ウラヤスシホリエ"
                         value={companyAddressKana}
                         onChange={(e) => setCompanyAddressKana(e.target.value)}
                         required
@@ -1262,7 +1550,8 @@ export const VisitorPortal: React.FC = () => {
                         className="form-control"
                         min="1"
                         value={attendingCount}
-                        onChange={(e) => setAttendingCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        onChange={(e) => setAttendingCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1))}
+                        onBlur={() => { if (attendingCount === '') setAttendingCount(1); }}
                         required
                       />
                     </div>
@@ -1380,20 +1669,35 @@ export const VisitorPortal: React.FC = () => {
                   <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>ご参拝日時</span>
                   <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{selectedDate}　{selectedTime}の回</span>
                 </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                  <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>主願意</span>
-                  <span style={{ fontWeight: 'bold' }}>{getActivePrayer1()}</span>
-                </div>
-                {bookingType === 'organization' && getActivePrayer2() && (
-                  <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                    <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>副願意</span>
-                    <span style={{ fontWeight: 'bold' }}>{getActivePrayer2()}</span>
-                  </div>
+                {bookingType === 'organization' ? (
+                  <>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>主願意</span>
+                      <span style={{ fontWeight: 'bold' }}>{getActivePrayer1()}</span>
+                    </div>
+                    {getActivePrayer2() && (
+                      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                        <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>副願意</span>
+                        <span style={{ fontWeight: 'bold' }}>{getActivePrayer2()}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>お初穂料</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>ご祈祷のお申込件数</span>
+                      <span style={{ fontWeight: 'bold' }}>{prayerItems.length} 件</span>
+                    </div>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>お初穂料 合計</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{prayerItems.reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()} 円より お気持ち（当日現金納め）</span>
+                    </div>
+                  </>
                 )}
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                  <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>お初穂料</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{hatsuhoryo.toLocaleString()} 円以上 (当日お気持ち)</span>
-                </div>
                 <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
                   <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>参列予定人数</span>
                   <span style={{ fontWeight: 'bold' }}>{attendingCount} 名</span>
@@ -1419,27 +1723,31 @@ export const VisitorPortal: React.FC = () => {
                       <span>{email}</span>
                     </div>
                     
-                    {prayer1 === '厄年のお祓い' && yakudoshiType && (
-                      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', backgroundColor: '#fff9e6', padding: '0.5rem' }}>
-                        <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>厄年区分</span>
-                        <span style={{ fontWeight: 'bold' }}>{yakudoshiType === 'maeyaku' ? '前厄' : yakudoshiType === 'honyaku' ? '本厄' : '後厄'}</span>
+                    {prayerItems.map((item, idx) => (
+                      <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', backgroundColor: '#fcfbf7', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '2px', marginTop: '0.5rem' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--color-gold)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.25rem' }}>
+                          ご祈祷 {idx + 1}件目
+                        </div>
+                        <div style={{ fontSize: '0.9rem' }}><strong>願意:</strong> {item.prayer1}</div>
+                        <div style={{ fontSize: '0.9rem' }}><strong>初穂料:</strong> {item.hatsuhoryo.toLocaleString()} 円</div>
+                        <div style={{ fontSize: '0.9rem' }}><strong>受ける方のお名前:</strong> {item.name} 様 ({item.kana})</div>
+                        
+                        {item.prayer1 === '厄年のお祓い' && item.yakudoshi_type && (
+                          <div style={{ fontSize: '0.9rem', color: '#8a6d3b' }}><strong>厄年区分:</strong> {item.yakudoshi_type === 'maeyaku' ? '前厄' : item.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}</div>
+                        )}
+                        {item.child_name && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--color-border)', fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
+                            <div>お子様名: {item.child_name} 様 ({item.child_kana})</div>
+                            <div>生年月日: {item.child_birthday}</div>
+                            {item.father_name && <div>父親: {item.father_name} ({item.father_kana})</div>}
+                            {item.mother_name && <div>母親: {item.mother_name} ({item.mother_kana})</div>}
+                          </div>
+                        )}
+                        {item.prayer1 === '寿祝い' && item.kotobuki_type && (
+                          <div style={{ fontSize: '0.9rem', color: '#8a6d3b' }}><strong>寿祝い区分:</strong> {item.kotobuki_type === 'その他' ? item.kotobuki_other_text : item.kotobuki_type}</div>
+                        )}
                       </div>
-                    )}
-                    {childName && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', backgroundColor: '#fcfbf7', padding: '0.75rem', border: '1px solid var(--color-border)' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--color-gold)' }}>お子様・ご両親情報</div>
-                        <div>お子様名: {childName} 様 ({childKana})</div>
-                        <div>生年月日: {childBirthday}</div>
-                        {fatherName && <div>父親: {fatherName} ({fatherKana})</div>}
-                        {motherName && <div>母親: {motherName} ({motherKana})</div>}
-                      </div>
-                    )}
-                    {prayer1 === '寿祝い' && kotobukiType && (
-                      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', backgroundColor: '#fff9e6', padding: '0.5rem' }}>
-                        <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>寿祝い区分</span>
-                        <span style={{ fontWeight: 'bold' }}>{kotobukiType === 'その他' ? kotobukiOtherText : kotobukiType}</span>
-                      </div>
-                    )}
+                    ))}
                   </>
                 ) : (
                   // Organization Details

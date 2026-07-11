@@ -19,6 +19,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<'created_at' | 'booking_datetime' | 'kana' | 'prayer'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Payment update modal states
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -42,6 +44,30 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       return matchName || matchNum || matchPhone;
     }
     return true;
+  });
+
+  // Sort logic applied to filtered results
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortBy === 'created_at') {
+      valA = a.created_at || '';
+      valB = b.created_at || '';
+    } else if (sortBy === 'booking_datetime') {
+      valA = `${a.booking_date} ${a.booking_time}`;
+      valB = `${b.booking_date} ${b.booking_time}`;
+    } else if (sortBy === 'kana') {
+      valA = a.booking_type === 'individual' ? (a.kana || '') : (a.company_kana || '');
+      valB = b.booking_type === 'individual' ? (b.kana || '') : (b.company_kana || '');
+    } else if (sortBy === 'prayer') {
+      valA = a.prayer1 || '';
+      valB = b.prayer1 || '';
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
 
   // Trigger CSV export on backend
@@ -106,6 +132,34 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     }
   };
 
+  const handleToggleCheckbox = async (booking: Booking, field: 'is_accepted' | 'payment_status' | 'is_receipt_issued') => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      let payload: any = {};
+      if (field === 'is_accepted') {
+        payload.is_accepted = booking.is_accepted === 1 ? 0 : 1;
+        payload.payment_status = booking.payment_status;
+      } else if (field === 'is_receipt_issued') {
+        payload.is_receipt_issued = booking.is_receipt_issued === 1 ? 0 : 1;
+        payload.payment_status = booking.payment_status;
+      } else if (field === 'payment_status') {
+        payload.payment_status = booking.payment_status === 'paid' ? 'unpaid' : 'paid';
+      }
+
+      const res = await fetch(`${apiUrl}/api/bookings/${booking.id}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('ステータスの更新に失敗しました。');
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || '更新に失敗しました。');
+    }
+  };
+
   return (
     <div>
       {/* Search and filter toolbar */}
@@ -163,6 +217,31 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               <option value="paid">支払済</option>
               <option value="unpaid">未払い</option>
             </select>
+
+            {/* Sorting controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.5rem', borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', whiteSpace: 'nowrap' }}>並べ替え:</span>
+              <select
+                className="form-control"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                style={{ width: '130px', fontSize: '0.8rem', padding: '0.25rem 0.5rem', height: 'auto' }}
+              >
+                <option value="created_at">予約受付順 (更新順)</option>
+                <option value="booking_datetime">ご参拝日時順</option>
+                <option value="kana">お名前順 (あいうえお)</option>
+                <option value="prayer">願意順</option>
+              </select>
+              <button
+                type="button"
+                className="btn btn-outline-gold"
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto', minWidth: '40px', cursor: 'pointer' }}
+                title={sortOrder === 'asc' ? '昇順 (古い・小さい順)' : '降順 (新しい・大きい順)'}
+              >
+                {sortOrder === 'asc' ? '▲ 昇順' : '▼ 降順'}
+              </button>
+            </div>
           </div>
 
           <button 
@@ -186,20 +265,21 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               <th style={{ padding: '0.75rem 1rem' }}>氏名 / 会社名</th>
               <th style={{ padding: '0.75rem 1rem' }}>願意</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>初穂料</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>社務状態</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>備考</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>書面</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>操作</th>
             </tr>
           </thead>
           <tbody>
-            {filteredBookings.length === 0 ? (
+            {sortedBookings.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-accent-gray)' }}>
+                <td colSpan={10} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-accent-gray)' }}>
                   該当する予約情報が見つかりません。
                 </td>
               </tr>
             ) : (
-              filteredBookings.map((b) => {
+              sortedBookings.map((b) => {
                 const isIndiv = b.booking_type === 'individual';
                 const nameDisplay = isIndiv ? b.name : b.company_name;
                 const statusColor = b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)';
@@ -250,6 +330,37 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600 }}>
                       {b.hatsuhoryo.toLocaleString()} 円
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={b.is_accepted === 1} 
+                            onChange={() => handleToggleCheckbox(b, 'is_accepted')} 
+                            style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
+                          />
+                          <span>受付</span>
+                        </label>
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={b.payment_status === 'paid'} 
+                            onChange={() => handleToggleCheckbox(b, 'payment_status')} 
+                            style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
+                          />
+                          <span style={{ color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)' }}>初穂</span>
+                        </label>
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={b.is_receipt_issued === 1} 
+                            onChange={() => handleToggleCheckbox(b, 'is_receipt_issued')} 
+                            style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
+                          />
+                          <span>領収</span>
+                        </label>
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Lock, Unlock, CalendarDays } from 'lucide-react';
+import { getRokuyoAndInu } from '../Visitor/SlotSelector';
 import type { CalendarEvent, Booking } from '../../types';
 
 interface CalendarViewProps {
@@ -197,11 +198,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
           }}
         >
           <div>
-            <span style={{ 
-              fontWeight: 700, 
-              fontSize: '0.9rem',
-              color: isFocused ? 'var(--color-mizuiro-hover)' : 'var(--color-urushi)'
-            }}>{day}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
+              <span style={{ 
+                fontWeight: 700, 
+                fontSize: '0.9rem',
+                color: isFocused ? 'var(--color-mizuiro-hover)' : 'var(--color-urushi)'
+              }}>{day}</span>
+              {(() => {
+                const { rokuyo, isInu } = getRokuyoAndInu(dateStr);
+                return (
+                  <span style={{ fontSize: '0.65rem', color: 'var(--color-accent-gray)', display: 'inline-flex', alignItems: 'center', gap: '0.1rem' }}>
+                    {rokuyo} {isInu && '🐕'}
+                  </span>
+                );
+              })()}
+            </div>
             
             {/* Display shrine events inside cells */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.25rem' }} className="no-print">
@@ -421,18 +432,151 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
             })}
           </div>
 
-          {/* Quick list of today's booked items */}
-          <div style={{ marginTop: '1.5rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1rem' }}>
-            <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--color-accent-gray)' }}>
-              この日の予約状況（計 {bookings.filter(b => b.booking_date === focusedDate).length} 組）
-            </h5>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {bookings.filter(b => b.booking_date === focusedDate).map(b => (
-                <span key={b.id} style={{ fontSize: '0.75rem', backgroundColor: '#f0f0f0', padding: '0.25rem 0.5rem', borderRadius: '2px' }}>
-                  {b.booking_time} - {b.booking_type === 'individual' ? b.name : b.company_name} ({b.prayer1})
-                </span>
-              ))}
+          {/* Detailed Timeline Panel */}
+          <div style={{ marginTop: '2rem', borderTop: '2px solid var(--color-gold)', paddingTop: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h5 style={{ fontSize: '1.05rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', margin: 0, color: 'var(--color-urushi)' }}>
+                ⛩️ 日次詳細タイムライン 【 {focusedDate} 】
+              </h5>
+              
+              {/* Daily Summary statistics */}
+              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
+                <div>総予約: <strong style={{ color: 'var(--color-urushi)' }}>{bookings.filter(b => b.booking_date === focusedDate).length} 件</strong></div>
+                <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{bookings.filter(b => b.booking_date === focusedDate).reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}円</strong></div>
+                <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{bookings.filter(b => b.booking_date === focusedDate).reduce((s, i) => s + (typeof i.attending_count === 'number' ? i.attending_count : 1), 0)} 名</strong></div>
+              </div>
             </div>
+
+            {(() => {
+              const todayBookings = bookings.filter(b => b.booking_date === focusedDate);
+              
+              // Group bookings by time slot
+              const grouped: { [key: string]: Booking[] } = {};
+              TIME_SLOTS.forEach(slot => {
+                const match = todayBookings.filter(b => b.booking_time === slot);
+                if (match.length > 0) grouped[slot] = match;
+              });
+
+              const activeSlots = Object.keys(grouped).sort();
+
+              if (activeSlots.length === 0) {
+                return (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-accent-gray)', textAlign: 'center', padding: '2rem 0', backgroundColor: '#fcfcfc', border: '1px dashed var(--color-border)' }}>
+                    この日のご祈祷予約はありません。
+                  </p>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {activeSlots.map(slot => (
+                    <div key={slot} style={{ display: 'flex', gap: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+                      {/* Time Indicator */}
+                      <div style={{ width: '70px', fontSize: '1.15rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', color: 'var(--color-mizuiro)', paddingTop: '0.2rem' }}>
+                        {slot}
+                      </div>
+                      
+                      {/* Bookings under this time slot */}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {grouped[slot].map(b => {
+                          const isIndiv = b.booking_type === 'individual';
+                          const nameLabel = isIndiv ? '個人' : '団体';
+                          const displayName = isIndiv ? b.name : b.company_name;
+                          const displayKana = isIndiv ? b.kana : b.company_kana;
+                          
+                          return (
+                            <div key={b.id} style={{ 
+                              backgroundColor: '#ffffff', 
+                              border: `1px solid ${isIndiv ? 'var(--color-border)' : 'var(--color-gold)'}`,
+                              borderLeft: `4px solid ${isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)'}`,
+                              borderRadius: '2px',
+                              padding: '1rem',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.01)'
+                            }}>
+                              {/* Header info */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid #f7f7f7', paddingBottom: '0.4rem' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', fontFamily: 'monospace' }}>
+                                  受付番号: {b.receipt_number}
+                                </span>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                  <span className={`badge ${isIndiv ? 'badge-paid' : 'badge-unpaid'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', borderColor: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', backgroundColor: 'transparent' }}>
+                                    {nameLabel}
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: '0.7rem', 
+                                    fontWeight: 'bold', 
+                                    backgroundColor: b.payment_status === 'paid' ? 'rgba(62, 122, 92, 0.08)' : 'rgba(211, 56, 28, 0.08)',
+                                    color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)',
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '2px'
+                                  }}>
+                                    {b.payment_status === 'paid' ? '初穂料納め済' : '初穂料未払い'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Body details */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
+                                <div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>ご祈祷対象者・企業名</div>
+                                  <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--color-urushi)' }}>
+                                    {displayName} 様 <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--color-accent-gray)' }}>({displayKana})</span>
+                                  </div>
+                                  {isIndiv && b.notes && b.notes.includes('申込代表者:') && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>
+                                      {b.notes}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>願意（お願い事）</div>
+                                  <div style={{ fontWeight: 'bold' }}>
+                                    {b.prayer1} {b.prayer2 ? ` / ${b.prayer2}` : ''}
+                                  </div>
+                                  {/* Dynamic metadata attributes inside list cards */}
+                                  {b.yakudoshi_type && (
+                                    <span style={{ fontSize: '0.75rem', backgroundColor: '#fff9e6', color: 'var(--color-gold)', padding: '0.05rem 0.25rem', borderRadius: '2px', marginTop: '0.2rem', display: 'inline-block' }}>
+                                      厄年区分: {b.yakudoshi_type === 'maeyaku' ? '前厄' : b.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
+                                    </span>
+                                  )}
+                                  {b.child_name && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', lineHeight: '1.4' }}>
+                                      祝子: {b.child_name} ({b.child_kana})　生年月日: {b.child_birthday}
+                                    </div>
+                                  )}
+                                  {b.kotobuki_type && (
+                                    <span style={{ fontSize: '0.75rem', backgroundColor: '#fff9e6', color: 'var(--color-gold)', padding: '0.05rem 0.25rem', borderRadius: '2px', marginTop: '0.2rem', display: 'inline-block' }}>
+                                      祝区分: {b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                                    <span>参列予定人数:</span> 
+                                    <strong>{b.attending_count} 名</strong>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                    <span>お初穂料金額:</span>
+                                    <strong style={{ color: 'var(--color-mizuiro)' }}>{b.hatsuhoryo.toLocaleString()} 円</strong>
+                                  </div>
+                                  {(b.phone || b.staff_phone) && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>
+                                      連絡先: {isIndiv ? b.phone : `${b.staff_dept_title_name} / ${b.staff_phone}`}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
