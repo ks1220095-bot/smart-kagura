@@ -28,7 +28,7 @@ const isSmtpConfigured = () => {
  * Sends an email. If SMTP credentials are not configured,
  * it will fallback to printing the email contents to the console log.
  */
-export async function sendMail(to: string, subject: string, text: string, html?: string, attachments?: { filename: string; content: string }[]) {
+export async function sendMail(to: string, subject: string, text: string, html?: string, attachments?: { filename: string; content: string }[], throwOnError: boolean = false) {
   const resendApiKey = process.env.RESEND_API_KEY;
 
   // 1. Primary: SMTP (Shrine mail server) if configured
@@ -94,8 +94,9 @@ export async function sendMail(to: string, subject: string, text: string, html?:
 
       console.log(`[Email Sent via SMTP] Message ID: ${info.messageId} to ${to}`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Email Error] Failed to send email via SMTP, will fallback if Resend configured:', error);
+      if (throwOnError) throw new Error(`SMTP接続エラー: ${error.message || error}`);
     }
   }
 

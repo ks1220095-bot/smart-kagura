@@ -61,7 +61,7 @@ router.post('/test-email', async (req, res) => {
 ・NOTIFICATION_EMAIL: ${process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '未設定'}
 ・RESEND_API_KEY Configured: ${!!process.env.RESEND_API_KEY}`;
 
-    const success = await sendMail(to, subject, text);
+    const success = await sendMail(to, subject, text, undefined, undefined, true);
     if (success) {
       res.json({ success: true, message: 'テストメールを送信しました。受信トレイをご確認ください。' });
     } else {
