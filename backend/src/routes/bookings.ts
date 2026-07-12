@@ -84,7 +84,7 @@ router.get('/slots-availability', async (req, res) => {
       `SELECT booking_time, COUNT(*) as count, 
               SUM(CASE WHEN booking_type = 'organization' THEN 1 ELSE 0 END) as org_count 
        FROM bookings 
-       WHERE booking_date = $1 
+       WHERE booking_date = $1 AND is_cancelled = 0
        GROUP BY booking_time`,
       [date]
     );
@@ -194,7 +194,7 @@ router.post('/', async (req, res) => {
 
     // 2. Query existing bookings for this time slot
     const bookedCounts = await db.query(
-      `SELECT id, booking_type FROM bookings WHERE booking_date = $1 AND booking_time = $2`,
+      `SELECT id, booking_type FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND is_cancelled = 0`,
       [first.booking_date, first.booking_time]
     );
 
@@ -680,7 +680,7 @@ router.put('/:id', async (req, res) => {
       const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
 
       const bookedCount = await db.query(
-        `SELECT COUNT(*) as count FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND id <> $3`,
+        `SELECT COUNT(*) as count FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND id <> $3 AND is_cancelled = 0`,
         [booking.booking_date, booking.booking_time, req.params.id]
       );
 
@@ -708,7 +708,8 @@ router.put('/:id', async (req, res) => {
         wants_receipt = $24, receipt_name = $25, receipt_amount = $26,
         yakudoshi_type = $27, father_name = $28, father_kana = $29, mother_name = $30, mother_kana = $31, child_name = $32, child_kana = $33, child_birthday = $34,
         kotobuki_type = $35, kotobuki_other_text = $36, tournament_name = $37, tournament_schedule = $38,
-        construction_name = $39, construction_designer = $40, construction_builder = $41, construction_period = $42, notes = $43
+        construction_name = $39, construction_designer = $40, construction_builder = $41, construction_period = $42, notes = $43,
+        is_changed = 1
       WHERE id = $44
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
@@ -783,7 +784,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: '予約情報が見つかりません。' });
     }
 
-    await db.query(`DELETE FROM bookings WHERE id = $1`, [req.params.id]);
+    await db.query(`UPDATE bookings SET is_cancelled = 1 WHERE id = $1`, [req.params.id]);
     res.json({ message: '予約が正常にキャンセルされました。', deletedId: req.params.id });
   } catch (error) {
     console.error('Booking cancellation error:', error);

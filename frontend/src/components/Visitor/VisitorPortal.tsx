@@ -604,6 +604,7 @@ export const VisitorPortal: React.FC = () => {
 
   const handleReset = () => {
     setStep(1);
+    setPrayerItems([]);
     setSelectedDate('');
     setSelectedTime('');
     setPrayer1('');

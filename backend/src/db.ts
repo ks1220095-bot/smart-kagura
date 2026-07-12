@@ -185,6 +185,8 @@ async function initSqlite() {
           reminder_sent INTEGER DEFAULT 0,
           is_accepted INTEGER DEFAULT 0,
           is_receipt_issued INTEGER DEFAULT 0,
+          is_cancelled INTEGER DEFAULT 0,
+          is_changed INTEGER DEFAULT 0,
           notes TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -195,6 +197,8 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN reminder_sent INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN is_accepted INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN is_receipt_issued INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN is_cancelled INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN is_changed INTEGER DEFAULT 0`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -290,6 +294,8 @@ async function verifyPostgresSchema() {
         reminder_sent INTEGER DEFAULT 0,
         is_accepted INTEGER DEFAULT 0,
         is_receipt_issued INTEGER DEFAULT 0,
+        is_cancelled INTEGER DEFAULT 0,
+        is_changed INTEGER DEFAULT 0,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -306,6 +312,12 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_receipt_issued INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_cancelled INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_changed INTEGER DEFAULT 0
     `);
 
     await client.query(`

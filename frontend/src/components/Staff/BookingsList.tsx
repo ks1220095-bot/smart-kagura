@@ -284,8 +284,24 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 const nameDisplay = isIndiv ? b.name : b.company_name;
                 const statusColor = b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)';
 
+                const isCancelled = b.is_cancelled === 1;
+                const isChanged = b.is_changed === 1;
+                
+                let rowStyle: React.CSSProperties = { 
+                  borderBottom: '1px solid var(--color-border)', 
+                  transition: 'background-color 0.15s' 
+                };
+                if (isCancelled) {
+                  rowStyle = {
+                    ...rowStyle,
+                    backgroundColor: '#fff5f5',
+                    color: 'var(--color-accent-gray)',
+                    textDecoration: 'line-through'
+                  };
+                }
+
                 return (
-                  <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.15s' }} className="hover-row">
+                  <tr key={b.id} style={rowStyle} className={isCancelled ? "" : "hover-row"}>
 
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{b.booking_date} {b.booking_time}</div>
@@ -296,9 +312,21 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      <span className={`badge ${isIndiv ? 'badge-paid' : 'badge-unpaid'}`} style={{ borderColor: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', backgroundColor: 'transparent' }}>
-                        {isIndiv ? '個人' : '団体'}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                        <span className={`badge ${isIndiv ? 'badge-paid' : 'badge-unpaid'}`} style={{ borderColor: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', backgroundColor: 'transparent', textDecoration: 'none' }}>
+                          {isIndiv ? '個人' : '団体'}
+                        </span>
+                        {isCancelled && (
+                          <span className="badge badge-unpaid" style={{ borderColor: 'var(--color-shu)', color: 'var(--color-shu)', backgroundColor: 'rgba(211, 56, 28, 0.05)', textDecoration: 'none', fontSize: '0.65rem', padding: '0.1rem 0.25rem', fontWeight: 'bold' }}>
+                            取消
+                          </span>
+                        )}
+                        {isChanged && !isCancelled && (
+                          <span className="badge badge-paid" style={{ borderColor: 'var(--color-mizuiro)', color: 'var(--color-mizuiro-hover)', backgroundColor: 'rgba(50, 136, 163, 0.05)', textDecoration: 'none', fontSize: '0.65rem', padding: '0.1rem 0.25rem', fontWeight: 'bold' }}>
+                            変更有
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{nameDisplay}</div>
@@ -333,30 +361,33 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: 0, opacity: isCancelled ? 0.5 : 1 }}>
                           <input 
                             type="checkbox" 
                             checked={Number(b.is_accepted) === 1} 
-                            onChange={() => handleToggleCheckbox(b, 'is_accepted')} 
-                            style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
+                            onChange={() => !isCancelled && handleToggleCheckbox(b, 'is_accepted')} 
+                            disabled={isCancelled}
+                            style={{ width: '15px', height: '15px', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: '0 0 0.15rem 0' }}
                           />
                           <span>受付</span>
                         </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: 0, opacity: isCancelled ? 0.5 : 1 }}>
                           <input 
                             type="checkbox" 
                             checked={b.payment_status === 'paid'} 
-                            onChange={() => handleToggleCheckbox(b, 'payment_status')} 
-                            style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
+                            onChange={() => !isCancelled && handleToggleCheckbox(b, 'payment_status')} 
+                            disabled={isCancelled}
+                            style={{ width: '15px', height: '15px', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: '0 0 0.15rem 0' }}
                           />
                           <span style={{ color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)' }}>初穂</span>
                         </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: 'pointer', margin: 0 }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: 0, opacity: isCancelled ? 0.5 : 1 }}>
                           <input 
                             type="checkbox" 
                             checked={Number(b.is_receipt_issued) === 1} 
-                            onChange={() => handleToggleCheckbox(b, 'is_receipt_issued')} 
-                            style={{ width: '15px', height: '15px', cursor: 'pointer', margin: '0 0 0.15rem 0' }}
+                            onChange={() => !isCancelled && handleToggleCheckbox(b, 'is_receipt_issued')} 
+                            disabled={isCancelled}
+                            style={{ width: '15px', height: '15px', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: '0 0 0.15rem 0' }}
                           />
                           <span>領収</span>
                         </label>
@@ -364,19 +395,21 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <button
-                        onClick={() => handleOpenPaymentModal(b)}
+                        onClick={() => !isCancelled && handleOpenPaymentModal(b)}
+                        disabled={isCancelled}
                         style={{
                           backgroundColor: b.payment_status === 'paid' ? 'rgba(62, 122, 92, 0.1)' : 'rgba(211, 56, 28, 0.1)',
                           border: `1px solid ${statusColor}`,
                           color: statusColor,
                           padding: '0.2rem 0.5rem',
                           borderRadius: '2px',
-                          cursor: 'pointer',
+                          cursor: isCancelled ? 'not-allowed' : 'pointer',
                           fontSize: '0.75rem',
                           fontWeight: 'bold',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '0.25rem'
+                          gap: '0.25rem',
+                          opacity: isCancelled ? 0.5 : 1
                         }}
                       >
                         <Edit3 size={12} />
@@ -386,16 +419,18 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'center' }}>
                         <button
-                          onClick={() => onSelectYomifuda(b)}
+                          onClick={() => !isCancelled && onSelectYomifuda(b)}
+                          disabled={isCancelled}
                           title="読み札を印刷"
                           style={{
                             border: '1px solid var(--color-border)',
                             backgroundColor: '#ffffff',
                             padding: '0.2rem',
-                            cursor: 'pointer',
+                            cursor: isCancelled ? 'not-allowed' : 'pointer',
                             color: 'var(--color-urushi-light)',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            opacity: isCancelled ? 0.4 : 1
                           }}
                         >
                           <Printer size={14} />
@@ -403,16 +438,18 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         </button>
                         {!isIndiv && b.wants_receipt === 1 && (
                           <button
-                            onClick={() => onSelectReceipt(b)}
+                            onClick={() => !isCancelled && onSelectReceipt(b)}
+                            disabled={isCancelled}
                             title="領収証を印刷"
                             style={{
                               border: '1px solid var(--color-gold)',
                               backgroundColor: 'rgba(197, 160, 89, 0.05)',
                               padding: '0.2rem',
-                              cursor: 'pointer',
+                              cursor: isCancelled ? 'not-allowed' : 'pointer',
                               color: 'var(--color-gold)',
                               display: 'flex',
-                              alignItems: 'center'
+                              alignItems: 'center',
+                              opacity: isCancelled ? 0.4 : 1
                             }}
                           >
                             <Printer size={14} />
@@ -423,14 +460,16 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <button
-                        onClick={() => b.id && handleDeleteBooking(b.id)}
-                        title="キャンセル"
+                        onClick={() => !isCancelled && b.id && handleDeleteBooking(b.id)}
+                        disabled={isCancelled}
+                        title={isCancelled ? "キャンセル済み" : "キャンセル"}
                         style={{
                           border: 'none',
                           backgroundColor: 'transparent',
                           color: 'var(--color-shu)',
-                          cursor: 'pointer',
-                          padding: '0.2rem'
+                          cursor: isCancelled ? 'not-allowed' : 'pointer',
+                          padding: '0.2rem',
+                          opacity: isCancelled ? 0.3 : 1
                         }}
                       >
                         <Trash2 size={16} />

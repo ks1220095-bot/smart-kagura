@@ -65,6 +65,8 @@ export interface Booking {
 
   is_accepted?: number;
   is_receipt_issued?: number;
+  is_cancelled?: number;
+  is_changed?: number;
   notes?: string;
   created_at?: string;
 }
