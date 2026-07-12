@@ -52,9 +52,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [customReceiptAmount, setCustomReceiptAmount] = useState<number>(0);
   const [customNotes, setCustomNotes] = useState<string>('');
   const [savingPayment, setSavingPayment] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
 
   // Filter logic
   const filteredBookings = bookings.filter(b => {
+    // Hide bookings before today (JST)
+    const jstDateStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }))
+      .toLocaleDateString('sv-SE');
+    if (b.booking_date < jstDateStr) return false;
+
     if (filterDate && b.booking_date !== filterDate) return false;
     if (filterType && b.booking_type !== filterType) return false;
     if (filterStatus && b.payment_status !== filterStatus) return false;
@@ -143,17 +149,9 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     }
   };
 
-  // Delete booking
-  const handleDeleteBooking = async (id: number) => {
-    if (!confirm('この予約をキャンセル（削除）しますか？この操作は取り消せません。')) return;
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/bookings/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
-      onRefresh();
-    } catch (error) {
-      alert(error);
-    }
+  // Delete booking - open confirmation modal
+  const handleDeleteBooking = (booking: Booking) => {
+    setDeleteTarget(booking);
   };
 
   const handleToggleCheckbox = async (booking: Booking, field: 'is_accepted' | 'payment_status' | 'is_receipt_issued') => {
@@ -516,16 +514,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <button
-                        onClick={() => !isCancelled && b.id && handleDeleteBooking(b.id)}
-                        disabled={isCancelled}
-                        title={isCancelled ? "キャンセル済み" : "キャンセル"}
+                        onClick={() => b.id && handleDeleteBooking(b)}
+                        title={isCancelled ? "データベースから完全に消去" : "予約を消去（キャンセル・完全削除）"}
                         style={{
                           border: 'none',
                           backgroundColor: 'transparent',
                           color: 'var(--color-shu)',
-                          cursor: isCancelled ? 'not-allowed' : 'pointer',
+                          cursor: 'pointer',
                           padding: '0.2rem',
-                          opacity: isCancelled ? 0.3 : 1
+                          opacity: isCancelled ? 0.6 : 1
                         }}
                       >
                         <Trash2 size={16} />
@@ -646,6 +643,96 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 disabled={savingPayment}
               >
                 {savingPayment ? '保存中...' : '支払済にする'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="card kamidana-border" style={{ maxWidth: '460px', width: '100%', padding: '1.5rem', backgroundColor: '#ffffff', color: '#333333' }}>
+            <h4 style={{ fontSize: '1.05rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-urushi)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              ⚠️ 予約の消去方法を選択してください
+            </h4>
+            
+            <div style={{ fontSize: '0.85rem', lineHeight: '1.6', marginBottom: '1.25rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.75rem', border: '1px solid var(--color-border)' }}>
+              <div>受付番号: <strong>{deleteTarget.receipt_number}</strong></div>
+              <div>氏名/企業: <strong>{deleteTarget.booking_type === 'individual' ? deleteTarget.name : deleteTarget.company_name} 様</strong></div>
+              <div>願意内容: <strong>{deleteTarget.prayer1}</strong></div>
+              <div>参拝日時: <strong>{deleteTarget.booking_date} {deleteTarget.booking_time}</strong></div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {deleteTarget.is_cancelled !== 1 && (
+                <button
+                  type="button"
+                  className="btn btn-outline-gold"
+                  onClick={async () => {
+                    try {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                      const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}`, { method: 'DELETE' });
+                      if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
+                      setDeleteTarget(null);
+                      onRefresh();
+                    } catch (error) {
+                      alert(error);
+                    }
+                  }}
+                  style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', padding: '0.75rem', gap: '0.15rem', cursor: 'pointer', width: '100%' }}
+                >
+                  <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--color-gold)' }}>❌ 予約のキャンセル (取消扱いとして残す)</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
+                    台帳の一覧に「取消（斜線）」の状態で残します。過去の予約の履歴として後から確認できます。
+                  </span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-outline-gold"
+                onClick={async () => {
+                  if (!confirm('この予約データをデータベースから完全に消去します。この操作は絶対に取り消せません。本当によろしいですか？')) return;
+                  try {
+                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}?hard=true`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('予約の完全削除に失敗しました。');
+                    setDeleteTarget(null);
+                    onRefresh();
+                  } catch (error) {
+                    alert(error);
+                  }
+                }}
+                style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', padding: '0.75rem', gap: '0.15rem', cursor: 'pointer', borderColor: 'var(--color-shu)', width: '100%' }}
+              >
+                <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--color-shu)' }}>🗑️ 完全削除 (データベースから物理消去)</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
+                  予約の記録自体をシステムおよび台帳から完全に消去し、画面から綺麗に消し去ります。
+                </span>
+              </button>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setDeleteTarget(null)}
+                style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+              >
+                閉じる
               </button>
             </div>
           </div>

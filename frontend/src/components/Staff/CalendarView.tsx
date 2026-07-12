@@ -17,9 +17,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
   // Date configuration state (For quick slot lock toggle)
   const [focusedDate, setFocusedDate] = useState<string>('');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // New event form state
   const [title, setTitle] = useState('');
@@ -329,31 +336,45 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
           </form>
         )}
 
-        {/* Calendar Grid */}
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', overflow: 'hidden' }}>
-          {/* Days of week */}
+        {/* スマホ用の横スクロール案内 */}
+        {isMobile && (
           <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(7, 1fr)', 
-            backgroundColor: 'var(--color-urushi)', 
-            color: '#ffffff', 
-            textAlign: 'center', 
-            fontWeight: 'bold', 
-            fontSize: '0.8rem', 
-            padding: '0.4rem 0' 
+            fontSize: '0.75rem', 
+            color: 'var(--color-accent-gray)', 
+            marginBottom: '0.5rem', 
+            textAlign: 'right'
           }}>
-            <div style={{ color: '#ff4d4f' }}>日</div>
-            <div>月</div>
-            <div>火</div>
-            <div>水</div>
-            <div>木</div>
-            <div>金</div>
-            <div style={{ color: '#40a9ff' }}>土</div>
+            ← 左右スクロールでカレンダー全体を見られます →
           </div>
+        )}
 
-          {/* Days cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {renderCells()}
+        {/* Calendar Grid */}
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', overflowX: 'auto' }}>
+          <div style={{ minWidth: isMobile ? '700px' : '100%' }}>
+            {/* Days of week */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(7, 1fr)', 
+              backgroundColor: 'var(--color-urushi)', 
+              color: '#ffffff', 
+              textAlign: 'center', 
+              fontWeight: 'bold', 
+              fontSize: '0.8rem', 
+              padding: '0.4rem 0' 
+            }}>
+              <div style={{ color: '#ff4d4f' }}>日</div>
+              <div>月</div>
+              <div>火</div>
+              <div>水</div>
+              <div>木</div>
+              <div>金</div>
+              <div style={{ color: '#40a9ff' }}>土</div>
+            </div>
+
+            {/* Days cells */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+              {renderCells()}
+            </div>
           </div>
         </div>
       </div>
@@ -434,13 +455,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
 
           {/* Detailed Timeline Panel */}
           <div style={{ marginTop: '2rem', borderTop: '2px solid var(--color-gold)', paddingTop: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <h5 style={{ fontSize: '1.05rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', margin: 0, color: 'var(--color-urushi)' }}>
                 ⛩️ 日次詳細タイムライン 【 {focusedDate} 】
               </h5>
               
               {/* Daily Summary statistics */}
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
+              <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap' }}>
                 <div>総予約: <strong style={{ color: 'var(--color-urushi)' }}>{bookings.filter(b => b.booking_date === focusedDate).length} 件</strong></div>
                 <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{bookings.filter(b => b.booking_date === focusedDate).reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}円</strong></div>
                 <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{bookings.filter(b => b.booking_date === focusedDate).reduce((s, i) => s + (typeof i.attending_count === 'number' ? i.attending_count : 1), 0)} 名</strong></div>

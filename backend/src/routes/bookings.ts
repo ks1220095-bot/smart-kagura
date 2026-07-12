@@ -852,8 +852,10 @@ https://seiryu-gokitou.vercel.app/?changeId=${req.params.id}
   }
 });
 
-// 7. Delete booking (Cancel)
+// 7. Delete booking (Cancel or Hard delete)
 router.delete('/:id', async (req, res) => {
+  const hardDelete = req.query.hard === 'true';
+
   try {
     const db = getDb();
     const checkResult = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
@@ -862,22 +864,29 @@ router.delete('/:id', async (req, res) => {
     }
 
     const target = checkResult.rows[0];
-    await db.query(`UPDATE bookings SET is_cancelled = 1 WHERE id = $1`, [req.params.id]);
+
+    if (hardDelete) {
+      // Physical delete
+      await db.query(`DELETE FROM bookings WHERE id = $1`, [req.params.id]);
+    } else {
+      // Logical delete (Cancel)
+      await db.query(`UPDATE bookings SET is_cancelled = 1 WHERE id = $1`, [req.params.id]);
+    }
 
     // Send Web Push Notification to all subscribed devices
     const isIndiv = target.booking_type === 'individual';
     const nameDisplay = isIndiv ? target.name : target.talisman_name || target.company_name;
 
-    const pushTitle = `【予約のキャンセル】❌`;
+    const pushTitle = hardDelete ? `【予約の完全削除】🗑️` : `【予約のキャンセル】❌`;
     const pushBody = `受付番号：${target.receipt_number}\n` +
                      `氏名：${nameDisplay} 様 (${isIndiv ? '個人' : '団体'})\n` +
                      `願意：${target.prayer1}\n` +
                      `日時：${target.booking_date} ${target.booking_time}の回\n` +
-                     `※オンラインでキャンセル（取消）されました。`;
+                     (hardDelete ? `※データベースから物理削除されました。` : `※オンラインでキャンセル（取消）されました。`);
 
     sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending cancel Web Push notification:', err));
 
-    res.json({ message: '予約が正常にキャンセルされました。', deletedId: req.params.id });
+    res.json({ message: hardDelete ? '予約が完全に削除されました。' : '予約が正常にキャンセルされました。', deletedId: req.params.id, hard: hardDelete });
   } catch (error) {
     console.error('Booking cancellation error:', error);
     res.status(500).json({ error: '予約のキャンセルに失敗しました。' });
