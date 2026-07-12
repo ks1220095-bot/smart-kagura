@@ -274,7 +274,7 @@ export const SettingsView: React.FC = () => {
         </form>
       </div>
 
-      {/* Email SMTP Server Test Connection Panel */}
+      {/* Resend Email Connection Diagnostic Panel */}
       <div className="card kamidana-border" style={{ marginTop: '2rem' }}>
         <h3 style={{ 
           fontSize: '1.15rem', 
@@ -283,10 +283,10 @@ export const SettingsView: React.FC = () => {
           paddingBottom: '0.4rem', 
           marginBottom: '1rem' 
         }}>
-          メール送信サーバー接続テスト (SMTP)
+          Resendメール配信テスト
         </h3>
         <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', lineHeight: '1.5', marginBottom: '1.25rem' }}>
-          Renderの環境設定（<code>SMTP_HOST</code> や <code>SMTP_PASS</code>等）で指定された神社側のメールサーバーが、正しくオンライン接続してメールを送信できるか動作テストを行います。
+          Renderの環境設定（<code>RESEND_API_KEY</code> や <code>RESEND_FROM</code>）で指定されたResend配信サービスが、正しく接続・送信できるか診断テストを行います。
         </p>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
@@ -310,7 +310,7 @@ export const SettingsView: React.FC = () => {
             className="btn btn-primary"
             style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
           >
-            {testLoading ? '接続テスト中...' : '接続テストメールを送信'}
+            {testLoading ? '配信テスト中...' : '配信テストメールを送信'}
           </button>
         </div>
 
@@ -325,10 +325,9 @@ export const SettingsView: React.FC = () => {
             <strong>送信エラー発生:</strong> {testError}
             <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#666', borderTop: '1px dashed rgba(211, 56, 28, 0.2)', paddingTop: '0.4rem' }}>
               【考えられる原因】<br/>
-              ・SMTPのユーザー名（ID）やパスワードの誤り<br/>
-              ・ポート番号（587 または 465）の誤り<br/>
-              ・神社側のサーバーがRender（米国ホスト）からの送信接続をセキュリティ制限でブロックしている<br/>
-              ・差出人メールアドレス（SMTP_FROM）と送信アカウントのドメイン不一致
+              ・ResendのAPIキー（<code>RESEND_API_KEY</code>）の設定ミスまたは有効期限切れ<br/>
+              ・ドメイン設定（SPF / DKIM等）が完了していない、またはステータスが「Active (Verified)」になっていない<br/>
+              ・差出人メールアドレス（<code>RESEND_FROM</code> もしくは <code>SMTP_FROM</code>）に、検証されていないドメインのアドレスを指定している
             </div>
           </div>
         )}

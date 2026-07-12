@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Test email settings
+// Test email settings (Resend API)
 router.post('/test-email', async (req, res) => {
   const { to } = req.body;
   if (!to) {
@@ -49,24 +49,21 @@ router.post('/test-email', async (req, res) => {
 
   try {
     const { sendMail } = require('../services/email');
-    const subject = '【清瀧神社】メールサーバー接続テスト';
-    const text = `これは清瀧神社オンライン祈祷予約システムからのメールサーバー（SMTP）接続テストメールです。
-このメールが届いている場合、メールサーバーの設定および認証は正常に完了しています。
+    const subject = '【清瀧神社】Resendメール送信テスト';
+    const text = `これは清瀧神社オンライン祈祷予約システムからのResendメール配信テストです。
+このメールが届いている場合、ResendのAPIキーおよびドメイン設定は正常に作動しています。
 
 環境変数設定状況:
-・SMTP_HOST: ${process.env.SMTP_HOST || '未設定'}
-・SMTP_PORT: ${process.env.SMTP_PORT || '未設定'}
-・SMTP_USER: ${process.env.SMTP_USER || '未設定'}
-・SMTP_FROM: ${process.env.SMTP_FROM || '未設定'}
-・NOTIFICATION_EMAIL: ${process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '未設定'}
-・RESEND_API_KEY Configured: ${!!process.env.RESEND_API_KEY}`;
+・RESEND_API_KEY Configured: ${!!process.env.RESEND_API_KEY}
+・RESEND_FROM: ${process.env.RESEND_FROM || process.env.SMTP_FROM || '清瀧神社ご祈祷予約 <onboarding@resend.dev>'}
+・NOTIFICATION_EMAIL: ${process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '未設定'}`;
 
     const success = await sendMail(to, subject, text, undefined, undefined, true);
     if (success) {
-      res.json({ success: true, message: 'テストメールを送信しました。受信トレイをご確認ください。' });
+      res.json({ success: true, message: 'Resend経由のテストメールを送信しました。受信トレイをご確認ください。' });
     } else {
       res.status(500).json({ 
-        error: 'メールの送信に失敗しました。SMTPサーバーの設定値（ホスト、ポート、認証情報）または送信元制限を確認してください。' 
+        error: 'メールの送信に失敗しました。Resend APIキーが正しいか、またはドメイン設定が完了しているかご確認ください。' 
       });
     }
   } catch (error: any) {

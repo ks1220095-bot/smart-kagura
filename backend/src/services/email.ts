@@ -1,110 +1,27 @@
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import dns from 'dns';
 
 dotenv.config();
-dns.setDefaultResultOrder('ipv4first'); // Forces the entire Node process to prioritize IPv4 resolving over IPv6
 
-const smtpHost = process.env.SMTP_HOST || '';
-const smtpPort = parseInt(process.env.SMTP_PORT || '587');
-const smtpUser = process.env.SMTP_USER || '';
-const smtpPass = process.env.SMTP_PASS || '';
-const smtpFrom = process.env.SMTP_FROM || 'no-reply@example.com';
+const resendApiKey = process.env.RESEND_API_KEY || '';
+// Support RESEND_FROM, fallback to legacy SMTP_FROM, or default to Resend onboarding sender
+const resendFrom = process.env.RESEND_FROM || process.env.SMTP_FROM || '清瀧神社ご祈祷予約 <onboarding@resend.dev>';
 const adminEmail = process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '';
 
-// Check if SMTP environment variables are properly configured
-const isSmtpConfigured = () => {
-  return (
-    smtpHost &&
-    smtpHost !== 'smtp.example.com' &&
-    smtpUser &&
-    smtpUser !== 'your-email@example.com' &&
-    smtpPass &&
-    smtpPass !== 'your-email-password'
-  );
-};
-
 /**
- * Sends an email. If SMTP credentials are not configured,
- * it will fallback to printing the email contents to the console log.
+ * Sends an email via Resend API.
+ * If Resend API Key is not configured, it will fallback to Mock Outbox (console output).
  */
-export async function sendMail(to: string, subject: string, text: string, html?: string, attachments?: { filename: string; content: string }[], throwOnError: boolean = false) {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  let smtpError: any = null;
-
-  // 1. Primary: SMTP (Shrine mail server) if configured
-  if (isSmtpConfigured()) {
-    try {
-      console.log(`[Email Service] Attempting manual DNS lookup for SMTP host: ${smtpHost}...`);
-      let targetHost = smtpHost;
-      try {
-        const { promisify } = require('util');
-        const resolve4Async = promisify(dns.resolve4);
-        const addresses = await resolve4Async(smtpHost);
-        if (addresses && addresses.length > 0) {
-          targetHost = addresses[0];
-          console.log(`[Email Service] Resolved ${smtpHost} to IPv4: ${targetHost}`);
-        }
-      } catch (dnsErr) {
-        console.warn(`[Email Service] Manual IPv4 resolution failed for ${smtpHost}, using original host:`, dnsErr);
-      }
-
-      console.log(`[Email Service] Attempting to send mail via SMTP (Shrine mail server) to ${to}...`);
-      let activePort = smtpPort;
-      let isSecure = smtpPort === 465;
-      
-      // Auto-fallback: Gmail on 465 is often blocked. Force 587 with STARTTLS.
-      if (smtpHost.includes('smtp.gmail.com') && smtpPort === 465) {
-        console.log('[Email Service] Auto-redirecting Gmail connection from 465 to 587.');
-        activePort = 587;
-        isSecure = false;
-      }
-
-      const transporter = nodemailer.createTransport({
-        host: targetHost, // IP address (IPv4)
-        port: activePort,
-        secure: isSecure,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-        tls: {
-          rejectUnauthorized: false, // Bypasses self-signed certificates
-          servername: smtpHost // Pass original domain name to prevent hostname mismatch errors
-        },
-        requireTLS: activePort === 587,
-        lookup: (hostname: string, options: any, callback: any) => {
-          dns.lookup(hostname, { family: 4 }, callback);
-        },
-        family: 4, // Backup directive
-        connectionTimeout: 15000,
-        greetingTimeout: 15000
-      } as any);
-
-      const info = await transporter.sendMail({
-        from: smtpFrom,
-        to,
-        subject,
-        text,
-        html,
-        attachments: attachments?.map(att => ({
-          filename: att.filename,
-          content: Buffer.from(att.content, 'base64') // Nodemailer requires Buffer or string
-        }))
-      });
-
-      console.log(`[Email Sent via SMTP] Message ID: ${info.messageId} to ${to}`);
-      return true;
-    } catch (error: any) {
-      console.error('[Email Error] Failed to send email via SMTP, will fallback if Resend configured:', error);
-      smtpError = error;
-    }
-  }
-
-  // 2. Secondary/Fallback: Resend API if API key is provided
+export async function sendMail(
+  to: string, 
+  subject: string, 
+  text: string, 
+  html?: string, 
+  attachments?: { filename: string; content: string }[],
+  throwOnError: boolean = false
+) {
   if (resendApiKey) {
     try {
-      console.log(`[Email Service] Attempting to send mail via Resend API fallback to ${to}...`);
+      console.log(`[Email Service] Sending mail via Resend API to ${to}...`);
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -112,12 +29,13 @@ export async function sendMail(to: string, subject: string, text: string, html?:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: '清瀧神社ご祈祷予約 <onboarding@resend.dev>', // Force onboarding domain to avoid 403 unverified custom domain errors
+          from: resendFrom,
           to,
           subject,
           text,
           html,
-          reply_to: (smtpFrom && !smtpFrom.includes('example.com')) ? smtpFrom : undefined, // Allow visitors to reply to the shrine's actual address
+          // Route reply to the domain address if configured
+          reply_to: resendFrom.includes('onboarding@resend.dev') ? undefined : resendFrom,
           attachments: attachments?.map(att => ({
             filename: att.filename,
             content: att.content // Base64 content
@@ -131,28 +49,23 @@ export async function sendMail(to: string, subject: string, text: string, html?:
         return true;
       } else {
         const errText = await response.text();
-        console.error('[Email Error] Resend API fallback responded with error:', errText);
+        console.error('[Email Error] Resend API responded with error:', errText);
         if (throwOnError) {
-          throw new Error(`Resend APIエラー: ${errText} (SMTPエラー: ${smtpError?.message || smtpError || 'なし'})`);
+          throw new Error(`Resend APIエラー: ${errText}`);
         }
       }
     } catch (err: any) {
-      console.error('[Email Error] Failed to send email via Resend API fallback:', err);
+      console.error('[Email Error] Failed to send email via Resend API:', err);
       if (throwOnError) {
-        throw new Error(`Resend送信失敗: ${err.message || err} (SMTPエラー: ${smtpError?.message || smtpError || 'なし'})`);
+        throw new Error(`Resend送信失敗: ${err.message || err}`);
       }
     }
   }
 
-  // If both failed (or SMTP failed and Resend not configured) and throwOnError is true, throw the primary SMTP error
-  if (throwOnError && smtpError) {
-    throw new Error(`SMTP接続エラー: ${smtpError.message || smtpError}`);
-  }
-
-  // 3. Last Fallback: Mock Outbox in developer environment
+  // Last Fallback: Mock Outbox in developer environment
   console.log('\n=================== [MOCK EMAIL OUTBOX] ===================');
   console.log(`To:      ${to}`);
-  console.log(`From:    ${smtpFrom}`);
+  console.log(`From:    ${resendFrom}`);
   console.log(`Subject: ${subject}`);
   console.log('-----------------------------------------------------------');
   console.log(text);
@@ -223,7 +136,7 @@ ${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基
       text += `・大会名称: ${booking.tournament_name}\n・大会日程: ${booking.tournament_schedule}\n`;
     }
     if (booking.construction_name) {
-      text += `・工事名称: ${booking.construction_name}
+      text += `· 工事名称: ${booking.construction_name}
 ・設計監理者名: ${booking.construction_designer}
 ・施工者名: ${booking.construction_builder}
 ・工期: ${booking.construction_period}
@@ -233,7 +146,7 @@ ${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基
 
   text += `\n神社管理画面より詳細の確認、および読み札の印刷準備をお願いいたします。`;
 
-  const to = adminEmail || smtpUser || (smtpFrom && !smtpFrom.includes('example.com') ? smtpFrom : '') || 'seiryuujinja@gmail.com';
+  const to = adminEmail || 'seiryuujinja@gmail.com';
   if (to) {
     await sendMail(to, subject, text);
   }
