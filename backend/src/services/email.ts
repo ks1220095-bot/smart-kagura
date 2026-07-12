@@ -24,37 +24,53 @@ export async function sendMail(
 ) {
   if (resendApiKey) {
     try {
-      console.log(`[Email Service] Sending mail via Resend API to ${to}...`);
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: resendFrom,
-          to,
-          subject,
-          text,
-          html,
-          // Route reply to the domain address if configured
-          reply_to: resendFrom.includes('onboarding@resend.dev') ? undefined : resendFrom,
-          attachments: attachments?.map(att => ({
-            filename: att.filename,
-            content: att.content // Base64 content
-          }))
-        })
-      });
+      let attempts = 0;
+      const maxAttempts = 3;
+      let response: any = null;
 
-      if (response.ok) {
-        const data: any = await response.json();
-        console.log(`[Email Sent via Resend] ID: ${data.id} to ${to}`);
-        return true;
-      } else {
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`[Email Service] Sending mail via Resend API to ${to} (Attempt ${attempts}/${maxAttempts})...`);
+        
+        response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: resendFrom,
+            to,
+            subject,
+            text,
+            html,
+            reply_to: resendFrom.includes('onboarding@resend.dev') ? undefined : resendFrom,
+            attachments: attachments?.map(att => ({
+              filename: att.filename,
+              content: att.content // Base64 content
+            }))
+          })
+        });
+
+        if (response.ok) {
+          const data: any = await response.json();
+          console.log(`[Email Sent via Resend] ID: ${data.id} to ${to}`);
+          return true;
+        }
+
+        const isRateLimit = response.status === 429;
         const errText = await response.text();
-        console.error('[Email Error] Resend API responded with error:', errText);
-        if (throwOnError) {
-          throw new Error(`Resend APIエラー: ${errText}`);
+        console.warn(`[Email Warning] Resend attempt ${attempts} failed with status ${response.status}:`, errText);
+
+        if (isRateLimit && attempts < maxAttempts) {
+          console.log(`[Email Service] Rate limit hit. Waiting 1.5 seconds before retrying (Attempt ${attempts + 1}/${maxAttempts})...`);
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        } else {
+          console.error('[Email Error] Resend API responded with error:', errText);
+          if (throwOnError) {
+            throw new Error(`Resend APIエラー: ${errText}`);
+          }
+          break; // Stop attempting for non-429 or final attempt
         }
       }
     } catch (err: any) {

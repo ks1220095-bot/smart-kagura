@@ -276,9 +276,12 @@ router.post('/', async (req, res) => {
     const isIndiv = first.booking_type === 'individual';
     const visitorEmail = isIndiv ? first.email : first.staff_email;
 
+    let subject = '';
+    let text = '';
+
     if (visitorEmail) {
-      const subject = `【清瀧神社】ご祈祷予約完了のお知らせ`;
-      let text = `${isIndiv ? `${first.name} 様` : `${first.company_name}\n担当 ${first.staff_dept_title_name} 様`}
+      subject = `【清瀧神社】ご祈祷予約完了のお知らせ`;
+      text = `${isIndiv ? `${first.name} 様` : `${first.company_name}\n担当 ${first.staff_dept_title_name} 様`}
 
 この度は、清瀧神社オンライン祈祷予約システムをご利用いただき、誠にありがとうございます。
 ご祈祷のご予約が完了いたしましたので、詳細をお知らせいたします。
@@ -399,17 +402,31 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
         text += `https://seiryu-gokitou.vercel.app/?changeId=${b.id}\n\n`;
       });
       text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-
-      sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending visitor mail:', err));
     }
 
-    // 6. Send admin notification emails (one per item)
-    for (const b of createdBookings) {
-      sendAdminNotification(b).catch(err => console.error('Error sending admin mail:', err));
-    }
-
-    // 7. Trigger cloud backup asynchronously
-    triggerCSVBackup(db).catch(err => console.error('Failed to trigger database backup:', err));
+    // 5. Send confirmation and backup emails asynchronously but sequentially with delays
+    (async () => {
+      try {
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        // 5-1. Send visitor confirmation
+        if (visitorEmail) {
+          await sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending visitor mail:', err));
+          await sleep(1000); // 1 second delay to respect Resend Rate Limits (2 req/sec)
+        }
+        
+        // 5-2. Send admin notifications sequentially
+        for (const b of createdBookings) {
+          await sendAdminNotification(b).catch(err => console.error('Error sending admin mail:', err));
+          await sleep(1000); // 1 second delay
+        }
+        
+        // 5-3. Trigger CSV backup
+        await triggerCSVBackup(db).catch(err => console.error('Failed to trigger database backup:', err));
+      } catch (emailFlowErr) {
+        console.error('Error in sequential email delivery flow:', emailFlowErr);
+      }
+    })();
 
     res.status(201).json(Array.isArray(payload) ? createdBookings : createdBookings[0]);
   } catch (error: any) {
