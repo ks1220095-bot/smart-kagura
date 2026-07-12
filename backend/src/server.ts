@@ -5,6 +5,7 @@ import { initDb } from './db';
 import bookingsRouter from './routes/bookings';
 import eventsRouter from './routes/events';
 import settingsRouter from './routes/settings';
+import notificationsRouter from './routes/notifications';
 
 import { startReminderScheduler } from './services/reminder';
 
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Database initialization and server boot
 async function startServer() {

@@ -213,6 +213,17 @@ async function initSqlite() {
         )
       `);
 
+      // 4. Push Subscriptions Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          endpoint TEXT UNIQUE NOT NULL,
+          p256dh TEXT NOT NULL,
+          auth TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
       console.log('[Database Service] Local SQLite initialized and schema verified.');
     } finally {
       client.release();
@@ -329,6 +340,16 @@ async function verifyPostgresSchema() {
         end_time VARCHAR(50) NOT NULL,
         description TEXT,
         is_closed_slot INTEGER DEFAULT 0
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        endpoint TEXT UNIQUE NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db';
 import { Booking } from '../types';
 import { sendMail, sendAdminNotification } from '../services/email';
+import { sendWebPushNotification } from '../services/webpush';
 
 const router = Router();
 
@@ -452,6 +453,20 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
 
         // 5-4. Trigger CSV backup (automatically skips email transmission if spreadsheet integration is active)
         await triggerCSVBackup(db).catch(err => console.error('Failed to trigger database backup:', err));
+
+        // 5-5. Send Web Push Notification to all subscribed devices
+        const isIndiv = first.booking_type === 'individual';
+        const repName = isIndiv ? first.name : first.company_name;
+        const totalHatsuhoryo = createdBookings.reduce((sum, b) => sum + b.hatsuhoryo, 0);
+
+        const pushTitle = `【新規予約の受付】⛩️`;
+        const pushBody = `${first.booking_date} ${first.booking_time}の回\n` +
+                         `区分：${isIndiv ? '個人ご祈祷' : '団体参拝'} (${createdBookings.length}件)\n` +
+                         `願意：${first.prayer1}\n` +
+                         `代表：${repName} 様\n` +
+                         `初穂料合計：${totalHatsuhoryo.toLocaleString()}円`;
+
+        await sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending Web Push notification:', err));
       } catch (emailFlowErr) {
         console.error('Error in sequential email delivery flow:', emailFlowErr);
       }
@@ -768,6 +783,22 @@ https://seiryu-gokitou.vercel.app/?changeId=${req.params.id}
       sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending change confirmation mail:', err));
     }
 
+    // Send Web Push Notification to all subscribed devices
+    const isIndiv = booking.booking_type === 'individual';
+    const nameDisplay = isIndiv ? booking.name : booking.talisman_name || booking.company_name;
+
+    const pushTitle = `【予約内容の変更】✏️`;
+    let pushBody = `受付番号：${existing.receipt_number}\n` +
+                   `氏名：${nameDisplay} 様 (${isIndiv ? '個人' : '団体'})\n` +
+                   `願意：${booking.prayer1}\n` +
+                   `変更後日時：${booking.booking_date} ${booking.booking_time}の回`;
+
+    if (existing.booking_date !== booking.booking_date || existing.booking_time !== booking.booking_time) {
+      pushBody += `\n(元の予約日時：${existing.booking_date} ${existing.booking_time}から変更)`;
+    }
+
+    sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending change Web Push notification:', err));
+
     res.json(updatedBooking);
   } catch (error) {
     console.error('Booking PUT update error:', error);
@@ -784,7 +815,22 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: '予約情報が見つかりません。' });
     }
 
+    const target = checkResult.rows[0];
     await db.query(`UPDATE bookings SET is_cancelled = 1 WHERE id = $1`, [req.params.id]);
+
+    // Send Web Push Notification to all subscribed devices
+    const isIndiv = target.booking_type === 'individual';
+    const nameDisplay = isIndiv ? target.name : target.talisman_name || target.company_name;
+
+    const pushTitle = `【予約のキャンセル】❌`;
+    const pushBody = `受付番号：${target.receipt_number}\n` +
+                     `氏名：${nameDisplay} 様 (${isIndiv ? '個人' : '団体'})\n` +
+                     `願意：${target.prayer1}\n` +
+                     `日時：${target.booking_date} ${target.booking_time}の回\n` +
+                     `※オンラインでキャンセル（取消）されました。`;
+
+    sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending cancel Web Push notification:', err));
+
     res.json({ message: '予約が正常にキャンセルされました。', deletedId: req.params.id });
   } catch (error) {
     console.error('Booking cancellation error:', error);
@@ -801,13 +847,18 @@ router.patch('/:id/reschedule', async (req, res) => {
 
   try {
     const db = getDb();
+    const checkResult = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '予約情報が見つかりません。' });
+    }
+    const existing = checkResult.rows[0];
     
     // Check capacity
     const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
     const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
 
     const bookedCount = await db.query(
-      `SELECT COUNT(*) as count FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND id <> $3`,
+      `SELECT COUNT(*) as count FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND id <> $3 AND is_cancelled = 0`,
       [booking_date, booking_time, req.params.id]
     );
 
@@ -825,9 +876,21 @@ router.patch('/:id/reschedule', async (req, res) => {
     }
 
     await db.query(
-      `UPDATE bookings SET booking_date = $1, booking_time = $2 WHERE id = $3`,
+      `UPDATE bookings SET booking_date = $1, booking_time = $2, is_changed = 1 WHERE id = $3`,
       [booking_date, booking_time, req.params.id]
     );
+
+    // Send Web Push Notification to all subscribed devices
+    const isIndiv = existing.booking_type === 'individual';
+    const nameDisplay = isIndiv ? existing.name : existing.talisman_name || existing.company_name;
+
+    const pushTitle = `【予約日時の変更】✏️`;
+    let pushBody = `受付番号：${existing.receipt_number}\n` +
+                   `氏名：${nameDisplay} 様 (${isIndiv ? '個人' : '団体'})\n` +
+                   `変更後日時：${booking_date} ${booking_time}の回\n` +
+                   `(元の予約日時：${existing.booking_date} ${existing.booking_time}から変更)`;
+
+    sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending reschedule Web Push:', err));
 
     res.json({ success: true, booking_date, booking_time });
   } catch (error) {

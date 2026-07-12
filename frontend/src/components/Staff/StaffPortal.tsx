@@ -53,6 +53,78 @@ function sendDesktopNotification(booking: Booking) {
   }
 }
 
+// Convert VAPID key to Uint8Array for PushManager subscribe applicationServerKey parameter
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Subscribe user browser to background Web Push notifications
+async function subscribeUserToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn('Web Push is not supported in this browser.');
+    return;
+  }
+
+  try {
+    // 1. Register sw.js Service Worker
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    console.log('[Service Worker] SW registered successfully:', registration);
+
+    // 2. Request browser permission to show desktop popups
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.warn('Notification permission denied by user.');
+      return;
+    }
+
+    // 3. Get VAPID Public key from server settings endpoint
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const keyRes = await fetch(`${apiUrl}/api/notifications/vapid-key`);
+    if (!keyRes.ok) throw new Error('VAPID key endpoint error');
+    const { publicKey } = await keyRes.json();
+
+    if (!publicKey) {
+      console.warn('No VAPID public key returned from backend.');
+      return;
+    }
+
+    // 4. Register browser push sub key
+    const subscribeOptions = {
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    };
+
+    const subscription = await registration.pushManager.subscribe(subscribeOptions);
+    console.log('[Push Manager] Subscribed subscription details:', subscription);
+
+    // 5. Send registration payload back to backend database
+    const subRes = await fetch(`${apiUrl}/api/notifications/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription })
+    });
+
+    if (subRes.ok) {
+      console.log('[Web Push Service] Subscription successfully registered on backend.');
+    } else {
+      console.error('[Web Push Service] Failed to register subscription payload.');
+    }
+  } catch (err) {
+    console.error('[Web Push Service Error] SW/Push registration failed:', err);
+  }
+}
+
 export const StaffPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'calendar' | 'list' | 'settings'>('dashboard');
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -115,11 +187,9 @@ export const StaffPortal: React.FC = () => {
     }
   };
 
-  // Ask for desktop notification permission on mount
+  // Register Service Worker and subscribe to Web Push on mount
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    subscribeUserToPush();
   }, []);
 
   // Set up 30-second automated polling for new bookings when authenticated
