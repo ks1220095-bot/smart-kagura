@@ -3,8 +3,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const resendApiKey = process.env.RESEND_API_KEY || '';
-// Support RESEND_FROM, fallback to legacy SMTP_FROM, or default to Resend onboarding sender
-const resendFrom = process.env.RESEND_FROM || process.env.SMTP_FROM || '清瀧神社ご祈祷予約 <onboarding@resend.dev>';
+const resendFromRaw = process.env.RESEND_FROM || process.env.SMTP_FROM || '';
+// Intelligent fallback: if sender address domain is not verified, use onboarding domain
+const resendFrom = resendFromRaw.includes('seiryuujinja.com')
+  ? resendFromRaw
+  : '清瀧神社ご祈祷予約 <onboarding@resend.dev>';
 const adminEmail = process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '';
 
 /**
