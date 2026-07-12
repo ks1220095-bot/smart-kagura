@@ -93,6 +93,7 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [periodMonths, setPeriodMonths] = useState<number>(2);
+  const [limitNewYear, setLimitNewYear] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchPeriod = async () => {
@@ -104,6 +105,7 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
           if (data.booking_period_months) {
             setPeriodMonths(parseInt(data.booking_period_months) || 2);
           }
+          setLimitNewYear(data.limit_new_year_booking !== 'false');
         }
       } catch (err) {
         console.error('Failed to fetch booking period:', err);
@@ -165,6 +167,33 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
           min={getTomorrowString()}
           max={getMaxDateString()}
           onChange={(e) => {
+            const val = e.target.value;
+            if (val && limitNewYear) {
+              const now = new Date();
+              const currentYear = now.getFullYear();
+              const currentMonth = now.getMonth() + 1; // 1-12
+              
+              const parts = val.split('-');
+              const targetYear = parseInt(parts[0]);
+              const targetMonth = parseInt(parts[1]);
+              const targetDay = parseInt(parts[2]);
+
+              if (targetYear > currentYear) {
+                if (currentMonth <= 11) {
+                  alert('来年度の新年のご祈祷予約は、12月1日より受付開始となります。');
+                  onDateChange('');
+                  onTimeChange('');
+                  return;
+                } else if (currentMonth === 12) {
+                  if (targetMonth === 1 && targetDay <= 2) {
+                    alert('新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。');
+                    onDateChange('');
+                    onTimeChange('');
+                    return;
+                  }
+                }
+              }
+            }
             onDateChange(e.target.value);
             onTimeChange(''); // Reset time on date change
           }}

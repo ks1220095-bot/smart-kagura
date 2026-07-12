@@ -17,6 +17,41 @@ function generateReceiptNumber(): string {
   return `SRY-${dateStr}-${rand}`;
 }
 
+// Helper: Validate booking dates for New Year (January) restrictions
+async function validateNewYearBookingLimit(bookingDate: string, db: any): Promise<string | null> {
+  try {
+    const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['limit_new_year_booking']);
+    const isLimitEnabled = limitSetting.rows[0]?.value === 'true';
+    if (!isLimitEnabled) {
+      return null;
+    }
+
+    const now = new Date();
+    // Use JST (Japan Standard Time)
+    const jpTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    const currentYear = jpTime.getFullYear();
+    const currentMonth = jpTime.getMonth() + 1; // 1-12
+
+    const target = new Date(bookingDate);
+    const targetYear = target.getFullYear();
+    const targetMonth = target.getMonth() + 1;
+    const targetDay = target.getDate();
+
+    if (targetYear > currentYear) {
+      if (currentMonth <= 11) {
+        return '来年度の新年のご祈祷予約は、12月1日より受付開始となります。';
+      } else if (currentMonth === 12) {
+        if (targetMonth === 1 && targetDay <= 2) {
+          return '新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。';
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to validate new year booking limit:', err);
+  }
+  return null;
+}
+
 const TIME_SLOTS = [
   '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
@@ -187,6 +222,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ 
         error: `ご指定の日付（${first.booking_date}）は、オンライン予約の受付期間外です（本日より ${periodMonths}ヶ月先まで受付しております）。` 
       });
+    }
+
+    const newYearError = await validateNewYearBookingLimit(first.booking_date, db);
+    if (newYearError) {
+      return res.status(400).json({ error: newYearError });
     }
     
     // 1. Check max slot capacity
@@ -682,6 +722,12 @@ router.put('/:id', async (req, res) => {
   try {
     const db = getDb();
     
+    // Validate New Year booking restriction
+    const newYearError = await validateNewYearBookingLimit(booking.booking_date, db);
+    if (newYearError) {
+      return res.status(400).json({ error: newYearError });
+    }
+    
     // Check if booking exists
     const checkResult = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
     if (checkResult.rows.length === 0) {
@@ -847,6 +893,13 @@ router.patch('/:id/reschedule', async (req, res) => {
 
   try {
     const db = getDb();
+
+    // Validate New Year booking restriction
+    const newYearError = await validateNewYearBookingLimit(booking_date, db);
+    if (newYearError) {
+      return res.status(400).json({ error: newYearError });
+    }
+
     const checkResult = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: '予約情報が見つかりません。' });

@@ -131,7 +131,8 @@ async function initSqlite() {
           ('max_groups_per_slot', '8'),
           ('is_booking_active', 'true'),
           ('maintenance_message', '現在、オンラインでのご祈祷予約の受付を一時的に停止しております。お急ぎの場合は、神社社務所まで直接お電話（047-351-5417）にてお問い合わせください。'),
-          ('booking_period_months', '2')
+          ('booking_period_months', '2'),
+          ('limit_new_year_booking', 'true')
       `);
 
       // 2. Bookings Table
@@ -251,7 +252,8 @@ async function verifyPostgresSchema() {
         ('max_groups_per_slot', '8'),
         ('is_booking_active', 'true'),
         ('maintenance_message', '現在、オンラインでのご祈祷予約の受付を一時的に停止しております。お急ぎの場合は、神社社務所まで直接お電話（047-351-5417）にてお問い合わせください。'),
-        ('booking_period_months', '2')
+        ('booking_period_months', '2'),
+        ('limit_new_year_booking', 'true')
       ON CONFLICT (key) DO NOTHING
     `);
 

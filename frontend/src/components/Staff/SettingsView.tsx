@@ -6,6 +6,7 @@ export const SettingsView: React.FC = () => {
   const [isBookingActive, setIsBookingActive] = useState<boolean>(true);
   const [maintenanceMessage, setMaintenanceMessage] = useState<string>('');
   const [bookingPeriodMonths, setBookingPeriodMonths] = useState<number>(2);
+  const [limitNewYearBooking, setLimitNewYearBooking] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -30,6 +31,7 @@ export const SettingsView: React.FC = () => {
       if (data.booking_period_months) {
         setBookingPeriodMonths(parseInt(data.booking_period_months) || 2);
       }
+      setLimitNewYearBooking(data.limit_new_year_booking !== 'false');
     } catch (err: any) {
       console.error('Settings fetch error:', err);
     }
@@ -109,6 +111,14 @@ export const SettingsView: React.FC = () => {
         body: JSON.stringify({ key: 'booking_period_months', value: String(bookingPeriodMonths) })
       });
       if (!res4.ok) throw new Error('予約可能期間の保存に失敗しました。');
+
+      // 5. Save limit new year booking
+      const res5 = await fetch(`${apiUrl}/api/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'limit_new_year_booking', value: String(limitNewYearBooking) })
+      });
+      if (!res5.ok) throw new Error('新年予約制限の保存に失敗しました。');
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -244,6 +254,36 @@ export const SettingsView: React.FC = () => {
             </select>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block', marginTop: '0.4rem', lineHeight: '1.5' }}>
               ※参拝者がカレンダーで選択できる最大日数が自動的に制限されます。（例：「2ヶ月先」の場合、本日が7月11日なら9月11日までの枠しか選択できません）
+            </span>
+          </div>
+
+          {/* New Year Booking restriction limit settings */}
+          <div className="form-group" style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1.5rem' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>
+              来年度・新年のご祈祷予約受付制限（12月1日一斉公開制御）
+            </label>
+            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: limitNewYearBooking ? 'bold' : 'normal' }}>
+                <input 
+                  type="radio" 
+                  checked={limitNewYearBooking === true} 
+                  onChange={() => setLimitNewYearBooking(true)}
+                  style={{ accentColor: 'var(--color-urushi)' }} 
+                />
+                <span style={{ color: 'var(--color-urushi)' }}>⛩️ 制限を有効にする（推奨）</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: !limitNewYearBooking ? 'bold' : 'normal' }}>
+                <input 
+                  type="radio" 
+                  checked={limitNewYearBooking === false} 
+                  onChange={() => setLimitNewYearBooking(false)}
+                  style={{ accentColor: 'var(--color-accent-gray)' }} 
+                />
+                <span style={{ color: 'var(--color-accent-gray)' }}>🔓 制限を解除（年間通して自由に予約可）</span>
+              </label>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block', marginTop: '0.5rem', lineHeight: '1.5' }}>
+              ※有効にすると、毎年11月30日までは「翌年1月1日以降」のWeb予約が自動でブロックされ、**12月1日になると自動で翌年1月3日以降の予約が解放**されます（1月1日・2日は無条件でオンライン予約不可となります）。
             </span>
           </div>
 

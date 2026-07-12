@@ -9,6 +9,30 @@ interface BookingsListProps {
   onSelectReceipt: (booking: Booking) => void;
 }
 
+// Helper: Determine visually distinct pastel colors based on prayer types
+function getPrayerColor(prayer: string): { bg: string; text: string; border: string } {
+  if (!prayer) return { bg: '#f5f5f5', text: '#555', border: '#ddd' };
+  
+  // 1. Evil warding / bad year purification (Red/Vermilion theme)
+  if (prayer.includes('厄') || prayer.includes('除') || prayer.includes('方災') || prayer.includes('清祓')) {
+    return { bg: '#fce8e6', text: '#c5221f', border: '#fad2cf' };
+  }
+  // 2. Child growth celebration / maternity (Blue/Cyan theme)
+  if (prayer.includes('宮') || prayer.includes('七五三') || prayer.includes('安産') || prayer.includes('誕生') || prayer.includes('初節句') || prayer.includes('成長')) {
+    return { bg: '#e8f0fe', text: '#1967d2', border: '#d2e3fc' };
+  }
+  // 3. Business / career success (Purple theme)
+  if (prayer.includes('商売') || prayer.includes('社運') || prayer.includes('隆昌') || prayer.includes('万来') || prayer.includes('必勝') || prayer.includes('就職') || prayer.includes('学業') || prayer.includes('合格')) {
+    return { bg: '#f3e8fd', text: '#8430d9', border: '#e8d0fc' };
+  }
+  // 4. Family health / safety (Pink theme)
+  if (prayer.includes('家内') || prayer.includes('健全') || prayer.includes('成就') || prayer.includes('健康') || prayer.includes('病気') || prayer.includes('安全')) {
+    return { bg: '#fde8f2', text: '#c2185b', border: '#fbc0ed' };
+  }
+  // 5. Default others (Green theme)
+  return { bg: '#e6f4ea', text: '#137333', border: '#ceead6' };
+}
+
 export const BookingsList: React.FC<BookingsListProps> = ({
   bookings,
   onRefresh,
@@ -19,8 +43,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [searchText, setSearchText] = useState('');
-  const [sortBy, setSortBy] = useState<'created_at' | 'booking_datetime' | 'kana' | 'prayer'>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<'created_at' | 'booking_datetime' | 'kana' | 'prayer'>('booking_datetime');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Payment update modal states
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -298,6 +322,11 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     color: 'var(--color-accent-gray)',
                     textDecoration: 'line-through'
                   };
+                } else if (!isIndiv) {
+                  rowStyle = {
+                    ...rowStyle,
+                    backgroundColor: '#faf7f0'
+                  };
                 }
 
                 return (
@@ -313,7 +342,18 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                        <span className={`badge ${isIndiv ? 'badge-paid' : 'badge-unpaid'}`} style={{ borderColor: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', backgroundColor: 'transparent', textDecoration: 'none' }}>
+                        <span style={{ 
+                          borderColor: isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)', 
+                          color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-urushi)', 
+                          backgroundColor: isIndiv ? '#e6f4ea' : '#fef7e0', 
+                          border: `1px solid ${isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)'}`,
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          textDecoration: 'none',
+                          whiteSpace: 'nowrap'
+                        }}>
                           {isIndiv ? '個人' : '団体'}
                         </span>
                         {isCancelled && (
@@ -353,8 +393,24 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      <div>{b.prayer1}</div>
-                      {b.prayer2 && <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>{b.prayer2}</div>}
+                      {(() => {
+                        const pStyle = getPrayerColor(b.prayer1);
+                        return (
+                          <div style={{
+                            display: 'inline-block',
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            backgroundColor: pStyle.bg,
+                            color: pStyle.text,
+                            border: `1px solid ${pStyle.border}`
+                          }}>
+                            {b.prayer1}
+                          </div>
+                        );
+                      })()}
+                      {b.prayer2 && <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', paddingLeft: '0.25rem' }}>+{b.prayer2}</div>}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600 }}>
                       {b.hatsuhoryo.toLocaleString()} 円
