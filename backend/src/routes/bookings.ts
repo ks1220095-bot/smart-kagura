@@ -24,6 +24,10 @@ const TIME_SLOTS = [
 // Helper: Generate CSV backup and mail to admin
 async function triggerCSVBackup(db: any) {
   try {
+    if (process.env.SPREADSHEET_API_URL) {
+      console.log('[Backup Service] Spreadsheet integration active. Skipping CSV backup email transmission.');
+      return;
+    }
     const result = await db.query(`SELECT * FROM bookings ORDER BY created_at DESC`);
     if (result.rows.length === 0) return;
 
@@ -421,7 +425,32 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
           await sleep(1000); // 1 second delay
         }
         
-        // 5-3. Trigger CSV backup
+        // 5-3. Save to Google Sheets if SPREADSHEET_API_URL is configured
+        const sheetUrl = process.env.SPREADSHEET_API_URL;
+        if (sheetUrl) {
+          console.log(`[Spreadsheet Service] Uploading ${createdBookings.length} booking(s) to Google Sheets...`);
+          try {
+            const sheetRes = await fetch(sheetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'addBookings',
+                bookings: createdBookings
+              })
+            });
+            if (sheetRes.ok) {
+              console.log('[Spreadsheet Service] Google Sheets sync completed successfully.');
+            } else {
+              const errText = await sheetRes.text();
+              console.error('[Spreadsheet Error] Google Sheets API responded with error:', errText);
+            }
+          } catch (sheetErr) {
+            console.error('[Spreadsheet Error] Failed to sync with Google Sheets:', sheetErr);
+          }
+          await sleep(1000); // 1 second delay buffer
+        }
+
+        // 5-4. Trigger CSV backup (automatically skips email transmission if spreadsheet integration is active)
         await triggerCSVBackup(db).catch(err => console.error('Failed to trigger database backup:', err));
       } catch (emailFlowErr) {
         console.error('Error in sequential email delivery flow:', emailFlowErr);
