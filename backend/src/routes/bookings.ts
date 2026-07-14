@@ -454,16 +454,11 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
       try {
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
         
-        // 5-1. Send visitor confirmation
-        if (visitorEmail) {
+        // 5-1. Send visitor confirmation (Skip if manually entered by staff)
+        const isManual = first.is_manual === 1 || (Array.isArray(req.body) ? req.body[0]?.is_manual === 1 : req.body.is_manual === 1);
+        if (visitorEmail && !isManual) {
           await sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending visitor mail:', err));
           await sleep(1000); // 1 second delay to respect Resend Rate Limits (2 req/sec)
-        }
-        
-        // 5-2. Send admin notifications sequentially
-        for (const b of createdBookings) {
-          await sendAdminNotification(b).catch(err => console.error('Error sending admin mail:', err));
-          await sleep(1000); // 1 second delay
         }
         
         // 5-3. Save to Google Sheets if SPREADSHEET_API_URL is configured

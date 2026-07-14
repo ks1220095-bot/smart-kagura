@@ -292,7 +292,8 @@ export const StaffPortal: React.FC = () => {
       staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
       staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
       
-      wants_receipt: 0
+      wants_receipt: 0,
+      is_manual: 1
     };
 
     try {

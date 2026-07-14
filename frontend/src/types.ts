@@ -69,6 +69,7 @@ export interface Booking {
   is_changed?: number;
   notes?: string;
   created_at?: string;
+  is_manual?: number;
 }
 
 export interface CalendarEvent {
