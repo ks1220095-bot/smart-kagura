@@ -2003,15 +2003,14 @@ export const VisitorPortal: React.FC = () => {
               {/* Shared Considerations & Notes Field */}
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontWeight: 'bold' }}>備考・特別な配慮（任意）</label>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', margin: '0.15rem 0 0.5rem 0', lineHeight: '1.4' }}>
-                    ※お名前の漢字がパソコンで入力できない方や、車椅子をご利用の方がいらっしゃる場合などにご利用ください。<br />
-                    ※こちらにご入力いただいた内容をもとに、社務所よりお電話等でご連絡させていただく場合がございます。
+                  <label style={{ fontWeight: 'bold' }}>備考（任意）</label>
+                  <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.5rem 0', lineHeight: '1.4', fontWeight: '500' }}>
+                    ※お名前の漢字が入力できない方や車椅子の方がご参列される予定の場合など、ご要望や特別な配慮が必要な事項がございましたらご記入ください。
                   </div>
                   <textarea
                     className="form-control"
                     rows={3}
-                    placeholder="例：同伴者に車椅子利用者が1名おります。"
+                    placeholder="例：お名前の漢字に外字（𠮷など）が含まれます。 / 参拝当日は車椅子の方が1名ご参列されます。"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     style={{ resize: 'vertical', width: '100%' }}

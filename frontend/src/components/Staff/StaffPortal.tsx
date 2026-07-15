@@ -165,6 +165,7 @@ export const StaffPortal: React.FC = () => {
   const [manualStaffPhone, setManualStaffPhone] = useState('');
   const [manualStaffEmail, setManualStaffEmail] = useState('');
   const [manualHasPastPrayer, setManualHasPastPrayer] = useState<number>(0);
+  const [manualNotes, setManualNotes] = useState('');
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -296,7 +297,8 @@ export const StaffPortal: React.FC = () => {
       wants_receipt: 0,
       has_past_prayer: manualHasPastPrayer,
       is_twin: 0,
-      is_manual: 1
+      is_manual: 1,
+      notes: manualNotes
     };
 
     try {
@@ -320,6 +322,7 @@ export const StaffPortal: React.FC = () => {
       setManualStaffName('');
       setManualPhone('');
       setManualHasPastPrayer(0);
+      setManualNotes('');
       
       fetchBookings();
     } catch (error: any) {
@@ -772,6 +775,22 @@ export const StaffPortal: React.FC = () => {
                     </div>
                   </>
                 )}
+
+                {/* 備考欄 (個人・団体共通) */}
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label style={{ fontWeight: 'bold' }}>備考（任意）</label>
+                  <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.35rem 0', lineHeight: '1.4' }}>
+                    ※お名前の漢字が入力できない方や、車椅子の方がご参列される予定の場合などの特記事項はこちらにご記入ください。
+                  </div>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="例：お名前の漢字に外字（𠮷など）が含まれます。 / 当日は車椅子利用者が1名ご参列されます。"
+                    value={manualNotes}
+                    onChange={(e) => setManualNotes(e.target.value)}
+                    style={{ resize: 'vertical', width: '100%' }}
+                  />
+                </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setShowAddForm(false)}>
