@@ -96,6 +96,9 @@ interface PrayerItem {
   child_name2?: string;
   child_kana2?: string;
   child_birthday2?: string;
+  car_maker?: string;
+  car_model?: string;
+  car_number?: string;
 }
 
 export const VisitorPortal: React.FC = () => {
@@ -230,6 +233,9 @@ export const VisitorPortal: React.FC = () => {
   const [userBirthMonth, setUserBirthMonth] = useState('');
   const [userBirthDay, setUserBirthDay] = useState('');
   const [activeMainTab, setActiveMainTab] = useState<'form' | 'faq'>('form');
+  const [carMaker, setCarMaker] = useState('');
+  const [carModel, setCarModel] = useState('');
+  const [carNumber, setCarNumber] = useState('');
   const [faq1Open, setFaq1Open] = useState(false);
   const [faq2Open, setFaq2Open] = useState(false);
   const [faq3Open, setFaq3Open] = useState(false);
@@ -369,7 +375,8 @@ export const VisitorPortal: React.FC = () => {
       userBirthYear, userBirthMonth, userBirthDay,
       activeMainTab, childName, childKana, childBirthday,
       yakudoshiType, fatherName, fatherKana, motherName, motherKana,
-      kotobukiType, kotobukiOtherText
+      kotobukiType, kotobukiOtherText,
+      carMaker, carModel, carNumber
     };
     localStorage.setItem('kagura_booking_form_state', JSON.stringify(stateToSave));
   }, [
@@ -385,7 +392,8 @@ export const VisitorPortal: React.FC = () => {
     userBirthYear, userBirthMonth, userBirthDay,
     activeMainTab, childName, childKana, childBirthday,
     yakudoshiType, fatherName, fatherKana, motherName, motherKana,
-    kotobukiType, kotobukiOtherText
+    kotobukiType, kotobukiOtherText,
+    carMaker, carModel, carNumber
   ]);
 
   // Restore fields on mount
@@ -455,6 +463,9 @@ export const VisitorPortal: React.FC = () => {
         if (state.motherKana) setMotherKana(state.motherKana);
         if (state.kotobukiType) setKotobukiType(state.kotobukiType);
         if (state.kotobukiOtherText) setKotobukiOtherText(state.kotobukiOtherText);
+        if (state.carMaker) setCarMaker(state.carMaker);
+        if (state.carModel) setCarModel(state.carModel);
+        if (state.carNumber) setCarNumber(state.carNumber);
       } catch (e) {
         console.error('Failed to restore form state:', e);
       }
@@ -651,6 +662,10 @@ export const VisitorPortal: React.FC = () => {
       alert('長寿祝いの内容を入力してください。');
       return;
     }
+    if (prayer1 === '車祓（お車のお祓い）' && (!carMaker.trim() || !carModel.trim() || !carNumber.trim())) {
+      alert('お車のメーカー、車種、ナンバーは必須です。');
+      return;
+    }
 
     // Add to prayerItems
     const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
@@ -673,7 +688,10 @@ export const VisitorPortal: React.FC = () => {
       is_twin: isCurrentTwin ? 1 : 0,
       child_name2: isCurrentTwin ? childName2 : undefined,
       child_kana2: isCurrentTwin ? childKana2 : undefined,
-      child_birthday2: isCurrentTwin ? childBirthday2 : undefined
+      child_birthday2: isCurrentTwin ? childBirthday2 : undefined,
+      car_maker: prayer1 === '車祓（お車のお祓い）' ? carMaker : undefined,
+      car_model: prayer1 === '車祓（お車のお祓い）' ? carModel : undefined,
+      car_number: prayer1 === '車祓（お車のお祓い）' ? carNumber : undefined
     };
 
     setPrayerItems([...prayerItems, newItem]);
@@ -700,6 +718,9 @@ export const VisitorPortal: React.FC = () => {
     setBirthYear2('');
     setBirthMonth2('');
     setBirthDay2('');
+    setCarMaker('');
+    setCarModel('');
+    setCarNumber('');
   };
 
   const handleRemovePrayerItem = (id: string) => {
@@ -893,6 +914,9 @@ export const VisitorPortal: React.FC = () => {
     setChildBirthday('');
     setKotobukiType('');
     setKotobukiOtherText('');
+    setCarMaker('');
+    setCarModel('');
+    setCarNumber('');
     setCompanyName('');
     setCompanyKana('');
     setCompanyAddress('');
@@ -1720,6 +1744,47 @@ export const VisitorPortal: React.FC = () => {
                       onChange={(e) => setKotobukiOtherText(e.target.value)}
                     />
                   )}
+                </div>
+              )}
+
+              {bookingType === 'individual' && prayer1 === '車祓（お車のお祓い）' && (
+                <div className="form-group alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0, color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報をご入力ください</h5>
+                  <div className="form-row">
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label>メーカー名 <span className="required">*</span></label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="例：トヨタ、ホンダなど"
+                        value={carMaker}
+                        onChange={(e) => setCarMaker(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label>車種名 <span className="required">*</span></label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="例：プリウス、フィットなど"
+                        value={carModel}
+                        onChange={(e) => setCarModel(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>車両ナンバー <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="例：習志野330 さ 12-34"
+                      value={carNumber}
+                      onChange={(e) => setCarNumber(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
               )}
 

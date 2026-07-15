@@ -219,6 +219,10 @@ export const StaffPortal: React.FC = () => {
   const [manualKotobukiOtherText, setManualKotobukiOtherText] = useState('');
   const [manualOrgCustomPrayer1, setManualOrgCustomPrayer1] = useState('');
 
+  const [manualCarMaker, setManualCarMaker] = useState('');
+  const [manualCarModel, setManualCarModel] = useState('');
+  const [manualCarNumber, setManualCarNumber] = useState('');
+
   const [manualPrayerItems, setManualPrayerItems] = useState<any[]>([]);
 
   const handleAddManualPrayerItem = () => {
@@ -250,6 +254,9 @@ export const StaffPortal: React.FC = () => {
       mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
       kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
       kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined,
+      car_maker: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarMaker || undefined : undefined,
+      car_model: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarModel || undefined : undefined,
+      car_number: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarNumber || undefined : undefined,
       notes: (() => {
         const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
           ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
@@ -280,6 +287,9 @@ export const StaffPortal: React.FC = () => {
     setManualBirthYear2('');
     setManualBirthMonth2('');
     setManualBirthDay2('');
+    setManualCarMaker('');
+    setManualCarModel('');
+    setManualCarNumber('');
   };
 
   const handleRemoveManualPrayerItem = (id: string) => {
@@ -432,7 +442,13 @@ export const StaffPortal: React.FC = () => {
         has_past_prayer: manualHasPastPrayer,
         is_twin: item.is_twin || 0,
         is_manual: 1,
-        notes: item.notes ? `${item.notes} (代表: ${manualName || manualCompanyName || '手動登録'})` : `申込代表者: ${manualName || manualCompanyName || '手動登録'}`,
+        notes: (() => {
+          const coreNotes = item.notes ? `${item.notes} (代表: ${manualName || manualCompanyName || '手動登録'})` : `申込代表者: ${manualName || manualCompanyName || '手動登録'}`;
+          const carDetails = item.car_maker && item.car_model && item.car_number
+            ? `【車輌情報】メーカー: ${item.car_maker} / 車種: ${item.car_model} / ナンバー: ${item.car_number}`
+            : '';
+          return [coreNotes, carDetails].filter(Boolean).join('\n');
+        })(),
         child_name: item.child_name,
         child_kana: item.child_kana,
         child_birthday: item.child_birthday,
@@ -478,8 +494,11 @@ export const StaffPortal: React.FC = () => {
           const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
             ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
             : '';
-          if (manualNotes && userBday) return `${manualNotes}\n${userBday}`;
-          return manualNotes || userBday || undefined;
+          const carInfo = (manualPrayer1 === '車祓（お車のお祓い）' || manualPrayer2 === '車祓（お車のお祓い）') && manualCarMaker && manualCarModel && manualCarNumber
+            ? `【車輌情報】メーカー: ${manualCarMaker} / 車種: ${manualCarModel} / ナンバー: ${manualCarNumber}`
+            : '';
+          const parts = [manualNotes, userBday, carInfo].filter(Boolean);
+          return parts.length > 0 ? parts.join('\n') : undefined;
         })(),
         child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
         child_kana: manualType === 'individual' ? manualChildKana || undefined : undefined,
@@ -532,6 +551,9 @@ export const StaffPortal: React.FC = () => {
       setManualKotobukiType('還暦（61歳）');
       setManualKotobukiOtherText('');
       setManualOrgCustomPrayer1('');
+      setManualCarMaker('');
+      setManualCarModel('');
+      setManualCarNumber('');
       setManualIsTwin(false);
       setManualChildName('');
       setManualChildKana('');
@@ -993,6 +1015,27 @@ export const StaffPortal: React.FC = () => {
                         required
                       />
                     )}
+                  </div>
+                )}
+
+                {/* 個人祈祷で「車祓（お車のお祓い）」が選択された場合 */}
+                {manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' && (
+                  <div className="form-group" style={{ backgroundColor: 'rgba(50, 136, 163, 0.03)', padding: '0.75rem', borderRadius: '4px', border: '1px solid rgba(50, 136, 163, 0.15)', marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報 <span className="required">*</span></label>
+                    <div className="grid-3">
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem' }}>メーカー名</label>
+                        <input type="text" className="form-control" placeholder="例：トヨタなど" value={manualCarMaker} onChange={(e) => setManualCarMaker(e.target.value)} required />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem' }}>車種名</label>
+                        <input type="text" className="form-control" placeholder="例：プリウスなど" value={manualCarModel} onChange={(e) => setManualCarModel(e.target.value)} required />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem' }}>車両ナンバー</label>
+                        <input type="text" className="form-control" placeholder="例：習志野330さ1234" value={manualCarNumber} onChange={(e) => setManualCarNumber(e.target.value)} required />
+                      </div>
+                    </div>
                   </div>
                 )}
 
