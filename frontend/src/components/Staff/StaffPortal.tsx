@@ -193,6 +193,10 @@ export const StaffPortal: React.FC = () => {
   const [manualBirthMonth2, setManualBirthMonth2] = useState('');
   const [manualBirthDay2, setManualBirthDay2] = useState('');
 
+  const [manualUserBirthYear, setManualUserBirthYear] = useState('');
+  const [manualUserBirthMonth, setManualUserBirthMonth] = useState('');
+  const [manualUserBirthDay, setManualUserBirthDay] = useState('');
+
   // 初宮詣の双子の場合に15000円へ、それ以外は通常価格へ自動セット
   useEffect(() => {
     if (manualType === 'individual') {
@@ -335,7 +339,13 @@ export const StaffPortal: React.FC = () => {
       has_past_prayer: manualHasPastPrayer,
       is_twin: manualIsTwin ? 1 : 0,
       is_manual: 1,
-      notes: manualNotes,
+      notes: (() => {
+        const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
+          ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
+          : '';
+        if (manualNotes && userBday) return `${manualNotes}\n${userBday}`;
+        return manualNotes || userBday || undefined;
+      })(),
       child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
       child_kana: manualType === 'individual' ? manualChildKana || undefined : undefined,
       child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
@@ -381,6 +391,10 @@ export const StaffPortal: React.FC = () => {
       setManualBirthYear2('');
       setManualBirthMonth2('');
       setManualBirthDay2('');
+      
+      setManualUserBirthYear('');
+      setManualUserBirthMonth('');
+      setManualUserBirthDay('');
       
       fetchBookings();
     } catch (error: any) {
@@ -788,6 +802,30 @@ export const StaffPortal: React.FC = () => {
                       <div className="form-group">
                         <label>メールアドレス</label>
                         <input type="email" className="form-control" placeholder="例：email@example.com" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+                      <label>ご祈祷される方の生年月日 <span className="required">*</span></label>
+                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <select className="form-control" style={{ width: '180px' }} value={manualUserBirthYear} onChange={(e) => setManualUserBirthYear(e.target.value)} required>
+                          <option value="">-- 年 (和暦/西暦) --</option>
+                          {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                            <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                          ))}
+                        </select>
+                        <select className="form-control" style={{ width: '90px' }} value={manualUserBirthMonth} onChange={(e) => setManualUserBirthMonth(e.target.value)} required>
+                          <option value="">-- 月 --</option>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m.toString()}>{m}月</option>
+                          ))}
+                        </select>
+                        <select className="form-control" style={{ width: '90px' }} value={manualUserBirthDay} onChange={(e) => setManualUserBirthDay(e.target.value)} required>
+                          <option value="">-- 日 --</option>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                            <option key={d} value={d.toString()}>{d}日</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

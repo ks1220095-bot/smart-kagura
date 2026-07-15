@@ -213,6 +213,9 @@ export const VisitorPortal: React.FC = () => {
 
 
   const [isBookingActive, setIsBookingActive] = useState(true);
+  const [userBirthYear, setUserBirthYear] = useState('');
+  const [userBirthMonth, setUserBirthMonth] = useState('');
+  const [userBirthDay, setUserBirthDay] = useState('');
   const [activeMainTab, setActiveMainTab] = useState<'form' | 'faq'>('form');
   const [faq1Open, setFaq1Open] = useState(false);
   const [faq2Open, setFaq2Open] = useState(false);
@@ -721,7 +724,13 @@ export const VisitorPortal: React.FC = () => {
       child_name2: bookingType === 'individual' && isTwin ? childName2 : undefined,
       child_kana2: bookingType === 'individual' && isTwin ? childKana2 : undefined,
       child_birthday2: bookingType === 'individual' && isTwin ? childBirthday2 : undefined,
-      notes: notes || undefined
+      notes: (() => {
+        const userBday = userBirthYear && userBirthMonth && userBirthDay
+          ? `【生年月日】${getEraString(Number(userBirthYear)).split(' / ')[0]} (${userBirthYear}-${userBirthMonth.padStart(2, '0')}-${userBirthDay.padStart(2, '0')})`
+          : '';
+        if (notes && userBday) return `${notes}\n${userBday}`;
+        return notes || userBday || undefined;
+      })()
     };
 
     // If batching mode, map cart items to full bookings array
@@ -1831,6 +1840,30 @@ export const VisitorPortal: React.FC = () => {
                       onBlur={() => { if (attendingCount === '') setAttendingCount(1); }}
                       required
                     />
+                  </div>
+
+                  <div className="form-group" style={{ marginTop: '1.25rem' }}>
+                    <label>ご祈祷される方の生年月日 <span className="required">*</span></label>
+                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select className="form-control" style={{ width: '180px' }} value={userBirthYear} onChange={(e) => setUserBirthYear(e.target.value)} required>
+                        <option value="">-- 年 (和暦/西暦) --</option>
+                        {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                          <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                        ))}
+                      </select>
+                      <select className="form-control" style={{ width: '90px' }} value={userBirthMonth} onChange={(e) => setUserBirthMonth(e.target.value)} required>
+                        <option value="">-- 月 --</option>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                          <option key={m} value={m.toString()}>{m}月</option>
+                        ))}
+                      </select>
+                      <select className="form-control" style={{ width: '90px' }} value={userBirthDay} onChange={(e) => setUserBirthDay(e.target.value)} required>
+                        <option value="">-- 日 --</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                          <option key={d} value={d.toString()}>{d}日</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div className="form-group" style={{ margin: '1rem 0 0 0' }}>
