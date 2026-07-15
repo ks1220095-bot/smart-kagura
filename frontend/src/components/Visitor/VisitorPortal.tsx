@@ -982,6 +982,20 @@ export const VisitorPortal: React.FC = () => {
             ) : (
               targetBooking && (
                 <div>
+                  <div style={{
+                    fontSize: '0.85rem',
+                    color: '#d3381c',
+                    backgroundColor: '#fff1f0',
+                    border: '1px solid #ffa39e',
+                    borderRadius: '4px',
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.5rem',
+                    lineHeight: '1.4'
+                  }}>
+                    <strong>⚠️ オンライン手続き期限について</strong><br />
+                    オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の30分前まで】となっております。社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
+                  </div>
+
                   <div style={{ backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', padding: '1rem', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
                     <p style={{ margin: '0 0 0.5rem 0' }}><strong>お名前:</strong> {targetBooking.booking_type === 'individual' ? targetBooking.name : targetBooking.company_name} 様</p>
                     <p style={{ margin: '0 0 0.5rem 0' }}><strong>ご祈祷:</strong> {targetBooking.prayer1}</p>
