@@ -183,7 +183,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
     // Days slots
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const dayBookings = bookings.filter(b => b.booking_date === dateStr);
+      const dayBookings = bookings.filter(b => b.booking_date === dateStr && b.is_cancelled !== 1);
       const dayEvents = events.filter(e => e.event_date === dateStr);
       const isFocused = focusedDate === dateStr;
 
@@ -462,14 +462,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
               
               {/* Daily Summary statistics */}
               <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap' }}>
-                <div>総予約: <strong style={{ color: 'var(--color-urushi)' }}>{bookings.filter(b => b.booking_date === focusedDate).length} 件</strong></div>
-                <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{bookings.filter(b => b.booking_date === focusedDate).reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}円</strong></div>
-                <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{bookings.filter(b => b.booking_date === focusedDate).reduce((s, i) => s + (typeof i.attending_count === 'number' ? i.attending_count : 1), 0)} 名</strong></div>
+                <div>総予約: <strong style={{ color: 'var(--color-urushi)' }}>{bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1).length} 件</strong></div>
+                <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1).reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}円</strong></div>
+                <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1).reduce((s, i) => s + (typeof i.attending_count === 'number' ? i.attending_count : 1), 0)} 名</strong></div>
               </div>
             </div>
 
             {(() => {
-              const todayBookings = bookings.filter(b => b.booking_date === focusedDate);
+              const todayBookings = bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1);
               
               // Group bookings by time slot
               const grouped: { [key: string]: Booking[] } = {};
