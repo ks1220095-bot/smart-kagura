@@ -14,9 +14,22 @@ const getEraString = (y: number) => {
     const reiwa = y - 2018;
     const term = y === 2019 ? '令和元年 (平成31年)' : `令和${reiwa}年`;
     return `${term} / ${y}年`;
-  } else {
+  } else if (y >= 1989) {
     const heisei = y - 1988;
-    return `平成${heisei}年 / ${y}年`;
+    const term = y === 1989 ? '平成元年 (昭和64年)' : `平成${heisei}年`;
+    return `${term} / ${y}年`;
+  } else if (y >= 1926) {
+    const showa = y - 1925;
+    const term = y === 1926 ? '昭和元年 (大正15年)' : `昭和${showa}年`;
+    return `${term} / ${y}年`;
+  } else if (y >= 1912) {
+    const taisho = y - 1911;
+    const term = y === 1912 ? '大正元年 (明治45年)' : `大正${taisho}年`;
+    return `${term} / ${y}年`;
+  } else {
+    const meiji = y - 1867;
+    const term = y === 1868 ? '明治元年' : `明治${meiji}年`;
+    return `${term} / ${y}年`;
   }
 };
 
