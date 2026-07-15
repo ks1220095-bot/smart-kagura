@@ -13,6 +13,35 @@ const TIME_SLOTS = [
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
 ];
 
+export function getUniqueGroupStats(dayBookings: any[]) {
+  if (dayBookings.length === 0) {
+    return { groupsCount: 0, totalAttending: 0 };
+  }
+
+  const groupsMap = new Map<string, any[]>();
+
+  dayBookings.forEach(b => {
+    const identifier = b.booking_time + "_" + (b.phone || b.email || b.name || b.company_name || Math.random().toString());
+    if (!groupsMap.has(identifier)) {
+      groupsMap.set(identifier, []);
+    }
+    groupsMap.get(identifier)!.push(b);
+  });
+
+  const groupsCount = groupsMap.size;
+
+  let totalAttending = 0;
+  groupsMap.forEach(groupItems => {
+    const maxAttending = groupItems.reduce((max, item) => {
+      const count = typeof item.attending_count === 'number' ? item.attending_count : 1;
+      return count > max ? count : max;
+    }, 0);
+    totalAttending += maxAttending;
+  });
+
+  return { groupsCount, totalAttending };
+}
+
 export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshBookings }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -256,7 +285,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
               textAlign: 'center',
               fontFamily: 'var(--font-serif)'
             }}>
-              予約: {dayBookings.length} 組
+              予約: {getUniqueGroupStats(dayBookings).groupsCount} 組
             </div>
           )}
         </div>
@@ -461,11 +490,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
               </h5>
               
               {/* Daily Summary statistics */}
-              <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap' }}>
-                <div>総予約: <strong style={{ color: 'var(--color-urushi)' }}>{bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1).length} 件</strong></div>
-                <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1).reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}円</strong></div>
-                <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1).reduce((s, i) => s + (typeof i.attending_count === 'number' ? i.attending_count : 1), 0)} 名</strong></div>
-              </div>
+              {(() => {
+                const todayBookings = bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1);
+                const stats = getUniqueGroupStats(todayBookings);
+                const totalHatsuhoryo = todayBookings.reduce((sum, b) => sum + b.hatsuhoryo, 0);
+                return (
+                  <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap' }}>
+                    <div>総件数: <strong style={{ color: 'var(--color-urushi)' }}>{todayBookings.length} 件</strong></div>
+                    <div>総組数: <strong style={{ color: 'var(--color-mizuiro-hover)' }}>{stats.groupsCount} 組</strong></div>
+                    <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{totalHatsuhoryo.toLocaleString()}円</strong></div>
+                    <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{stats.totalAttending} 名</strong></div>
+                  </div>
+                );
+              })()}
             </div>
 
             {(() => {
