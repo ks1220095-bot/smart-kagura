@@ -461,8 +461,12 @@ export const VisitorPortal: React.FC = () => {
   // 1. Manage Hatsuhoryo changes based on willingness and organization headcount
   useEffect(() => {
     if (bookingType === 'individual') {
-      const match = INDIVIDUAL_PRAYERS.find(p => p.value === prayer1);
-      setHatsuhoryo(match ? match.price : 5000);
+      if (prayer1 === '初宮詣（お宮参り）' && isTwin) {
+        setHatsuhoryo(15000);
+      } else {
+        const match = INDIVIDUAL_PRAYERS.find(p => p.value === prayer1);
+        setHatsuhoryo(match ? match.price : 5000);
+      }
     } else {
       // Organization base pricing: under 5 people = 20k, 5 or more = 30k
       const basePrice = Number(attendingCount) < 5 ? 20000 : 30000;
@@ -470,7 +474,7 @@ export const VisitorPortal: React.FC = () => {
       // Auto sync receipt amount
       setReceiptAmount(basePrice);
     }
-  }, [prayer1, bookingType, attendingCount]);
+  }, [prayer1, bookingType, attendingCount, isTwin]);
 
   // Sync Organization names to default receipt name
   useEffect(() => {

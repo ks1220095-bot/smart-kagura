@@ -85,7 +85,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
             <tr>
               <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500 }}>お初穂料</th>
               <td style={{ padding: '0.5rem 0', fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>
-                {booking.hatsuhoryo.toLocaleString()}円以上（当日お気持ち、現金納め）
+                {booking.hatsuhoryo.toLocaleString()}円より お気持ち（当日現金納め）
               </td>
             </tr>
           </tbody>

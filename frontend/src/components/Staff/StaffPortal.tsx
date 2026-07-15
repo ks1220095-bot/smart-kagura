@@ -8,6 +8,18 @@ import SettingsView from './SettingsView';
 import YomifudaPrint from './YomifudaPrint';
 import ReceiptPrint from './ReceiptPrint';
 
+// Era helper to display dates in both Japanese Wareki and Western AD
+const getEraString = (y: number) => {
+  if (y >= 2019) {
+    const reiwa = y - 2018;
+    const term = y === 2019 ? '令和元年 (平成31年)' : `令和${reiwa}年`;
+    return `${term} / ${y}年`;
+  } else {
+    const heisei = y - 1988;
+    return `平成${heisei}年 / ${y}年`;
+  }
+};
+
 // Synthesize a clean shrine bell chime using Web Audio API
 function playBellSound() {
   try {
@@ -167,6 +179,31 @@ export const StaffPortal: React.FC = () => {
   const [manualHasPastPrayer, setManualHasPastPrayer] = useState<number>(0);
   const [manualNotes, setManualNotes] = useState('');
 
+  // お祝いのお子様情報 (初宮・七五三用)
+  const [manualIsTwin, setManualIsTwin] = useState(false);
+  const [manualChildName, setManualChildName] = useState('');
+  const [manualChildKana, setManualChildKana] = useState('');
+  const [manualBirthYear, setManualBirthYear] = useState('');
+  const [manualBirthMonth, setManualBirthMonth] = useState('');
+  const [manualBirthDay, setManualBirthDay] = useState('');
+
+  const [manualChildName2, setManualChildName2] = useState('');
+  const [manualChildKana2, setManualChildKana2] = useState('');
+  const [manualBirthYear2, setManualBirthYear2] = useState('');
+  const [manualBirthMonth2, setManualBirthMonth2] = useState('');
+  const [manualBirthDay2, setManualBirthDay2] = useState('');
+
+  // 初宮詣の双子の場合に15000円へ、それ以外は通常価格へ自動セット
+  useEffect(() => {
+    if (manualType === 'individual') {
+      if (manualPrayer1 === '初宮詣（お宮参り）') {
+        setManualHatsuhoryo(manualIsTwin ? 15000 : 10000);
+      } else if (manualPrayer1 === '七五三詣') {
+        setManualHatsuhoryo(5000);
+      }
+    }
+  }, [manualPrayer1, manualIsTwin, manualType]);
+
   const fetchBookings = async () => {
     setLoading(true);
     setError('');
@@ -296,9 +333,19 @@ export const StaffPortal: React.FC = () => {
       
       wants_receipt: 0,
       has_past_prayer: manualHasPastPrayer,
-      is_twin: 0,
+      is_twin: manualIsTwin ? 1 : 0,
       is_manual: 1,
-      notes: manualNotes
+      notes: manualNotes,
+      child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
+      child_kana: manualType === 'individual' ? manualChildKana || undefined : undefined,
+      child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
+        ? `${manualBirthYear}-${manualBirthMonth.padStart(2, '0')}-${manualBirthDay.padStart(2, '0')}`
+        : undefined,
+      child_name2: manualType === 'individual' && manualIsTwin ? manualChildName2 || undefined : undefined,
+      child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
+      child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
+        ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
+        : undefined
     };
 
     try {
@@ -323,6 +370,17 @@ export const StaffPortal: React.FC = () => {
       setManualPhone('');
       setManualHasPastPrayer(0);
       setManualNotes('');
+      setManualIsTwin(false);
+      setManualChildName('');
+      setManualChildKana('');
+      setManualBirthYear('');
+      setManualBirthMonth('');
+      setManualBirthDay('');
+      setManualChildName2('');
+      setManualChildKana2('');
+      setManualBirthYear2('');
+      setManualBirthMonth2('');
+      setManualBirthDay2('');
       
       fetchBookings();
     } catch (error: any) {
@@ -729,9 +787,127 @@ export const StaffPortal: React.FC = () => {
                       </div>
                       <div className="form-group">
                         <label>メールアドレス</label>
-                        <input type="email" className="form-control" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} />
+                        <input type="email" className="form-control" placeholder="例：email@example.com" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} />
                       </div>
                     </div>
+
+                    {/* お子様情報入力欄 (初宮詣または七五三詣のみ) */}
+                    {(manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣') && (() => {
+                      const currentYear = new Date().getFullYear();
+                      const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - i);
+                      return (
+                        <div className="alert-warning" style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '2px' }}>
+                          <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>お子様の登録情報 (手動登録)</h5>
+                          
+                          {manualPrayer1 === '初宮詣（お宮参り）' && (
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={manualIsTwin}
+                                  onChange={(e) => {
+                                    setManualIsTwin(e.target.checked);
+                                    if (!e.target.checked) {
+                                      setManualChildName2('');
+                                      setManualChildKana2('');
+                                      setManualBirthYear2('');
+                                      setManualBirthMonth2('');
+                                      setManualBirthDay2('');
+                                    }
+                                  }}
+                                />
+                                <span>双子のご祈祷（お二人分）を希望する</span>
+                              </label>
+                            </div>
+                          )}
+
+                          <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
+                              {manualIsTwin ? 'お子様（一人目）' : 'お子様情報'}
+                            </span>
+                            <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label>お子様の氏名 <span className="required">*</span></label>
+                                <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                                  ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                                </div>
+                                <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={manualChildName} onChange={(e) => setManualChildName(e.target.value)} required />
+                              </div>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label>お子様フリガナ <span className="required">*</span></label>
+                                <input type="text" className="form-control" placeholder="例：セイリュウ タロウ" value={manualChildKana} onChange={(e) => setManualChildKana(e.target.value)} required />
+                              </div>
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>生年月日 <span className="required">*</span></label>
+                              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <select className="form-control" style={{ width: '180px' }} value={manualBirthYear} onChange={(e) => setManualBirthYear(e.target.value)} required>
+                                  <option value="">-- 年 (和暦/西暦) --</option>
+                                  {yearOptions.map(y => (
+                                    <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                                  ))}
+                                </select>
+                                <select className="form-control" style={{ width: '90px' }} value={manualBirthMonth} onChange={(e) => setManualBirthMonth(e.target.value)} required>
+                                  <option value="">-- 月 --</option>
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m.toString()}>{m}月</option>
+                                  ))}
+                                </select>
+                                <select className="form-control" style={{ width: '90px' }} value={manualBirthDay} onChange={(e) => setManualBirthDay(e.target.value)} required>
+                                  <option value="">-- 日 --</option>
+                                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                    <option key={d} value={d.toString()}>{d}日</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+
+                          {manualIsTwin && (
+                            <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)', marginTop: '0.5rem' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
+                                お子様（二人目）
+                              </span>
+                              <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label>お子様の氏名 <span className="required">*</span></label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 次郎" value={manualChildName2} onChange={(e) => setManualChildName2(e.target.value)} required />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label>お子様フリガナ <span className="required">*</span></label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ ジロウ" value={manualChildKana2} onChange={(e) => setManualChildKana2(e.target.value)} required />
+                                </div>
+                              </div>
+
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label>生年月日 <span className="required">*</span></label>
+                                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <select className="form-control" style={{ width: '180px' }} value={manualBirthYear2} onChange={(e) => setManualBirthYear2(e.target.value)} required>
+                                    <option value="">-- 年 (和暦/西暦) --</option>
+                                    {yearOptions.map(y => (
+                                      <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                                    ))}
+                                  </select>
+                                  <select className="form-control" style={{ width: '90px' }} value={manualBirthMonth2} onChange={(e) => setManualBirthMonth2(e.target.value)} required>
+                                    <option value="">-- 月 --</option>
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                      <option key={m} value={m.toString()}>{m}月</option>
+                                    ))}
+                                  </select>
+                                  <select className="form-control" style={{ width: '90px' }} value={manualBirthDay2} onChange={(e) => setManualBirthDay2(e.target.value)} required>
+                                    <option value="">-- 日 --</option>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                      <option key={d} value={d.toString()}>{d}日</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 ) : (
                   // Organization fields
