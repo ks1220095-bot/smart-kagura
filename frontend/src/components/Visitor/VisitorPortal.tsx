@@ -213,6 +213,10 @@ export const VisitorPortal: React.FC = () => {
 
 
   const [isBookingActive, setIsBookingActive] = useState(true);
+  const [activeMainTab, setActiveMainTab] = useState<'form' | 'faq'>('form');
+  const [faq1Open, setFaq1Open] = useState(false);
+  const [faq2Open, setFaq2Open] = useState(false);
+  const [faq3Open, setFaq3Open] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [settingsLoading, setSettingsLoading] = useState(true);
 
@@ -1032,62 +1036,102 @@ export const VisitorPortal: React.FC = () => {
       <div className="container" style={{ maxWidth: '800px' }}>
         
         {/* Shrine Header Title Only (Logo image deleted) */}
-        <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
+        <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.65rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)', marginTop: '0.5rem', letterSpacing: '0.15em', fontWeight: 600 }}>
             清瀧神社 ご祈祷予約受付
           </h2>
         </div>
-        
-        {/* Step Indicator */}
-        <div className="no-print" style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          gap: '1.25rem', 
-          marginBottom: '2rem',
-          fontFamily: 'var(--font-serif)',
-          fontSize: '0.85rem',
-          flexWrap: 'wrap'
-        }}>
-          <span style={{ 
-            color: step === 1 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
-            fontWeight: step === 1 ? 'bold' : 'normal',
-            borderBottom: step === 1 ? '2px solid var(--color-mizuiro)' : 'none',
-            paddingBottom: '0.25rem',
-            whiteSpace: 'nowrap'
-          }}>1. 祈祷区分の選択</span>
-          <span style={{ 
-            color: step === 2 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
-            fontWeight: step === 2 ? 'bold' : 'normal',
-            borderBottom: step === 2 ? '2px solid var(--color-mizuiro)' : 'none',
-            paddingBottom: '0.25rem',
-            whiteSpace: 'nowrap'
-          }}>2. 予約情報の入力</span>
-          <span style={{ 
-            color: step === 3 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
-            fontWeight: step === 3 ? 'bold' : 'normal',
-            borderBottom: step === 3 ? '2px solid var(--color-mizuiro)' : 'none',
-            paddingBottom: '0.25rem',
-            whiteSpace: 'nowrap'
-          }}>3. 入力内容の確認</span>
+
+        {/* Main Tab Switcher */}
+        <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem' }}>
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('form')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeMainTab === 'form' ? '2px solid var(--color-urushi)' : 'none',
+              color: activeMainTab === 'form' ? 'var(--color-urushi)' : 'var(--color-accent-gray)',
+              fontWeight: activeMainTab === 'form' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontFamily: 'var(--font-serif)'
+            }}
+          >
+            ⛩️ ご予約手続き
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('faq')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeMainTab === 'faq' ? '2px solid var(--color-urushi)' : 'none',
+              color: activeMainTab === 'faq' ? 'var(--color-urushi)' : 'var(--color-accent-gray)',
+              fontWeight: activeMainTab === 'faq' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontFamily: 'var(--font-serif)'
+            }}
+          >
+            ❓ よくあるご質問
+          </button>
         </div>
 
-        {errorMsg && (
-          <div className="no-print" style={{ 
-            backgroundColor: '#fdf3f2', 
-            border: '1px solid var(--color-mizuiro)', 
-            color: 'var(--color-mizuiro)', 
-            padding: '1rem', 
-            marginBottom: '1.5rem',
-            borderRadius: '2px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <AlertCircle size={18} />
-            <strong>入力エラー:</strong> {errorMsg}
-          </div>
-        )}
+        {activeMainTab === 'form' ? (
+          <>
+            {/* Step Indicator */}
+            <div className="no-print" style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: '1.25rem', 
+              marginBottom: '2rem',
+              fontFamily: 'var(--font-serif)',
+              fontSize: '0.85rem',
+              flexWrap: 'wrap'
+            }}>
+              <span style={{ 
+                color: step === 1 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
+                fontWeight: step === 1 ? 'bold' : 'normal',
+                borderBottom: step === 1 ? '2px solid var(--color-mizuiro)' : 'none',
+                paddingBottom: '0.25rem',
+                whiteSpace: 'nowrap'
+              }}>1. 祈祷区分の選択</span>
+              <span style={{ 
+                color: step === 2 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
+                fontWeight: step === 2 ? 'bold' : 'normal',
+                borderBottom: step === 2 ? '2px solid var(--color-mizuiro)' : 'none',
+                paddingBottom: '0.25rem',
+                whiteSpace: 'nowrap'
+              }}>2. 予約情報の入力</span>
+              <span style={{ 
+                color: step === 3 ? 'var(--color-mizuiro)' : 'var(--color-accent-gray)', 
+                fontWeight: step === 3 ? 'bold' : 'normal',
+                borderBottom: step === 3 ? '2px solid var(--color-mizuiro)' : 'none',
+                paddingBottom: '0.25rem',
+                whiteSpace: 'nowrap'
+              }}>3. 入力内容の確認</span>
+            </div>
+
+            {errorMsg && (
+              <div className="no-print" style={{ 
+                backgroundColor: '#fdf3f2', 
+                border: '1px solid var(--color-mizuiro)', 
+                color: 'var(--color-mizuiro)', 
+                padding: '1rem', 
+                marginBottom: '1.5rem',
+                borderRadius: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem'
+              }}>
+                <AlertCircle size={18} />
+                <strong>入力エラー:</strong> {errorMsg}
+              </div>
+            )}
 
         {/* STEP 1: SELECT BOOKING TYPE */}
         {step === 1 && (
@@ -2528,6 +2572,140 @@ export const VisitorPortal: React.FC = () => {
           </div>
         )}
 
+          </>
+        ) : (
+          /* FAQ Tab Display */
+          <div className="card kamidana-border" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+            <h3 style={{ fontSize: '1.4rem', textAlign: 'center', marginBottom: '2rem', fontFamily: 'var(--font-serif)' }}>
+              ご予約にあたってのよくあるご質問 (FAQ)
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* FAQ 1 */}
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', backgroundColor: '#ffffff' }}>
+                <button
+                  type="button"
+                  onClick={() => setFaq1Open(!faq1Open)}
+                  style={{
+                    width: '100%',
+                    padding: '1.25rem 1.5rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    color: 'var(--color-urushi)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem'
+                  }}
+                >
+                  <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--color-mizuiro)' }}>Q.</span>
+                    <span>本人以外の家族も参列できますか？</span>
+                  </span>
+                  <span style={{ fontSize: '1rem', color: 'var(--color-gold)' }}>{faq1Open ? '▲' : '▼'}</span>
+                </button>
+                {faq1Open && (
+                  <div style={{
+                    padding: '1.25rem 1.5rem',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-washi-dark)',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    color: '#333'
+                  }}>
+                    <strong style={{ color: 'var(--color-urushi-light)' }}>A.</strong> はい、可能でございます。繁忙期（お正月・七五三の時期）では、殿内などでご起立の上、神事ご参列いただく場合がございますのでご了承願います。
+                  </div>
+                )}
+              </div>
+
+              {/* FAQ 2 */}
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', backgroundColor: '#ffffff' }}>
+                <button
+                  type="button"
+                  onClick={() => setFaq2Open(!faq2Open)}
+                  style={{
+                    width: '100%',
+                    padding: '1.25rem 1.5rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    color: 'var(--color-urushi)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem'
+                  }}
+                >
+                  <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--color-mizuiro)' }}>Q.</span>
+                    <span>駐車場は利用できますか？</span>
+                  </span>
+                  <span style={{ fontSize: '1rem', color: 'var(--color-gold)' }}>{faq2Open ? '▲' : '▼'}</span>
+                </button>
+                {faq2Open && (
+                  <div style={{
+                    padding: '1.25rem 1.5rem',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-washi-dark)',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    color: '#333'
+                  }}>
+                    <strong style={{ color: 'var(--color-urushi-light)' }}>A.</strong> はい、利用可能でございます。清瀧神社 境内 裏手にて、12台ほど駐車可能でございます。台数に限りがございますので、ご利用される場合は、ご関係の皆様お声掛けにて乗り合わせていただけますと幸いでございます。
+                  </div>
+                )}
+              </div>
+
+              {/* FAQ 3 */}
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', backgroundColor: '#ffffff' }}>
+                <button
+                  type="button"
+                  onClick={() => setFaq3Open(!faq3Open)}
+                  style={{
+                    width: '100%',
+                    padding: '1.25rem 1.5rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    fontWeight: 'bold',
+                    fontSize: '1.05rem',
+                    color: 'var(--color-urushi)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem'
+                  }}
+                >
+                  <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--color-mizuiro)' }}>Q.</span>
+                    <span>以前の古いお札・お守りを持って行きたいのですが、預かっていただくことは出来ますか？</span>
+                  </span>
+                  <span style={{ fontSize: '1rem', color: 'var(--color-gold)' }}>{faq3Open ? '▲' : '▼'}</span>
+                </button>
+                {faq3Open && (
+                  <div style={{
+                    padding: '1.25rem 1.5rem',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-washi-dark)',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    color: '#333'
+                  }}>
+                    <strong style={{ color: 'var(--color-urushi-light)' }}>A.</strong> はい、預かっております。平時は社務所が開いている時間帯（09:00~16:30 平日・土日・祝祭日)にお声掛けいただけますとお預かりいたします。また、年末年始の時期（旧年中の12月下旬辺り～翌年の中旬頃）は清瀧神社 境内 裏手にて納札所（お札を収める場所）を設けますのでそちらをご利用ください。
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
