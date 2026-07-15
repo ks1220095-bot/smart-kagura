@@ -210,14 +210,27 @@ export const StaffPortal: React.FC = () => {
   const [manualUserBirthMonth, setManualUserBirthMonth] = useState('');
   const [manualUserBirthDay, setManualUserBirthDay] = useState('');
 
-  // 初宮詣の双子の場合に15000円へ、それ以外は通常価格へ自動セット
+  const [manualYakudoshiType, setManualYakudoshiType] = useState<'' | 'maeyaku' | 'honyaku' | 'atoyaku'>('');
+  const [manualFatherName, setManualFatherName] = useState('');
+  const [manualFatherKana, setManualFatherKana] = useState('');
+  const [manualMotherName, setManualMotherName] = useState('');
+  const [manualMotherKana, setManualMotherKana] = useState('');
+  const [manualKotobukiType, setManualKotobukiType] = useState('還暦（61歳）');
+  const [manualKotobukiOtherText, setManualKotobukiOtherText] = useState('');
+  const [manualOrgCustomPrayer1, setManualOrgCustomPrayer1] = useState('');
+
+  // 願意に応じた初穂料の自動設定 (一般フォームと同期)
   useEffect(() => {
     if (manualType === 'individual') {
       if (manualPrayer1 === '初宮詣（お宮参り）') {
         setManualHatsuhoryo(manualIsTwin ? 15000 : 10000);
-      } else if (manualPrayer1 === '七五三詣') {
+      } else if (manualPrayer1 === '七五三詣' || manualPrayer1 === '車祓（お車のお祓い）') {
+        setManualHatsuhoryo(10000);
+      } else {
         setManualHatsuhoryo(5000);
       }
+    } else {
+      setManualHatsuhoryo(10000);
     }
   }, [manualPrayer1, manualIsTwin, manualType]);
 
@@ -328,7 +341,7 @@ export const StaffPortal: React.FC = () => {
       booking_type: manualType,
       booking_date: manualDate,
       booking_time: manualTime,
-      prayer1: manualPrayer1,
+      prayer1: manualType === 'organization' && manualPrayer1 === 'その他（自由入力）' ? manualOrgCustomPrayer1 : manualPrayer1,
       prayer2: manualType === 'organization' ? manualPrayer2 || undefined : undefined,
       hatsuhoryo: manualHatsuhoryo,
       payment_status: 'unpaid',
@@ -368,7 +381,14 @@ export const StaffPortal: React.FC = () => {
       child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
       child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
         ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
-        : undefined
+        : undefined,
+      yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
+      father_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherName || undefined : undefined,
+      father_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherKana || undefined : undefined,
+      mother_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherName || undefined : undefined,
+      mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
+      kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
+      kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined
     };
 
     try {
@@ -393,6 +413,14 @@ export const StaffPortal: React.FC = () => {
       setManualPhone('');
       setManualHasPastPrayer(0);
       setManualNotes('');
+      setManualYakudoshiType('');
+      setManualFatherName('');
+      setManualFatherKana('');
+      setManualMotherName('');
+      setManualMotherKana('');
+      setManualKotobukiType('還暦（61歳）');
+      setManualKotobukiOtherText('');
+      setManualOrgCustomPrayer1('');
       setManualIsTwin(false);
       setManualChildName('');
       setManualChildKana('');
@@ -728,13 +756,13 @@ export const StaffPortal: React.FC = () => {
                     <label>主願意 <span className="required">*</span></label>
                     {manualType === 'individual' ? (
                       <select className="form-control" value={manualPrayer1} onChange={(e) => setManualPrayer1(e.target.value)} required>
-                        {['家内安全', '厄年のお祓い', '八方除け', '除災招福（開運招福）', '方位除け', '安産祈願', '初宮詣（お宮参り）', '七五三詣', '車祓（お車のお祓い）', '商売繁盛', '病気平癒', '合格祈願', '学業成就', '心願成就', '神恩感謝（お礼参り）', '十三参り', '神棚のお祓い（御霊入れ）', '成人祝い', '寿祝い'].map(p => (
+                        {['家内安全', '厄年のお祓い', '八方除け', '除災招福（開運招福）', '方位除け', '安産祈願', '初宮詣（お宮参り）', '七五三詣', '車祓（お車のお祓い）', '商売繁盛', '病気平癒', '合格祈願', '学業成就', '心願成就', '神恩感謝（お礼参り）', '十三参り', '神棚のお祓い（御霊入れ）', '成人祝い', '寿祝い', '交通安全', '良縁祈願（縁結び）', '子授け（子宝）祈願', '留学安全', '渡航安全', '就職祈願'].map(p => (
                           <option key={p} value={p}>{p}</option>
                         ))}
                       </select>
                     ) : (
                       <select className="form-control" value={manualPrayer1} onChange={(e) => setManualPrayer1(e.target.value)} required>
-                        {['社運隆昌', '商売繁盛', '交通安全', '職場安全', '社内安全', '安全祈願', '工事安全', '作業安全', '営業繫栄', '必勝祈願'].map(p => (
+                        {['社運隆昌', '商売繁盛', '交通安全', '職場安全', '社内安全', '安全祈願', '工事安全', '作業安全', '営業繫栄', '必勝祈願', 'その他（自由入力）'].map(p => (
                           <option key={p} value={p}>{p}</option>
                         ))}
                       </select>
@@ -753,6 +781,75 @@ export const StaffPortal: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* 団体祈祷で「その他（自由入力）」が選択された場合 */}
+                {manualType === 'organization' && manualPrayer1 === 'その他（自由入力）' && (
+                  <div className="form-group" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    <label>主願意の手入力 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="例：新社屋落成祈願など"
+                      className="form-control"
+                      value={manualOrgCustomPrayer1}
+                      onChange={(e) => setManualOrgCustomPrayer1(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
+                {/* 個人祈祷で「厄年のお祓い」が選択された場合 */}
+                {manualType === 'individual' && manualPrayer1 === '厄年のお祓い' && (
+                  <div className="form-group" style={{ backgroundColor: 'rgba(211, 56, 28, 0.02)', padding: '0.75rem', borderRadius: '4px', border: '1px solid rgba(211, 56, 28, 0.1)', marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>厄年区分 <span className="required">*</span></label>
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                      {[
+                        { label: '前厄', value: 'maeyaku' },
+                        { label: '本厄', value: 'honyaku' },
+                        { label: '後厄', value: 'atoyaku' }
+                      ].map((item) => (
+                        <label key={item.value} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                          <input
+                            type="radio"
+                            name="manualYakudoshiType"
+                            value={item.value}
+                            checked={manualYakudoshiType === item.value}
+                            onChange={(e) => setManualYakudoshiType(e.target.value as any)}
+                            required
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 個人祈祷で「寿祝い」が選択された場合 */}
+                {manualType === 'individual' && manualPrayer1 === '寿祝い' && (
+                  <div className="form-group" style={{ backgroundColor: 'rgba(197, 160, 89, 0.05)', padding: '0.75rem', borderRadius: '4px', border: '1px solid rgba(197, 160, 89, 0.15)', marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>寿祝いの区分 <span className="required">*</span></label>
+                    <select
+                      className="form-control"
+                      value={manualKotobukiType}
+                      onChange={(e) => setManualKotobukiType(e.target.value)}
+                      required
+                      style={{ marginBottom: manualKotobukiType === 'その他' ? '0.5rem' : '0' }}
+                    >
+                      {['還暦（61歳）', '古希（70歳）', '喜寿（77歳）', '傘寿（80歳）', '米寿（88歳）', '卒寿（90歳）', '白寿（99歳）', '百寿（100歳）', 'その他'].map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                    {manualKotobukiType === 'その他' && (
+                      <input
+                        type="text"
+                        placeholder="例：喜寿のお祝いなど"
+                        className="form-control"
+                        value={manualKotobukiOtherText}
+                        onChange={(e) => setManualKotobukiOtherText(e.target.value)}
+                        required
+                      />
+                    )}
+                  </div>
+                )}
 
                 <div className="grid-2">
                   <div className="form-group">
@@ -952,6 +1049,35 @@ export const StaffPortal: React.FC = () => {
                                       <option key={d} value={d.toString()}>{d}日</option>
                                     ))}
                                   </select>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 初宮詣用のご両親のお名前入力欄 */}
+                          {manualPrayer1 === '初宮詣（お宮参り）' && (
+                            <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)', marginTop: '0.5rem' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
+                                ご両親のお名前 (お札にお名前を併記いたします)
+                              </span>
+                              <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label>お父親の氏名</label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 一郎" value={manualFatherName} onChange={(e) => setManualFatherName(e.target.value)} />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label>フリガナ</label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ イチロウ" value={manualFatherKana} onChange={(e) => setManualFatherKana(e.target.value)} />
+                                </div>
+                              </div>
+                              <div className="form-row">
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label>お母親の氏名</label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 花子" value={manualMotherName} onChange={(e) => setManualMotherName(e.target.value)} />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label>フリガナ</label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={manualMotherKana} onChange={(e) => setManualMotherKana(e.target.value)} />
                                 </div>
                               </div>
                             </div>
