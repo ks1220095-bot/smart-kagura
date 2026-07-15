@@ -298,7 +298,7 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
                     <span style={{ fontSize: '1.05rem', marginBottom: '0.2rem' }}>{slot.time}</span>
                     
                     <span style={{ 
-                      fontSize: '0.7rem', 
+                      fontSize: '0.65rem', 
                       display: 'flex', 
                       alignItems: 'center', 
                       gap: '0.2rem',
@@ -309,10 +309,16 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
                           ? 'var(--color-accent-orange)' 
                           : 'var(--color-accent-gray)'
                     }}>
-                      {displayStatus === 'O' && <CheckCircle2 size={11} />}
-                      {displayStatus === '▲' && <AlertTriangle size={11} />}
-                      {(displayStatus === 'X' || displayStatus === 'X_ORG') && <XCircle size={11} />}
-                      {displayStatus === 'O' ? '空きあり' : displayStatus === '▲' ? '残りわずか' : displayStatus === 'X_ORG' ? '選択不可' : '満席'}
+                      {displayStatus === 'O' && <CheckCircle2 size={10} />}
+                      {displayStatus === '▲' && <AlertTriangle size={10} />}
+                      {(displayStatus === 'X' || displayStatus === 'X_ORG') && <XCircle size={10} />}
+                      {displayStatus === 'O' 
+                        ? `空き (現在${slot.count}組)` 
+                        : displayStatus === '▲' 
+                          ? `残り僅か (${slot.count}組)` 
+                          : displayStatus === 'X_ORG' 
+                            ? '選択不可' 
+                            : `満席 (現在${slot.count}組)`}
                     </span>
                   </button>
                 );
