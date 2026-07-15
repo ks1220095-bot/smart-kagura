@@ -219,6 +219,73 @@ export const StaffPortal: React.FC = () => {
   const [manualKotobukiOtherText, setManualKotobukiOtherText] = useState('');
   const [manualOrgCustomPrayer1, setManualOrgCustomPrayer1] = useState('');
 
+  const [manualPrayerItems, setManualPrayerItems] = useState<any[]>([]);
+
+  const handleAddManualPrayerItem = () => {
+    if (!manualPrayer1) return;
+    const newItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      prayer1: manualType === 'organization' && manualPrayer1 === 'その他（自由入力）' ? manualOrgCustomPrayer1 : manualPrayer1,
+      prayer2: manualType === 'organization' ? manualPrayer2 || undefined : undefined,
+      hatsuhoryo: manualHatsuhoryo,
+      name: manualType === 'individual' ? manualName : undefined,
+      kana: manualType === 'individual' ? manualKana : undefined,
+      company_name: manualType === 'organization' ? manualCompanyName : undefined,
+      company_kana: manualType === 'organization' ? manualCompanyKana : undefined,
+      child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
+      child_kana: manualType === 'individual' ? manualChildKana || undefined : undefined,
+      child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
+        ? `${manualBirthYear}-${manualBirthMonth.padStart(2, '0')}-${manualBirthDay.padStart(2, '0')}`
+        : undefined,
+      child_name2: manualType === 'individual' && manualIsTwin ? manualChildName2 || undefined : undefined,
+      child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
+      child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
+        ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
+        : undefined,
+      is_twin: manualIsTwin ? 1 : 0,
+      yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
+      father_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherName || undefined : undefined,
+      father_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherKana || undefined : undefined,
+      mother_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherName || undefined : undefined,
+      mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
+      kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
+      kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined,
+      notes: (() => {
+        const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
+          ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
+          : '';
+        if (manualNotes && userBday) return `${manualNotes}\n${userBday}`;
+        return manualNotes || userBday || undefined;
+      })()
+    };
+
+    setManualPrayerItems([...manualPrayerItems, newItem]);
+    
+    // Reset specific dynamic fields only
+    setManualPrayer1('家内安全');
+    setManualPrayer2('');
+    setManualHatsuhoryo(5000);
+    setManualYakudoshiType('');
+    setManualKotobukiType('還暦（61歳）');
+    setManualKotobukiOtherText('');
+    setManualOrgCustomPrayer1('');
+    setManualIsTwin(false);
+    setManualChildName('');
+    setManualChildKana('');
+    setManualChildName2('');
+    setManualChildKana2('');
+    setManualBirthYear('');
+    setManualBirthMonth('');
+    setManualBirthDay('');
+    setManualBirthYear2('');
+    setManualBirthMonth2('');
+    setManualBirthDay2('');
+  };
+
+  const handleRemoveManualPrayerItem = (id: string) => {
+    setManualPrayerItems(manualPrayerItems.filter(item => item.id !== id));
+  };
+
   // 願意に応じた初穂料の自動設定 (一般フォームと同期)
   useEffect(() => {
     if (manualType === 'individual') {
@@ -335,68 +402,112 @@ export const StaffPortal: React.FC = () => {
 
   const handleAddManualBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualDate || !manualTime || !manualPrayer1) return;
+    if (!manualDate || !manualTime) return;
 
-    const payload: Booking = {
-      booking_type: manualType,
-      booking_date: manualDate,
-      booking_time: manualTime,
-      prayer1: manualType === 'organization' && manualPrayer1 === 'その他（自由入力）' ? manualOrgCustomPrayer1 : manualPrayer1,
-      prayer2: manualType === 'organization' ? manualPrayer2 || undefined : undefined,
-      hatsuhoryo: manualHatsuhoryo,
-      payment_status: 'unpaid',
-      attending_count: manualAttendingCount === '' ? 1 : manualAttendingCount,
-      
-      name: manualType === 'individual' ? manualName : undefined,
-      kana: manualType === 'individual' ? manualKana : undefined,
-      address: manualType === 'individual' ? manualAddress : undefined,
-      phone: manualType === 'individual' ? manualPhone : undefined,
-      email: manualType === 'individual' ? manualEmail : undefined,
-      
-      company_name: manualType === 'organization' ? manualCompanyName : undefined,
-      company_kana: manualType === 'organization' ? manualCompanyKana : undefined,
-      company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
-      representative_title_name: manualType === 'organization' ? manualRepName : undefined,
-      staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
-      staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
-      staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
-      
-      wants_receipt: 0,
-      has_past_prayer: manualHasPastPrayer,
-      is_twin: manualIsTwin ? 1 : 0,
-      is_manual: 1,
-      notes: (() => {
-        const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
-          ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
-          : '';
-        if (manualNotes && userBday) return `${manualNotes}\n${userBday}`;
-        return manualNotes || userBday || undefined;
-      })(),
-      child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
-      child_kana: manualType === 'individual' ? manualChildKana || undefined : undefined,
-      child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
-        ? `${manualBirthYear}-${manualBirthMonth.padStart(2, '0')}-${manualBirthDay.padStart(2, '0')}`
-        : undefined,
-      child_name2: manualType === 'individual' && manualIsTwin ? manualChildName2 || undefined : undefined,
-      child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
-      child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
-        ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
-        : undefined,
-      yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
-      father_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherName || undefined : undefined,
-      father_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherKana || undefined : undefined,
-      mother_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherName || undefined : undefined,
-      mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
-      kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
-      kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined
-    };
+    // Build batch payloads
+    let batchPayloads: Booking[] = [];
+    if (manualPrayerItems.length > 0) {
+      batchPayloads = manualPrayerItems.map(item => ({
+        booking_type: manualType,
+        booking_date: manualDate,
+        booking_time: manualTime,
+        prayer1: item.prayer1,
+        prayer2: item.prayer2,
+        hatsuhoryo: item.hatsuhoryo,
+        payment_status: 'unpaid',
+        attending_count: manualAttendingCount === '' ? 1 : manualAttendingCount,
+        name: manualType === 'individual' ? (item.name || manualName || '手動登録') : undefined,
+        kana: manualType === 'individual' ? (item.kana || manualKana || 'シュドウトウロク') : undefined,
+        address: manualType === 'individual' ? manualAddress : undefined,
+        phone: manualType === 'individual' ? manualPhone : undefined,
+        email: manualType === 'individual' ? manualEmail : undefined,
+        company_name: manualType === 'organization' ? (item.company_name || manualCompanyName) : undefined,
+        company_kana: manualType === 'organization' ? (item.company_kana || manualCompanyKana) : undefined,
+        company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
+        representative_title_name: manualType === 'organization' ? manualRepName : undefined,
+        staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
+        staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
+        staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
+        wants_receipt: 0,
+        has_past_prayer: manualHasPastPrayer,
+        is_twin: item.is_twin || 0,
+        is_manual: 1,
+        notes: item.notes ? `${item.notes} (代表: ${manualName || manualCompanyName || '手動登録'})` : `申込代表者: ${manualName || manualCompanyName || '手動登録'}`,
+        child_name: item.child_name,
+        child_kana: item.child_kana,
+        child_birthday: item.child_birthday,
+        child_name2: item.child_name2,
+        child_kana2: item.child_kana2,
+        child_birthday2: item.child_birthday2,
+        yakudoshi_type: item.yakudoshi_type,
+        father_name: item.father_name,
+        father_kana: item.father_kana,
+        mother_name: item.mother_name,
+        mother_kana: item.mother_kana,
+        kotobuki_type: item.kotobuki_type,
+        kotobuki_other_text: item.kotobuki_other_text
+      }));
+    } else {
+      if (!manualPrayer1) return;
+      const single: Booking = {
+        booking_type: manualType,
+        booking_date: manualDate,
+        booking_time: manualTime,
+        prayer1: manualType === 'organization' && manualPrayer1 === 'その他（自由入力）' ? manualOrgCustomPrayer1 : manualPrayer1,
+        prayer2: manualType === 'organization' ? manualPrayer2 || undefined : undefined,
+        hatsuhoryo: manualHatsuhoryo,
+        payment_status: 'unpaid',
+        attending_count: manualAttendingCount === '' ? 1 : manualAttendingCount,
+        name: manualType === 'individual' ? manualName : undefined,
+        kana: manualType === 'individual' ? manualKana : undefined,
+        address: manualType === 'individual' ? manualAddress : undefined,
+        phone: manualType === 'individual' ? manualPhone : undefined,
+        email: manualType === 'individual' ? manualEmail : undefined,
+        company_name: manualType === 'organization' ? manualCompanyName : undefined,
+        company_kana: manualType === 'organization' ? manualCompanyKana : undefined,
+        company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
+        representative_title_name: manualType === 'organization' ? manualRepName : undefined,
+        staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
+        staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
+        staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
+        wants_receipt: 0,
+        has_past_prayer: manualHasPastPrayer,
+        is_twin: manualIsTwin ? 1 : 0,
+        is_manual: 1,
+        notes: (() => {
+          const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
+            ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
+            : '';
+          if (manualNotes && userBday) return `${manualNotes}\n${userBday}`;
+          return manualNotes || userBday || undefined;
+        })(),
+        child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
+        child_kana: manualType === 'individual' ? manualChildKana || undefined : undefined,
+        child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
+          ? `${manualBirthYear}-${manualBirthMonth.padStart(2, '0')}-${manualBirthDay.padStart(2, '0')}`
+          : undefined,
+        child_name2: manualType === 'individual' && manualIsTwin ? manualChildName2 || undefined : undefined,
+        child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
+        child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
+          ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
+          : undefined,
+        yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
+        father_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherName || undefined : undefined,
+        father_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherKana || undefined : undefined,
+        mother_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherName || undefined : undefined,
+        mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
+        kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
+        kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined
+      };
+      batchPayloads = [single];
+    }
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([payload]) // Wrap in array as API expects batch payloads
+        body: JSON.stringify(batchPayloads)
       });
 
       if (!res.ok) {
@@ -436,6 +547,7 @@ export const StaffPortal: React.FC = () => {
       setManualUserBirthYear('');
       setManualUserBirthMonth('');
       setManualUserBirthDay('');
+      setManualPrayerItems([]);
       
       fetchBookings();
     } catch (error: any) {
@@ -751,6 +863,39 @@ export const StaffPortal: React.FC = () => {
                   </div>
                 )}
 
+                {/* 手動登録用の複数願意カート表示 */}
+                <div style={{ marginBottom: '1.25rem', padding: '0.85rem', backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.35rem', marginBottom: '0.5rem', fontFamily: 'var(--font-serif)' }}>
+                    📋 追加された願意リスト（{manualPrayerItems.length}件）
+                  </span>
+                  {manualPrayerItems.length === 0 ? (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', lineHeight: '1.4', display: 'block' }}>
+                      ※ご祈祷が1件のみの場合は、下の願意等を入力してそのまま「登録する」を押してください。複数の願意を登録する場合は、願意等の内容を入力して「＋ この願意を追加（複数選択用）」ボタンで追加してください。
+                    </span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {manualPrayerItems.map((item) => (
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', border: '1px solid var(--color-border)', borderRadius: '2px', fontSize: '0.8rem' }}>
+                          <div>
+                            <strong>願意:</strong> {item.prayer1} | <strong>初穂料:</strong> {item.hatsuhoryo.toLocaleString()}円
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveManualPrayerItem(item.id)}
+                            className="btn"
+                            style={{ padding: '0.15rem 0.45rem', fontSize: '0.7rem', backgroundColor: '#fdf3f2', color: '#d3381c', border: '1px solid #ffa39e', cursor: 'pointer' }}
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: '0.8rem', textAlign: 'right', fontWeight: 'bold', color: 'var(--color-mizuiro)', borderTop: '1px solid var(--color-border)', paddingTop: '0.4rem', marginTop: '0.25rem' }}>
+                        初穂料 合計: {manualPrayerItems.reduce((s, i) => s + i.hatsuhoryo, 0).toLocaleString()}円
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid-2">
                   <div className="form-group">
                     <label>主願意 <span className="required">*</span></label>
@@ -850,6 +995,17 @@ export const StaffPortal: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                <div style={{ marginTop: '0.5rem', marginBottom: '1.25rem', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddManualPrayerItem}
+                    className="btn btn-outline-gold"
+                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', cursor: 'pointer' }}
+                  >
+                    ＋ この願意を追加（複数選択用）
+                  </button>
+                </div>
 
                 <div className="grid-2">
                   <div className="form-group">
