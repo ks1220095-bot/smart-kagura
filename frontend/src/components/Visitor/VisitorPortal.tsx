@@ -217,6 +217,7 @@ export const VisitorPortal: React.FC = () => {
 
   // Submission Status
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
+  const [createdBookings, setCreatedBookings] = useState<Booking[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -870,8 +871,9 @@ export const VisitorPortal: React.FC = () => {
       }
 
       const created = await res.json();
-      // Set the first created booking for success screen mapping
-      setCreatedBooking(Array.isArray(created) ? created[0] : created);
+      const createdArray = Array.isArray(created) ? created : [created];
+      setCreatedBookings(createdArray);
+      setCreatedBooking(createdArray[0]);
       
       // Clear persistence and block duplicate submissions
       localStorage.removeItem('kagura_booking_form_state');
@@ -991,8 +993,8 @@ export const VisitorPortal: React.FC = () => {
     );
   }
 
-  if (step === 4 && createdBooking) {
-    return <BookingSuccess booking={createdBooking} onReset={handleReset} />;
+  if (step === 4 && createdBookings.length > 0) {
+    return <BookingSuccess bookings={createdBookings} onReset={handleReset} />;
   }
 
   if (settingsLoading) {

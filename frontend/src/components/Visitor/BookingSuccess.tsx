@@ -3,12 +3,14 @@ import { Check } from 'lucide-react';
 import type { Booking } from '../../types';
 
 interface BookingSuccessProps {
-  booking: Booking;
+  bookings: Booking[];
   onReset: () => void;
 }
 
-export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset }) => {
-  const isIndiv = booking.booking_type === 'individual';
+export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onReset }) => {
+  if (!bookings || bookings.length === 0) return null;
+  const firstBooking = bookings[0];
+  const isIndiv = firstBooking.booking_type === 'individual';
 
   return (
     <div className="card kamidana-border" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
@@ -69,23 +71,28 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
           <tbody>
             <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.15)' }}>
               <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500, width: '35%' }}>予約日時</th>
-              <td style={{ padding: '0.5rem 0', fontWeight: 'bold' }}>{booking.booking_date}　{booking.booking_time}の回</td>
+              <td style={{ padding: '0.5rem 0', fontWeight: 'bold' }}>{firstBooking.booking_date}　{firstBooking.booking_time}の回</td>
             </tr>
             <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.15)' }}>
               <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500 }}>ご祈祷の種類</th>
               <td style={{ padding: '0.5rem 0', fontWeight: 'bold' }}>{isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}</td>
             </tr>
             <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.15)' }}>
-              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500 }}>願意</th>
-              <td style={{ padding: '0.5rem 0', fontWeight: 'bold' }}>
-                {booking.prayer1}
-                {booking.prayer2 ? ` / ${booking.prayer2}` : ''}
+              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500, verticalAlign: 'top' }}>申し込まれた願意</th>
+              <td style={{ padding: '0.5rem 0', fontWeight: 'bold', lineHeight: '1.4' }}>
+                {bookings.map((b, idx) => (
+                  <div key={b.id || idx} style={{ marginBottom: idx < bookings.length - 1 ? '0.35rem' : '0' }}>
+                    <strong>{idx + 1}. {b.prayer1}</strong> 
+                    {b.name ? `（氏名: ${b.name} 様）` : ''}
+                    {b.prayer2 ? ` / ${b.prayer2}` : ''}
+                  </div>
+                ))}
               </td>
             </tr>
             <tr>
-              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500 }}>お初穂料</th>
+              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500 }}>お初穂料合計</th>
               <td style={{ padding: '0.5rem 0', fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>
-                {booking.hatsuhoryo.toLocaleString()}円より お気持ち（当日現金納め）
+                {bookings.reduce((sum, b) => sum + b.hatsuhoryo, 0).toLocaleString()}円より お気持ち（当日現金納め）
               </td>
             </tr>
           </tbody>
@@ -110,12 +117,12 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ booking, onReset
             </li>
             
             {/* Dynamic context warnings */}
-            {(booking.prayer1 === '車祓（お車のお祓い）' || booking.prayer2 === '交通安全') && (
+            {bookings.some(b => b.prayer1 === '車祓（お車のお祓い）' || b.prayer2 === '交通安全') && (
               <li style={{ color: 'var(--color-mizuiro-hover)', fontWeight: 600 }}>
                 ・【車祓の方】お車は駐車場に停めず、神社正面の鳥居をくぐり、参道に停車していただきますようお願いいたします。
               </li>
             )}
-            {booking.prayer1 === '安産祈願' && (
+            {bookings.some(b => b.prayer1 === '安産祈願') && (
               <li style={{ color: 'var(--color-accent-green)', fontWeight: 600 }}>
                 ・【安産祈願の方】すでにお持ちの腹帯（妊婦帯）をご持参いただけますと、ご神前にてお祓いいたします。当日受付時にお渡しください。
               </li>
