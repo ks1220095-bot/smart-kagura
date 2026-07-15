@@ -448,6 +448,30 @@ export const VisitorPortal: React.FC = () => {
     }
   }, []);
 
+  // Prevent browser back button after successful booking to avoid duplicate submissions
+  useEffect(() => {
+    if (createdBooking) {
+      // Push a dummy state to block the first back button click
+      window.history.pushState(null, '', window.location.href);
+
+      const handlePopState = () => {
+        // Clear all form states
+        localStorage.removeItem('kagura_booking_form_state');
+        sessionStorage.removeItem('booking_completed');
+        
+        alert('⚠️ ご予約手続きはすでに完了しております。\n二重予約防止のため、ブラウザの「戻る」ボタンは使用できません。トップページへ戻ります。');
+        
+        // Redirect to top page
+        window.location.href = window.location.origin;
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [createdBooking]);
+
   const fetchTargetBooking = async (id: string) => {
     setChangeLoading(true);
     setChangeError('');
@@ -830,6 +854,7 @@ export const VisitorPortal: React.FC = () => {
   };
 
   const handleReset = () => {
+    setCreatedBooking(null);
     sessionStorage.removeItem('booking_completed');
     localStorage.removeItem('kagura_booking_form_state');
     setStep(1);
@@ -1062,6 +1087,35 @@ export const VisitorPortal: React.FC = () => {
                 </div>
               )
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If already completed and user tries to access forms via direct navigation/back
+  if (isCompleted && step !== 4 && !createdBooking) {
+    return (
+      <div style={{ padding: '3rem 0' }}>
+        <div className="container" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+          <div className="card kamidana-border" style={{ padding: '2.5rem' }}>
+            <h3 style={{ fontSize: '1.45rem', color: 'var(--color-urushi)', marginBottom: '1.25rem', fontFamily: 'var(--font-serif)', fontWeight: 600 }}>
+              ⚠️ ご予約手続きはすでに完了しております
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-accent-gray)', lineHeight: '1.6', marginBottom: '2rem' }}>
+              すでにオンラインでのご予約完了画面が表示されたか、または手続きが終了しております。<br />
+              二重予約防止のため、入力フォームへの再アクセスは制限されています。
+            </p>
+            <button 
+              onClick={() => {
+                sessionStorage.removeItem('booking_completed');
+                localStorage.removeItem('kagura_booking_form_state');
+                window.location.href = window.location.origin;
+              }} 
+              className="btn btn-primary"
+            >
+              新しく予約を行う
+            </button>
           </div>
         </div>
       </div>
