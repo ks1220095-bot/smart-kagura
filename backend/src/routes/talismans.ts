@@ -5,9 +5,9 @@ import * as cheerio from 'cheerio';
 const router = Router();
 
 interface TalismanItem {
-  name: string;
-  image: string;
-  category: 'ofuda' | 'omamori';
+  title: string;
+  imageUrl: string;
+  type: 'ofuda' | 'omamori';
 }
 
 // Memory Cache to prevent repeated heavy scraping requests
@@ -17,14 +17,15 @@ const CACHE_DURATION = 1000 * 60 * 60 * 24; // Cache for 24 hours
 
 // Fallback data in case website structure changes or fetches fail
 const FALLBACK_DATA: TalismanItem[] = [
-  { name: '清瀧神社 御札 (木札)', image: '/talisman_list.jpg', category: 'ofuda' },
-  { name: '交通安全守', image: '/talisman_list.jpg', category: 'omamori' },
-  { name: '厄除守', image: '/talisman_list.jpg', category: 'omamori' },
-  { name: '安産守', image: '/talisman_list.jpg', category: 'omamori' },
-  { name: '健康守', image: '/talisman_list.jpg', category: 'omamori' }
+  { title: '清瀧神社 御札 (木札)', imageUrl: '/talisman_list.jpg', type: 'ofuda' },
+  { title: '清瀧神社 御札 (紙札)', imageUrl: '/talisman_list.jpg', type: 'ofuda' },
+  { title: '交通安全守', imageUrl: '/talisman_list.jpg', type: 'omamori' },
+  { title: '厄除守', imageUrl: '/talisman_list.jpg', type: 'omamori' },
+  { title: '安産守', imageUrl: '/talisman_list.jpg', type: 'omamori' },
+  { title: '健康守', imageUrl: '/talisman_list.jpg', type: 'omamori' }
 ];
 
-async function scrapeCategory(url: string, category: 'ofuda' | 'omamori'): Promise<TalismanItem[]> {
+async function scrapeCategory(url: string, type: 'ofuda' | 'omamori'): Promise<TalismanItem[]> {
   try {
     const response = await axios.get(url, {
       headers: {
@@ -66,20 +67,20 @@ async function scrapeCategory(url: string, category: 'ofuda' | 'omamori'): Promi
         }
       }
 
-      // Clean up names (e.g. remove price tags or extra carriage returns for display)
+      // Clean up names
       name = name.replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
 
       if (src && name && name.length < 100 && !src.includes('logo') && !src.includes('header') && !src.includes('footer')) {
         // Avoid duplicate matches
-        if (!items.find(i => i.name === name)) {
-          items.push({ name, image: src, category });
+        if (!items.find(i => i.title === name)) {
+          items.push({ title: name, imageUrl: src, type });
         }
       }
     });
 
     return items;
   } catch (error) {
-    console.error(`Scraping failed for category ${category} at ${url}:`, error);
+    console.error(`Scraping failed for type ${type} at ${url}:`, error);
     return [];
   }
 }
@@ -95,7 +96,7 @@ router.get('/', async (req, res) => {
   try {
     const [ofudas, omamoris] = await Promise.all([
       scrapeCategory('https://seiryuujinja.com/jyuyohin/ofuda/', 'ofuda'),
-      scrapeCategory('https://seiryuujinja.com/jyuyohin/oammori/', 'omamori')
+      scrapeCategory('https://seiryuujinja.com/jyuyohin/omamori/', 'omamori')
     ]);
 
     const combined = [...ofudas, ...omamoris];
