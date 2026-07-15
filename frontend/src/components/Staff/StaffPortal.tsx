@@ -793,10 +793,10 @@ export const StaffPortal: React.FC = () => {
                     <div className="form-row">
                       <div className="form-group">
                         <label>氏名 <span className="required">*</span></label>
-                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                        <input type="text" className="form-control" value={manualName} onChange={(e) => setManualName(e.target.value)} required />
+                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
                           ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
                         </div>
-                        <input type="text" className="form-control" value={manualName} onChange={(e) => setManualName(e.target.value)} required />
                       </div>
                       <div className="form-group">
                         <label>フリガナ <span className="required">*</span></label>
@@ -879,10 +879,10 @@ export const StaffPortal: React.FC = () => {
                             <div className="form-row" style={{ marginBottom: '0.5rem' }}>
                               <div className="form-group" style={{ margin: 0 }}>
                                 <label>お子様の氏名 <span className="required">*</span></label>
-                                <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                                <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={manualChildName} onChange={(e) => setManualChildName(e.target.value)} required />
+                                <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
                                   ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
                                 </div>
-                                <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={manualChildName} onChange={(e) => setManualChildName(e.target.value)} required />
                               </div>
                               <div className="form-group" style={{ margin: 0 }}>
                                 <label>お子様フリガナ <span className="required">*</span></label>
@@ -966,10 +966,10 @@ export const StaffPortal: React.FC = () => {
                     <div className="form-row">
                       <div className="form-group">
                         <label>企業・団体名 <span className="required">*</span></label>
-                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                        <input type="text" className="form-control" value={manualCompanyName} onChange={(e) => setManualCompanyName(e.target.value)} required />
+                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
                           ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
                         </div>
-                        <input type="text" className="form-control" value={manualCompanyName} onChange={(e) => setManualCompanyName(e.target.value)} required />
                       </div>
                       <div className="form-group">
                         <label>フリガナ <span className="required">*</span></label>
