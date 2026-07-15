@@ -367,10 +367,63 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      <div style={{ fontWeight: 600 }}>{nameDisplay}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600 }}>{nameDisplay}</span>
+                        {b.has_past_prayer === 1 && (
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 'bold',
+                            color: '#7e22ce',
+                            backgroundColor: '#f3e8ff',
+                            border: '1px solid #d8b4fe',
+                            padding: '0.15rem 0.35rem',
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            祈祷歴あり
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
                         {isIndiv ? b.phone : `${b.staff_dept_title_name} (${b.staff_phone})`}
                       </div>
+
+                      {/* Display child details including twins */}
+                      {isIndiv && (b.prayer1 === '初宮詣（お宮参り）' || b.prayer1 === '七五三詣') && b.child_name && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          backgroundColor: '#faf7f0',
+                          border: '1px solid rgba(197, 160, 89, 0.3)',
+                          padding: '0.35rem 0.5rem',
+                          borderRadius: '3px',
+                          marginTop: '0.35rem',
+                          maxWidth: '280px'
+                        }}>
+                          <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
+                            👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana})
+                          </div>
+                          {b.child_birthday && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
+                              生年月日: {b.child_birthday}
+                            </div>
+                          )}
+                          
+                          {/* Second child for twins */}
+                          {b.is_twin === 1 && b.child_name2 && (
+                            <div style={{ borderTop: '1px dashed rgba(197,160,89,0.2)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
+                              <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
+                                👶 第2子: {b.child_name2} ({b.child_kana2})
+                              </div>
+                              {b.child_birthday2 && (
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
+                                  生年月日: {b.child_birthday2}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {b.notes && (
                         <div style={{ 
                           fontSize: '0.75rem', 

@@ -70,6 +70,11 @@ export interface Booking {
   notes?: string;
   created_at?: string;
   is_manual?: number;
+  has_past_prayer?: number;
+  is_twin?: number;
+  child_name2?: string;
+  child_kana2?: string;
+  child_birthday2?: string;
 }
 
 export interface CalendarEvent {

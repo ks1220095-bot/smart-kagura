@@ -200,6 +200,11 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN is_receipt_issued INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN is_cancelled INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN is_changed INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN has_past_prayer INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN is_twin INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN child_name2 TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN child_kana2 TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN child_birthday2 TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -331,6 +336,21 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_changed INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS has_past_prayer INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_twin INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_name2 VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_kana2 VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_birthday2 VARCHAR(50)
     `);
 
     await client.query(`

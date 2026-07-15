@@ -6,8 +6,10 @@ import bookingsRouter from './routes/bookings';
 import eventsRouter from './routes/events';
 import settingsRouter from './routes/settings';
 import notificationsRouter from './routes/notifications';
+import talismansRouter from './routes/talismans';
 
 import { startReminderScheduler } from './services/reminder';
+import { startSheetSyncScheduler } from './services/sheetSync';
 
 dotenv.config();
 
@@ -22,6 +24,7 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/talismans', talismansRouter);
 
 // Database initialization and server boot
 async function startServer() {
@@ -29,6 +32,8 @@ async function startServer() {
     await initDb();
     // Start automated day-before reminder task
     startReminderScheduler();
+    // Start automated 8-hour spreadsheet database sync
+    startSheetSyncScheduler();
     app.listen(Number(port), '0.0.0.0', () => {
       console.log(`[Smart-Kagura Backend] Running on http://0.0.0.0:${port}`);
       console.log(`=== SERVER STARTING (Version 1.1.3 - IPv4 / Bind 0.0.0.0) ===`);

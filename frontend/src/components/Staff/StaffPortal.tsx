@@ -164,6 +164,7 @@ export const StaffPortal: React.FC = () => {
   const [manualStaffName, setManualStaffName] = useState('');
   const [manualStaffPhone, setManualStaffPhone] = useState('');
   const [manualStaffEmail, setManualStaffEmail] = useState('');
+  const [manualHasPastPrayer, setManualHasPastPrayer] = useState<number>(0);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -293,6 +294,8 @@ export const StaffPortal: React.FC = () => {
       staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
       
       wants_receipt: 0,
+      has_past_prayer: manualHasPastPrayer,
+      is_twin: 0,
       is_manual: 1
     };
 
@@ -301,7 +304,7 @@ export const StaffPortal: React.FC = () => {
       const res = await fetch(`${apiUrl}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify([payload]) // Wrap in array as API expects batch payloads
       });
 
       if (!res.ok) {
@@ -316,6 +319,7 @@ export const StaffPortal: React.FC = () => {
       setManualRepName('');
       setManualStaffName('');
       setManualPhone('');
+      setManualHasPastPrayer(0);
       
       fetchBookings();
     } catch (error: any) {
@@ -560,6 +564,77 @@ export const StaffPortal: React.FC = () => {
                   </div>
                 </div>
 
+                {/* リアルタイム空き状況確認ミニカレンダービューア */}
+                {manualDate && (
+                  <div style={{
+                    backgroundColor: '#faf7f0',
+                    border: '1px solid var(--color-gold)',
+                    borderRadius: '4px',
+                    padding: '0.75rem',
+                    marginBottom: '1rem',
+                    fontSize: '0.8rem'
+                  }}>
+                    <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>📅 {manualDate} の時間枠別空き状況 (予約件数 / 最大8枠)</span>
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                      gap: '0.4rem',
+                      maxHeight: '120px',
+                      overflowY: 'auto',
+                      paddingRight: '0.2rem'
+                    }}>
+                      {['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'].map(t => {
+                        const count = bookings.filter(b => b.booking_date === manualDate && b.booking_time === t && Number(b.is_cancelled) === 0).length;
+                        const isFull = count >= 8;
+                        const isSelected = manualTime === t;
+                        
+                        let btnBg = '#ffffff';
+                        let btnColor = 'var(--color-urushi)';
+                        let btnBorder = '1px solid var(--color-border)';
+                        
+                        if (isSelected) {
+                          btnBg = 'var(--color-mizuiro)';
+                          btnColor = '#ffffff';
+                          btnBorder = '1px solid var(--color-mizuiro)';
+                        } else if (isFull) {
+                          btnBg = '#fff1f0';
+                          btnColor = '#f5222d';
+                          btnBorder = '1px solid #ffa39e';
+                        }
+                        
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => !isFull && setManualTime(t)}
+                            disabled={isFull && !isSelected}
+                            style={{
+                              backgroundColor: btnBg,
+                              color: btnColor,
+                              border: btnBorder,
+                              borderRadius: '2px',
+                              padding: '0.3rem 0.5rem',
+                              fontSize: '0.75rem',
+                              cursor: isFull && !isSelected ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <span>{t}</span>
+                            <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>
+                              {isFull ? '満席' : `${count}件/8`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid-2">
                   <div className="form-group">
                     <label>主願意 <span className="required">*</span></label>
@@ -610,6 +685,18 @@ export const StaffPortal: React.FC = () => {
                   </div>
                 </div>
 
+                {/* 過去祈祷歴チェックボックス */}
+                <div className="form-group" style={{ margin: '0.75rem 0 1.25rem 0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.85rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={manualHasPastPrayer === 1}
+                      onChange={(e) => setManualHasPastPrayer(e.target.checked ? 1 : 0)}
+                    />
+                    <span>過去に清瀧神社でご祈祷（お祓い）を受けたことがある</span>
+                  </label>
+                </div>
+
                 <div className="shimenawa-divider" style={{ margin: '1rem 0' }} />
 
                 {manualType === 'individual' ? (
@@ -618,6 +705,9 @@ export const StaffPortal: React.FC = () => {
                     <div className="form-row">
                       <div className="form-group">
                         <label>氏名 <span className="required">*</span></label>
+                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                          ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                        </div>
                         <input type="text" className="form-control" value={manualName} onChange={(e) => setManualName(e.target.value)} required />
                       </div>
                       <div className="form-group">
@@ -646,6 +736,9 @@ export const StaffPortal: React.FC = () => {
                     <div className="form-row">
                       <div className="form-group">
                         <label>企業・団体名 <span className="required">*</span></label>
+                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                          ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                        </div>
                         <input type="text" className="form-control" value={manualCompanyName} onChange={(e) => setManualCompanyName(e.target.value)} required />
                       </div>
                       <div className="form-group">

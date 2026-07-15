@@ -57,48 +57,10 @@ const TIME_SLOTS = [
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
 ];
 
-// Helper: Generate CSV backup and mail to admin
+// Helper: Generate CSV backup (completely bypass email transmission to prevent clogging shrine mailbox)
 async function triggerCSVBackup(db: any) {
-  try {
-    if (process.env.SPREADSHEET_API_URL) {
-      console.log('[Backup Service] Spreadsheet integration active. Skipping CSV backup email transmission.');
-      return;
-    }
-    const result = await db.query(`SELECT * FROM bookings ORDER BY created_at DESC`);
-    if (result.rows.length === 0) return;
-
-    // Build CSV Content
-    const cols = Object.keys(result.rows[0]);
-    const headerRow = cols.join(',');
-    const dataRows = result.rows.map((row: any) => {
-      return cols.map(col => {
-        const val = row[col];
-        if (val === null || val === undefined) return '';
-        // Escape quotes
-        const clean = String(val).replace(/"/g, '""');
-        return `"${clean}"`;
-      }).join(',');
-    });
-    
-    const csvString = '\uFEFF' + [headerRow, ...dataRows].join('\n'); // Add UTF-8 BOM for Excel compatibility
-    const base64Content = Buffer.from(csvString).toString('base64');
-    
-    const timestamp = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }).replace(/[\/\s:]/g, '-');
-    const filename = `bookings_ledger_backup_${timestamp}.csv`;
-    
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'seiryuujinja@gmail.com';
-    
-    console.log(`[Backup Service] Sending transaction CSV backup to ${adminEmail}...`);
-    await sendMail(
-      adminEmail,
-      `【自動バックアップ】清瀧神社ご祈祷予約台帳 (${timestamp})`,
-      `清瀧神社 御中\n\nオンライン予約受付の更新がありましたので、最新の台帳データ（CSVファイル）を送信します。このメールはデータベースの自動バックアップです。`,
-      undefined,
-      [{ filename, content: base64Content }]
-    );
-  } catch (err) {
-    console.error('[Backup Error] Failed to generate or send ledger backup:', err);
-  }
+  console.log('[Backup Service] Skipping CSV backup email transmission (Spreadsheet integration handles ledger synchronization).');
+  return;
 }
 
 // 1. Get slot availability for a specific date
@@ -298,8 +260,9 @@ router.post('/', async (req, res) => {
           wants_receipt, receipt_name, receipt_amount,
           yakudoshi_type, father_name, father_kana, mother_name, mother_kana, child_name, child_kana, child_birthday,
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
-          construction_name, construction_designer, construction_builder, construction_period, notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45)
+          construction_name, construction_designer, construction_builder, construction_period, notes,
+          has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -310,7 +273,8 @@ router.post('/', async (req, res) => {
         b.yakudoshi_type || null, b.father_name || null, b.father_kana || null, b.mother_name || null, b.mother_kana || null, b.child_name || null, b.child_kana || null, b.child_birthday || null,
         b.kotobuki_type || null, b.kotobuki_other_text || null, b.tournament_name || null, b.tournament_schedule || null,
         b.construction_name || null, b.construction_designer || null, b.construction_builder || null, b.construction_period || null,
-        b.notes || null
+        b.notes || null,
+        b.has_past_prayer || 0, b.is_twin || 0, b.child_name2 || null, b.child_kana2 || null, b.child_birthday2 || null, b.is_manual || 0
       ]);
       b.id = result.rows[0].id;
       createdBookings.push(b);
@@ -439,6 +403,9 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご予約の日程変更・キャンセルについて
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+オンラインでの変更・キャンセルは【ご祈祷開始時間の30分前まで】受付しております。
+社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡ください。ご理解・ご協力のほどお願い申し上げます。
+
 ご都合が悪くなった場合の日程変更やキャンセルは、以下のURLからオンラインで行うことができます。
 `;
 
@@ -455,7 +422,12 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
         
         // 5-1. Send visitor confirmation (Skip if manually entered by staff)
-        const isManual = first.is_manual === 1 || (Array.isArray(req.body) ? req.body[0]?.is_manual === 1 : req.body.is_manual === 1);
+        const isManual = 
+          Number(first.is_manual) === 1 || 
+          (first.is_manual as any) === true || 
+          (Array.isArray(req.body) 
+            ? (Number(req.body[0]?.is_manual) === 1 || (req.body[0]?.is_manual as any) === true) 
+            : (Number(req.body.is_manual) === 1 || (req.body.is_manual as any) === true));
         if (visitorEmail && !isManual) {
           await sendMail(visitorEmail, subject, text).catch(err => console.error('Error sending visitor mail:', err));
           await sleep(1000); // 1 second delay to respect Resend Rate Limits (2 req/sec)
@@ -729,8 +701,22 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: '予約情報が見つかりません。' });
     }
 
-    // Capacity checks (only check if date/time changed)
     const existing = checkResult.rows[0];
+
+    // Validate 30-minute deadline (bypass if is_staff = true)
+    const isStaff = req.query.is_staff === 'true';
+    if (!isStaff) {
+      const now = new Date();
+      const jpTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+      const bookingDateTime = new Date(`${existing.booking_date}T${existing.booking_time}:00+09:00`);
+      const diffMins = (bookingDateTime.getTime() - jpTime.getTime()) / (1000 * 60);
+
+      if (diffMins < 30) {
+        return res.status(400).json({ error: 'オンラインでの予約変更は、ご祈祷予定時間の30分前までとなっております。恐れ入りますが、それ以降の日程変更は清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡ください。ご理解・ご協力のほどお願い申し上げます。' });
+      }
+    }
+
+    // Capacity checks (only check if date/time changed)
     if (existing.booking_date !== booking.booking_date || existing.booking_time !== booking.booking_time) {
       const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
       const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
@@ -765,8 +751,9 @@ router.put('/:id', async (req, res) => {
         yakudoshi_type = $27, father_name = $28, father_kana = $29, mother_name = $30, mother_kana = $31, child_name = $32, child_kana = $33, child_birthday = $34,
         kotobuki_type = $35, kotobuki_other_text = $36, tournament_name = $37, tournament_schedule = $38,
         construction_name = $39, construction_designer = $40, construction_builder = $41, construction_period = $42, notes = $43,
+        has_past_prayer = $44, is_twin = $45, child_name2 = $46, child_kana2 = $47, child_birthday2 = $48,
         is_changed = 1
-      WHERE id = $44
+      WHERE id = $49
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
@@ -776,14 +763,21 @@ router.put('/:id', async (req, res) => {
       booking.yakudoshi_type || null, booking.father_name || null, booking.father_kana || null, booking.mother_name || null, booking.mother_kana || null, booking.child_name || null, booking.child_kana || null, booking.child_birthday || null,
       booking.kotobuki_type || null, booking.kotobuki_other_text || null, booking.tournament_name || null, booking.tournament_schedule || null,
       booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null,
-      booking.notes || null, req.params.id
+      booking.notes || null,
+      booking.has_past_prayer || 0, booking.is_twin || 0, booking.child_name2 || null, booking.child_kana2 || null, booking.child_birthday2 || null,
+      req.params.id
     ]);
 
     const updatedBooking = { ...booking, id: parseInt(req.params.id) };
 
-    // Send rescheduling confirmation mail
+    // Send rescheduling confirmation mail (Skip if manually entered or changed by staff)
+    const isManualChange = 
+      Number(booking.is_manual) === 1 || 
+      (booking.is_manual as any) === true || 
+      isStaff;
+
     const visitorEmail = booking.booking_type === 'individual' ? booking.email : booking.staff_email;
-    if (visitorEmail) {
+    if (visitorEmail && !isManualChange) {
       const isIndiv = booking.booking_type === 'individual';
       const subject = `【清瀧神社】ご祈祷予約の「変更」完了のお知らせ`;
       let text = `${isIndiv ? `${booking.name} 様` : `${booking.company_name}\n担当 ${booking.staff_dept_title_name} 様`}
@@ -859,6 +853,19 @@ router.delete('/:id', async (req, res) => {
     }
 
     const target = checkResult.rows[0];
+
+    // Validate 30-minute deadline (bypass if hard delete or is_staff query is true)
+    const isStaff = req.query.is_staff === 'true' || hardDelete;
+    if (!isStaff) {
+      const now = new Date();
+      const jpTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+      const bookingDateTime = new Date(`${target.booking_date}T${target.booking_time}:00+09:00`);
+      const diffMins = (bookingDateTime.getTime() - jpTime.getTime()) / (1000 * 60);
+
+      if (diffMins < 30) {
+        return res.status(400).json({ error: 'オンラインでのキャンセルは、ご祈祷予定時間の30分前までとなっております。恐れ入りますが、それ以降のキャンセル・欠席のご連絡は清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡ください。ご理解・ご協力のほどお願い申し上げます。' });
+      }
+    }
 
     if (hardDelete) {
       // Physical delete

@@ -51,6 +51,17 @@ const LONGEVITY_TYPES = [
   '米寿（88歳）', '卒寿（90歳）', '白寿（99歳）', '百寿（100歳）', 'その他'
 ];
 
+const getEraString = (y: number) => {
+  if (y >= 2019) {
+    const reiwa = y - 2018;
+    const term = y === 2019 ? '令和元年 (平成31年)' : `令和${reiwa}年`;
+    return `${term} / ${y}年`;
+  } else {
+    const heisei = y - 1988;
+    return `平成${heisei}年 / ${y}年`;
+  }
+};
+
 interface PrayerItem {
   id: string;
   prayer1: string;
@@ -68,6 +79,10 @@ interface PrayerItem {
   mother_kana?: string;
   kotobuki_type?: string;
   kotobuki_other_text?: string;
+  is_twin?: number;
+  child_name2?: string;
+  child_kana2?: string;
+  child_birthday2?: string;
 }
 
 export const VisitorPortal: React.FC = () => {
@@ -83,6 +98,30 @@ export const VisitorPortal: React.FC = () => {
   const [attendingCount, setAttendingCount] = useState<number | ''>(1);
   const [prayerItems, setPrayerItems] = useState<PrayerItem[]>([]);
 
+  // Calligraphy warnings, past prayer logs, twin baby forms and FAQ states
+  const [hasPastPrayer, setHasPastPrayer] = useState<number>(0);
+  const [isTwin, setIsTwin] = useState(false);
+  const [childName2, setChildName2] = useState('');
+  const [childKana2, setChildKana2] = useState('');
+  const [childBirthday2, setChildBirthday2] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Child birthday dropdown segments
+  const [birthYear, setBirthYear] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthDay, setBirthDay] = useState('');
+
+  const [birthYear2, setBirthYear2] = useState('');
+  const [birthMonth2, setBirthMonth2] = useState('');
+  const [birthDay2, setBirthDay2] = useState('');
+
+  // Talisman viewer modal states (scraping)
+  const [talismansList, setTalismansList] = useState<any[]>([]);
+  const [showTalismanViewer, setShowTalismanViewer] = useState(false);
+  const [loadingTalismans, setLoadingTalismans] = useState(false);
+  const [syncingTalismans, setSyncingTalismans] = useState(false);
+  const [talismanFilterCategory, setTalismanFilterCategory] = useState<'all' | 'ofuda' | 'omamori'>('all');
+
   // Reset dynamic fields when main prayer changes to prevent leftover data
   useEffect(() => {
     setYakudoshiType('');
@@ -96,11 +135,15 @@ export const VisitorPortal: React.FC = () => {
     setKotobukiType('');
     setKotobukiOtherText('');
     // Auto-fill typical price
-    const found = INDIVIDUAL_PRAYERS.find(p => p.value === prayer1);
-    if (found) {
-      setHatsuhoryo(found.price);
+    if (prayer1 === '初宮詣（お宮参り）' && isTwin) {
+      setHatsuhoryo(15000);
+    } else {
+      const found = INDIVIDUAL_PRAYERS.find(p => p.value === prayer1);
+      if (found) {
+        setHatsuhoryo(found.price);
+      }
     }
-  }, [prayer1]);
+  }, [prayer1, isTwin]);
 
   // Individual Form fields
   const [name, setName] = useState('');
@@ -271,6 +314,109 @@ export const VisitorPortal: React.FC = () => {
     }
   }, []);
 
+  // compiled child birthdate hooks
+  useEffect(() => {
+    if (birthYear && birthMonth && birthDay) {
+      setChildBirthday(`${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`);
+    } else {
+      setChildBirthday('');
+    }
+  }, [birthYear, birthMonth, birthDay]);
+
+  useEffect(() => {
+    if (birthYear2 && birthMonth2 && birthDay2) {
+      setChildBirthday2(`${birthYear2}-${birthMonth2.padStart(2, '0')}-${birthDay2.padStart(2, '0')}`);
+    } else {
+      setChildBirthday2('');
+    }
+  }, [birthYear2, birthMonth2, birthDay2]);
+
+  // Save fields on changes (skip complete screen)
+  const isCompleted = sessionStorage.getItem('booking_completed') === 'true';
+  useEffect(() => {
+    if (isCompleted || step === 4) return;
+
+    const stateToSave = {
+      step, bookingType, selectedDate, selectedTime,
+      prayer1, prayer2, hatsuhoryo, attendingCount, prayerItems,
+      name, kana, address, addressKana, phone, email,
+      companyName, companyKana, companyAddress, companyAddressKana,
+      representativeTitleName, staffDeptTitleName, staffPhone, staffEmail,
+      talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
+      hasPastPrayer, isTwin, childName2, childKana2, notes,
+      birthYear, birthMonth, birthDay,
+      birthYear2, birthMonth2, birthDay2
+    };
+    localStorage.setItem('kagura_booking_form_state', JSON.stringify(stateToSave));
+  }, [
+    step, bookingType, selectedDate, selectedTime,
+    prayer1, prayer2, hatsuhoryo, attendingCount, prayerItems,
+    name, kana, address, addressKana, phone, email,
+    companyName, companyKana, companyAddress, companyAddressKana,
+    representativeTitleName, staffDeptTitleName, staffPhone, staffEmail,
+    talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
+    hasPastPrayer, isTwin, childName2, childKana2, notes,
+    birthYear, birthMonth, birthDay,
+    birthYear2, birthMonth2, birthDay2
+  ]);
+
+  // Restore fields on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('kagura_booking_form_state');
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        if (state.step) setStep(state.step);
+        if (state.bookingType) setBookingType(state.bookingType);
+        if (state.selectedDate) setSelectedDate(state.selectedDate);
+        if (state.selectedTime) setSelectedTime(state.selectedTime);
+        if (state.prayer1) setPrayer1(state.prayer1);
+        if (state.prayer2) setPrayer2(state.prayer2);
+        if (state.hatsuhoryo) setHatsuhoryo(state.hatsuhoryo);
+        if (state.attendingCount) setAttendingCount(state.attendingCount);
+        if (state.prayerItems) setPrayerItems(state.prayerItems);
+        
+        if (state.name) setName(state.name);
+        if (state.kana) setKana(state.kana);
+        if (state.address) setAddress(state.address);
+        if (state.addressKana) setAddressKana(state.addressKana);
+        if (state.phone) setPhone(state.phone);
+        if (state.email) setEmail(state.email);
+
+        if (state.companyName) setCompanyName(state.companyName);
+        if (state.companyKana) setCompanyKana(state.companyKana);
+        if (state.companyAddress) setCompanyAddress(state.companyAddress);
+        if (state.companyAddressKana) setCompanyAddressKana(state.companyAddressKana);
+        if (state.representativeTitleName) setRepresentativeTitleName(state.representativeTitleName);
+        if (state.staffDeptTitleName) setStaffDeptTitleName(state.staffDeptTitleName);
+        if (state.staffPhone) setStaffPhone(state.staffPhone);
+        if (state.staffEmail) setStaffEmail(state.staffEmail);
+
+        if (state.talismanName) setTalismanName(state.talismanName);
+        if (state.additionalTalismans) setAdditionalTalismans(state.additionalTalismans);
+        if (state.wantsReceipt !== undefined) setWantsReceipt(state.wantsReceipt);
+        if (state.receiptName) setReceiptName(state.receiptName);
+        if (state.receiptAmount) setReceiptAmount(state.receiptAmount);
+
+        if (state.hasPastPrayer !== undefined) setHasPastPrayer(state.hasPastPrayer);
+        if (state.isTwin !== undefined) setIsTwin(state.isTwin);
+        if (state.childName2) setChildName2(state.childName2);
+        if (state.childKana2) setChildKana2(state.childKana2);
+        if (state.notes) setNotes(state.notes);
+
+        if (state.birthYear) setBirthYear(state.birthYear);
+        if (state.birthMonth) setBirthMonth(state.birthMonth);
+        if (state.birthDay) setBirthDay(state.birthDay);
+
+        if (state.birthYear2) setBirthYear2(state.birthYear2);
+        if (state.birthMonth2) setBirthMonth2(state.birthMonth2);
+        if (state.birthDay2) setBirthDay2(state.birthDay2);
+      } catch (e) {
+        console.error('Failed to restore form state:', e);
+      }
+    }
+  }, []);
+
   const fetchTargetBooking = async (id: string) => {
     setChangeLoading(true);
     setChangeError('');
@@ -408,9 +554,17 @@ export const VisitorPortal: React.FC = () => {
       return;
     }
     if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') {
-      if (!childName.trim() || !childKana.trim() || !childBirthday) {
-        alert('お子様のお名前、フリガナ、生年月日は必須です。');
-        return;
+      const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
+      if (isCurrentTwin) {
+        if (!childName.trim() || !childKana.trim() || !childBirthday || !childName2.trim() || !childKana2.trim() || !childBirthday2) {
+          alert('双子のお子様お二人分のお名前、フリガナ、生年月日はすべて必須です。');
+          return;
+        }
+      } else {
+        if (!childName.trim() || !childKana.trim() || !childBirthday) {
+          alert('お子様のお名前、フリガナ、生年月日は必須です。');
+          return;
+        }
       }
       if (!fatherName.trim() && !motherName.trim()) {
         alert('ご両親（父親または母親）のいずれか一方の氏名は入力してください。');
@@ -427,6 +581,7 @@ export const VisitorPortal: React.FC = () => {
     }
 
     // Add to prayerItems
+    const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
     const newItem: PrayerItem = {
       id: Math.random().toString(36).substring(2, 9),
       prayer1,
@@ -439,10 +594,14 @@ export const VisitorPortal: React.FC = () => {
       child_birthday: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childBirthday : undefined,
       father_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherName : undefined,
       father_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherKana : undefined,
-      mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五参詣') ? motherName : undefined,
+      mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherName : undefined,
       mother_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherKana : undefined,
       kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
       kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
+      is_twin: isCurrentTwin ? 1 : 0,
+      child_name2: isCurrentTwin ? childName2 : undefined,
+      child_kana2: isCurrentTwin ? childKana2 : undefined,
+      child_birthday2: isCurrentTwin ? childBirthday2 : undefined
     };
 
     setPrayerItems([...prayerItems, newItem]);
@@ -459,6 +618,16 @@ export const VisitorPortal: React.FC = () => {
     setPrayerName('');
     setPrayerKana('');
     setHatsuhoryo(5000);
+    setIsTwin(false);
+    setChildName2('');
+    setChildKana2('');
+    setChildBirthday2('');
+    setBirthYear('');
+    setBirthMonth('');
+    setBirthDay('');
+    setBirthYear2('');
+    setBirthMonth2('');
+    setBirthDay2('');
   };
 
   const handleRemovePrayerItem = (id: string) => {
@@ -537,7 +706,14 @@ export const VisitorPortal: React.FC = () => {
       construction_name: bookingType === 'organization' && (p1 === '工事安全' || p2 === '工事安全') ? constructionName : undefined,
       construction_designer: bookingType === 'organization' && (p1 === '工事安全' || p2 === '工事安全') ? constructionDesigner : undefined,
       construction_builder: bookingType === 'organization' && (p1 === '工事安全' || p2 === '工事安全') ? constructionBuilder : undefined,
-      construction_period: bookingType === 'organization' && (p1 === '工事安全' || p2 === '工事安全') ? constructionPeriod : undefined
+      construction_period: bookingType === 'organization' && (p1 === '工事安全' || p2 === '工事安全') ? constructionPeriod : undefined,
+
+      has_past_prayer: hasPastPrayer,
+      is_twin: bookingType === 'individual' && isTwin ? 1 : 0,
+      child_name2: bookingType === 'individual' && isTwin ? childName2 : undefined,
+      child_kana2: bookingType === 'individual' && isTwin ? childKana2 : undefined,
+      child_birthday2: bookingType === 'individual' && isTwin ? childBirthday2 : undefined,
+      notes: notes || undefined
     };
 
     // If batching mode, map cart items to full bookings array
@@ -566,7 +742,12 @@ export const VisitorPortal: React.FC = () => {
           mother_kana: item.mother_kana,
           kotobuki_type: item.kotobuki_type,
           kotobuki_other_text: item.kotobuki_other_text,
-          notes: `申込代表者: ${name} (${kana})`
+          has_past_prayer: hasPastPrayer,
+          is_twin: item.is_twin || 0,
+          child_name2: item.child_name2 || undefined,
+          child_kana2: item.child_kana2 || undefined,
+          child_birthday2: item.child_birthday2 || undefined,
+          notes: notes ? `${notes} (代表: ${name})` : `申込代表者: ${name} (${kana})`
         }))
       : [singlePayload];
 
@@ -592,6 +773,11 @@ export const VisitorPortal: React.FC = () => {
       const created = await res.json();
       // Set the first created booking for success screen mapping
       setCreatedBooking(Array.isArray(created) ? created[0] : created);
+      
+      // Clear persistence and block duplicate submissions
+      localStorage.removeItem('kagura_booking_form_state');
+      sessionStorage.setItem('booking_completed', 'true');
+      
       setStep(4);
       window.scrollTo(0, 0);
     } catch (err: any) {
@@ -603,6 +789,8 @@ export const VisitorPortal: React.FC = () => {
   };
 
   const handleReset = () => {
+    sessionStorage.removeItem('booking_completed');
+    localStorage.removeItem('kagura_booking_form_state');
     setStep(1);
     setPrayerItems([]);
     setSelectedDate('');
@@ -649,6 +837,56 @@ export const VisitorPortal: React.FC = () => {
     setCreatedBooking(null);
     setErrorMsg('');
   };
+
+  const fetchTalismans = async (forceSync = false) => {
+    setShowTalismanViewer(true);
+    if (forceSync) {
+      setSyncingTalismans(true);
+    } else {
+      setLoadingTalismans(true);
+    }
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/talismans${forceSync ? '?sync=true' : ''}`);
+      if (!res.ok) throw new Error('授与品データのフェッチに失敗しました。');
+      const data = await res.json();
+      setTalismansList(data);
+    } catch (err) {
+      console.error(err);
+      alert('授与品一覧の取得に失敗しました。時間をおいて再度お試しいただくか、公式ホームページにて直接ご確認ください。');
+    } finally {
+      setLoadingTalismans(false);
+      setSyncingTalismans(false);
+    }
+  };
+
+  // Double submission block screen on browser-back
+  if (isCompleted && step !== 4) {
+    return (
+      <div style={{ padding: '3rem 0' }}>
+        <div className="container" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="card kamidana-border washi-bg" style={{ padding: '2.5rem', textAlign: 'center', border: '2px solid var(--color-shu)' }}>
+            <h4 style={{ fontSize: '1.25rem', color: 'var(--color-shu)', fontFamily: 'var(--font-serif)', marginBottom: '1rem' }}>
+              ⚠️ ご予約はすでに完了しております
+            </h4>
+            <p style={{ fontSize: '0.9rem', lineHeight: '1.7', color: 'var(--color-urushi)', marginBottom: '2rem' }}>
+              二重予約（多重送信）を防ぐため、ブラウザバックによる再送信は行えません。<br />
+              新しくご祈祷の予約をされる場合は、恐れ入りますが以下のボタンをクリックしてトップページよりお手続きをやり直してください。
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleReset}
+              style={{ padding: '0.6rem 2rem', fontSize: '0.9rem' }}
+            >
+              トップページに戻る
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 4 && createdBooking) {
     return <BookingSuccess booking={createdBooking} onReset={handleReset} />;
@@ -1046,6 +1284,9 @@ export const VisitorPortal: React.FC = () => {
                     <div className="grid-2">
                       <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                         <label>ご祈祷を受ける方の氏名 <span className="required">*</span></label>
+                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                          ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                        </div>
                         <input
                           type="text"
                           className="form-control"
@@ -1146,53 +1387,152 @@ export const VisitorPortal: React.FC = () => {
                 </div>
               )}
 
-              {bookingType === 'individual' && (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') && (
-                <div className="alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>お子様およびご両親の登録情報</h5>
-                  
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>お祝いのお子様の氏名 <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={childName} onChange={(e) => setChildName(e.target.value)} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>お子様フリガナ <span className="required">*</span></label>
-                      <input type="text" className="form-control" placeholder="例：セイリュウ タロウ" value={childKana} onChange={(e) => setChildKana(e.target.value)} />
-                    </div>
-                  </div>
+              {bookingType === 'individual' && (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') && (() => {
+                const currentYear = new Date().getFullYear();
+                const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - i);
+                return (
+                  <div className="alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>お子様およびご両親の登録情報</h5>
 
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>お子様の生年月日 <span className="required">*</span></label>
-                    <input type="date" className="form-control" style={{ maxWidth: '240px' }} value={childBirthday} onChange={(e) => setChildBirthday(e.target.value)} />
-                  </div>
+                    {prayer1 === '初宮詣（お宮参り）' && (
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                          <input
+                            type="checkbox"
+                            checked={isTwin}
+                            onChange={(e) => {
+                              setIsTwin(e.target.checked);
+                              if (!e.target.checked) {
+                                setChildName2('');
+                                setChildKana2('');
+                                setChildBirthday2('');
+                                setBirthYear2('');
+                                setBirthMonth2('');
+                                setBirthDay2('');
+                              }
+                            }}
+                          />
+                          <span>双子のご祈祷（お二人分）を希望する</span>
+                        </label>
+                      </div>
+                    )}
 
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', borderTop: '1px solid rgba(197, 160, 89, 0.3)', paddingTop: '0.5rem' }}>
-                    ※ご両親の氏名は片親のみの入力（いずれか一方のみ）でもご予約いただけます。
-                  </div>
+                    <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
+                        {isTwin ? 'お子様（一人目）' : 'お子様情報'}
+                      </span>
+                      <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>お子様の氏名 <span className="required">*</span></label>
+                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                          </div>
+                          <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={childName} onChange={(e) => setChildName(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>お子様フリガナ <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：セイリュウ タロウ" value={childKana} onChange={(e) => setChildKana(e.target.value)} />
+                        </div>
+                      </div>
 
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>父親の氏名</label>
-                      <input type="text" className="form-control" placeholder="例：清瀧 健二" value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>生年月日 <span className="required">*</span></label>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <select className="form-control" style={{ width: '180px' }} value={birthYear} onChange={(e) => setBirthYear(e.target.value)}>
+                            <option value="">-- 年 (和暦/西暦) --</option>
+                            {yearOptions.map(y => (
+                              <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                            ))}
+                          </select>
+                          <select className="form-control" style={{ width: '90px' }} value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)}>
+                            <option value="">-- 月 --</option>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                              <option key={m} value={m.toString()}>{m}月</option>
+                            ))}
+                          </select>
+                          <select className="form-control" style={{ width: '90px' }} value={birthDay} onChange={(e) => setBirthDay(e.target.value)}>
+                            <option value="">-- 日 --</option>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                              <option key={d} value={d.toString()}>{d}日</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>父親氏名フリガナ</label>
-                      <input type="text" className="form-control" placeholder="例：セイリュウ ケンジ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
-                    </div>
-                  </div>
 
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>母親の氏名</label>
-                      <input type="text" className="form-control" placeholder="例：清瀧 花子" value={motherName} onChange={(e) => setMotherName(e.target.value)} />
+                    {prayer1 === '初宮詣（お宮参り）' && isTwin && (
+                      <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
+                          お子様（二人目）
+                        </span>
+                        <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>お子様の氏名 <span className="required">*</span></label>
+                            <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.1rem 0 0.3rem 0', lineHeight: '1.3' }}>
+                              ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                            </div>
+                            <input type="text" className="form-control" placeholder="例：清瀧 次郎" value={childName2} onChange={(e) => setChildName2(e.target.value)} />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>お子様フリガナ <span className="required">*</span></label>
+                            <input type="text" className="form-control" placeholder="例：セイリュウ ジロウ" value={childKana2} onChange={(e) => setChildKana2(e.target.value)} />
+                          </div>
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>生年月日 <span className="required">*</span></label>
+                          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <select className="form-control" style={{ width: '180px' }} value={birthYear2} onChange={(e) => setBirthYear2(e.target.value)}>
+                              <option value="">-- 年 (和暦/西暦) --</option>
+                              {yearOptions.map(y => (
+                                <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                              ))}
+                            </select>
+                            <select className="form-control" style={{ width: '90px' }} value={birthMonth2} onChange={(e) => setBirthMonth2(e.target.value)}>
+                              <option value="">-- 月 --</option>
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m.toString()}>{m}月</option>
+                              ))}
+                            </select>
+                            <select className="form-control" style={{ width: '90px' }} value={birthDay2} onChange={(e) => setBirthDay2(e.target.value)}>
+                              <option value="">-- 日 --</option>
+                              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                <option key={d} value={d.toString()}>{d}日</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', borderTop: '1px solid rgba(197, 160, 89, 0.3)', paddingTop: '0.5rem' }}>
+                      ※ご両親の氏名は片親のみの入力（いずれか一方のみ）でもご予約いただけます。
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>母親氏名フリガナ</label>
-                      <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
+
+                    <div className="form-row">
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>父親の氏名</label>
+                        <input type="text" className="form-control" placeholder="例：清瀧 健二" value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>父親氏名フリガナ</label>
+                        <input type="text" className="form-control" placeholder="例：セイリュウ ケンジ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>母親の氏名</label>
+                        <input type="text" className="form-control" placeholder="例：清瀧 花子" value={motherName} onChange={(e) => setMotherName(e.target.value)} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>母親氏名フリガナ</label>
+                        <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {bookingType === 'individual' && prayer1 === '寿祝い' && (
                 <div className="form-group alert-warning" style={{ margin: '1rem 0 0 0' }}>
@@ -1343,6 +1683,9 @@ export const VisitorPortal: React.FC = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>ご本人の氏名 <span className="required">*</span></label>
+                      <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.35rem 0', lineHeight: '1.4' }}>
+                        ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                      </div>
                       <input
                         type="text"
                         className="form-control"
@@ -1427,6 +1770,17 @@ export const VisitorPortal: React.FC = () => {
                       required
                     />
                   </div>
+
+                  <div className="form-group" style={{ margin: '1rem 0 0 0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                      <input
+                        type="checkbox"
+                        checked={hasPastPrayer === 1}
+                        onChange={(e) => setHasPastPrayer(e.target.checked ? 1 : 0)}
+                      />
+                      <span>過去に清瀧神社でご祈祷（お祓い）を受けたことがあります。</span>
+                    </label>
+                  </div>
                 </>
               ) : (
                 // Organization Fields
@@ -1458,6 +1812,9 @@ export const VisitorPortal: React.FC = () => {
 
                   <div className="form-group">
                     <label>お札に書かれるお名前 （お札に墨書きする正式名称） <span className="required">*</span></label>
+                    <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.35rem 0', lineHeight: '1.4' }}>
+                      ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                    </div>
                     <input
                       type="text"
                       className="form-control"
@@ -1565,6 +1922,16 @@ export const VisitorPortal: React.FC = () => {
                         value={additionalTalismans}
                         onChange={(e) => setAdditionalTalismans(e.target.value)}
                       />
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn btn-gold"
+                          onClick={() => fetchTalismans(false)}
+                          style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                        >
+                          🖼️ 授与品（お札・お守り）の一覧と画像を確認する
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1605,8 +1972,38 @@ export const VisitorPortal: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                      <input
+                        type="checkbox"
+                        checked={hasPastPrayer === 1}
+                        onChange={(e) => setHasPastPrayer(e.target.checked ? 1 : 0)}
+                      />
+                      <span>過去に清瀧神社でご祈祷（お祓い）を受けたことがあります。</span>
+                    </label>
+                  </div>
                 </>
               )}
+
+              {/* Shared Considerations & Notes Field */}
+              <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontWeight: 'bold' }}>備考・特別な配慮（任意）</label>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', margin: '0.15rem 0 0.5rem 0', lineHeight: '1.4' }}>
+                    ※お名前の漢字がパソコンで入力できない方や、車椅子をご利用の方がいらっしゃる場合などにご利用ください。<br />
+                    ※こちらにご入力いただいた内容をもとに、社務所よりお電話等でご連絡させていただく場合がございます。
+                  </div>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    placeholder="例：同伴者に車椅子利用者が1名おります。"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    style={{ resize: 'vertical', width: '100%' }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* WARNINGS & PRE-SUBMIT NOTES */}
@@ -1651,6 +2048,70 @@ export const VisitorPortal: React.FC = () => {
               </button>
             </div>
           </form>
+        )}
+
+        {/* FAQ Accordion Section */}
+        {step === 2 && (
+          <div className="card kamidana-border" style={{ marginTop: '2rem', padding: '1.5rem', maxWidth: '800px', margin: '2rem auto' }}>
+            <h4 style={{ fontSize: '1.1rem', marginBottom: '1.25rem', borderBottom: '2px solid var(--color-gold)', paddingBottom: '0.5rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>❓</span> ご予約にあたってのよくある質問（FAQ）
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {[
+                {
+                  q: 'Q. 本人以外の家族も参列できますか？',
+                  a: 'A. はい、可能でございます。ただし、繁忙期（お正月・七五三の時期）では、殿内等でご起立の上、神事に参加していただく等のご協力をお願いすることがございます。'
+                },
+                {
+                  q: 'Q. 駐車場はありますか？',
+                  a: 'A. はい、境内に12台分の駐車スペースがございます。ただし、数に限りがございますので、極力お乗り合わせいただくか、公共交通機関でのご来社をお願いいたします。'
+                },
+                {
+                  q: 'Q. 古いお札やお守りは引き取ってもらえますか？',
+                  a: 'A. はい、可能でございます。毎日午前9時から午後4時30分までの間、社務所受付にてお預かりいたします。また、年末年始（12月25日〜1月15日頃まで）の間は境内に特別納札所を設けておりますので、そちらへ直接お納めいただけます。'
+                }
+              ].map((faq, idx) => (
+                <details
+                  key={idx}
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    backgroundColor: '#ffffff',
+                    padding: '0'
+                  }}
+                >
+                  <summary
+                    style={{
+                      padding: '1rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 'bold',
+                      color: 'var(--color-urushi)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      listStyle: 'none'
+                    }}
+                  >
+                    <span>{faq.q}</span>
+                    <span className="accordion-icon" style={{ fontSize: '0.8rem', color: 'var(--color-gold)' }}>▼</span>
+                  </summary>
+                  <div
+                    style={{
+                      padding: '1rem',
+                      fontSize: '0.85rem',
+                      lineHeight: '1.7',
+                      color: 'var(--color-urushi-light)',
+                      borderTop: '1px dashed var(--color-border)',
+                      backgroundColor: 'var(--color-washi-dark)'
+                    }}
+                  >
+                    {faq.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* STEP 3: CONFIRM RESERVATION INFO */}
@@ -1833,6 +2294,223 @@ export const VisitorPortal: React.FC = () => {
                     ? 'この内容で予約変更を確定する' 
                     : 'この内容で予約を確定する'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 授与品ビューアモーダル */}
+        {showTalismanViewer && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+            padding: '1rem'
+          }}>
+            <div className="card washi-bg kamidana-border" style={{
+              width: '100%',
+              maxWidth: '900px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '1.5rem',
+              border: '2px solid var(--color-gold)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
+            }}>
+              {/* Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderBottom: '2px solid var(--color-gold)',
+                paddingBottom: '0.75rem',
+                marginBottom: '1rem'
+              }}>
+                <h3 style={{ fontSize: '1.2rem', fontFamily: 'var(--font-serif)', margin: 0, color: 'var(--color-urushi)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>⛩️</span> 清瀧神社 授与品（お札・お守り）一覧
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowTalismanViewer(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: 'var(--color-accent-gray)',
+                    lineHeight: 1
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Sub-header / Actions */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                marginBottom: '1rem'
+              }}>
+                {/* Tabs */}
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {[
+                    { value: 'all', label: 'すべて' },
+                    { value: 'ofuda', label: 'お札' },
+                    { value: 'omamori', label: 'お守り' }
+                  ].map(tab => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      className={`btn ${talismanFilterCategory === tab.value ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setTalismanFilterCategory(tab.value as any)}
+                      style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Reload / Sync */}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={syncingTalismans || loadingTalismans}
+                  onClick={() => fetchTalismans(true)}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    fontSize: '0.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    borderColor: 'var(--color-gold)',
+                    color: 'var(--color-gold)'
+                  }}
+                >
+                  {syncingTalismans ? '同期中...' : '🔄 最新の公式情報に更新する'}
+                </button>
+              </div>
+
+              {/* Scrollable grid area */}
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.25rem', marginBottom: '1rem' }}>
+                {loadingTalismans || syncingTalismans ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div className="spinner" />
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
+                      {syncingTalismans ? '公式ホームページより授与品情報をリアルタイム同期中...' : '授与品データを読み込み中...'}
+                    </p>
+                  </div>
+                ) : (
+                  (() => {
+                    const filtered = talismansList.filter(t => {
+                      if (talismanFilterCategory === 'all') return true;
+                      return t.type === talismanFilterCategory;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <p style={{ textAlign: 'center', color: 'var(--color-accent-gray)', fontSize: '0.9rem', padding: '2rem 0' }}>
+                          該当する授与品がありません。
+                        </p>
+                      );
+                    }
+
+                    return (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                        gap: '1rem'
+                      }}>
+                        {filtered.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="card"
+                            style={{
+                              padding: '0.75rem',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '3px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              backgroundColor: '#ffffff',
+                              textAlign: 'center',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.02)'
+                            }}
+                          >
+                            <div style={{
+                              width: '100%',
+                              height: '140px',
+                              backgroundColor: '#f9f9f9',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              borderRadius: '2px',
+                              overflow: 'hidden',
+                              marginBottom: '0.5rem',
+                              border: '1px solid #f0f0f0'
+                            }}>
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.title}
+                                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>画像なし</span>
+                              )}
+                            </div>
+                            <span style={{
+                              fontSize: '0.8rem',
+                              fontWeight: 'bold',
+                              color: 'var(--color-urushi)',
+                              lineHeight: '1.4',
+                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {item.title}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
+              {/* Note and Close button */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTop: '1px solid var(--color-border)',
+                paddingTop: '0.75rem',
+                flexWrap: 'wrap',
+                gap: '0.5rem'
+              }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', margin: 0 }}>
+                  ※名称と画像は、公式ホームページ（seiryuujinja.com）の情報をリアルタイムに取得したものです。
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowTalismanViewer(false)}
+                  style={{ padding: '0.4rem 1.25rem', fontSize: '0.85rem' }}
+                >
+                  閉じる
+                </button>
+              </div>
             </div>
           </div>
         )}
