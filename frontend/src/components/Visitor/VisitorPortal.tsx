@@ -352,7 +352,11 @@ export const VisitorPortal: React.FC = () => {
       talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
       hasPastPrayer, isTwin, childName2, childKana2, notes,
       birthYear, birthMonth, birthDay,
-      birthYear2, birthMonth2, birthDay2
+      birthYear2, birthMonth2, birthDay2,
+      userBirthYear, userBirthMonth, userBirthDay,
+      activeMainTab, childName, childKana, childBirthday,
+      yakudoshiType, fatherName, fatherKana, motherName, motherKana,
+      kotobukiType, kotobukiOtherText
     };
     localStorage.setItem('kagura_booking_form_state', JSON.stringify(stateToSave));
   }, [
@@ -364,7 +368,11 @@ export const VisitorPortal: React.FC = () => {
     talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
     hasPastPrayer, isTwin, childName2, childKana2, notes,
     birthYear, birthMonth, birthDay,
-    birthYear2, birthMonth2, birthDay2
+    birthYear2, birthMonth2, birthDay2,
+    userBirthYear, userBirthMonth, userBirthDay,
+    activeMainTab, childName, childKana, childBirthday,
+    yakudoshiType, fatherName, fatherKana, motherName, motherKana,
+    kotobukiType, kotobukiOtherText
   ]);
 
   // Restore fields on mount
@@ -418,6 +426,22 @@ export const VisitorPortal: React.FC = () => {
         if (state.birthYear2) setBirthYear2(state.birthYear2);
         if (state.birthMonth2) setBirthMonth2(state.birthMonth2);
         if (state.birthDay2) setBirthDay2(state.birthDay2);
+
+        // 新しく追加したステートの復元
+        if (state.userBirthYear) setUserBirthYear(state.userBirthYear);
+        if (state.userBirthMonth) setUserBirthMonth(state.userBirthMonth);
+        if (state.userBirthDay) setUserBirthDay(state.userBirthDay);
+        if (state.activeMainTab) setActiveMainTab(state.activeMainTab);
+        if (state.childName) setChildName(state.childName);
+        if (state.childKana) setChildKana(state.childKana);
+        if (state.childBirthday) setChildBirthday(state.childBirthday);
+        if (state.yakudoshiType) setYakudoshiType(state.yakudoshiType);
+        if (state.fatherName) setFatherName(state.fatherName);
+        if (state.fatherKana) setFatherKana(state.fatherKana);
+        if (state.motherName) setMotherName(state.motherName);
+        if (state.motherKana) setMotherKana(state.motherKana);
+        if (state.kotobukiType) setKotobukiType(state.kotobukiType);
+        if (state.kotobukiOtherText) setKotobukiOtherText(state.kotobukiOtherText);
       } catch (e) {
         console.error('Failed to restore form state:', e);
       }
