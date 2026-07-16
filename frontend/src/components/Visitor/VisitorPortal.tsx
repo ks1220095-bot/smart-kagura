@@ -1162,7 +1162,8 @@ export const VisitorPortal: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '1.5rem 0' }}>
+    <>
+      <div style={{ padding: '1.5rem 0' }}>
       <div className="container" style={{ maxWidth: '800px' }}>
         
         {/* Shrine Header Title Only (Logo image deleted) */}
@@ -2922,6 +2923,66 @@ export const VisitorPortal: React.FC = () => {
         )}
       </div>
     </div>
+
+    {submitting && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+        backdropFilter: 'blur(4px)',
+        transition: 'all 0.3s ease'
+      }}>
+        <div className="card kamidana-border washi-bg" style={{
+          padding: '2.5rem 3rem',
+          textAlign: 'center',
+          maxWidth: '450px',
+          border: '2px solid var(--color-urushi)',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+          animation: 'fadeInUp 0.4s ease'
+        }}>
+          <div className="spinner" style={{ 
+            width: '50px', 
+            height: '50px', 
+            borderWidth: '4px',
+            borderColor: 'var(--color-urushi) transparent var(--color-urushi) transparent',
+            margin: '0 auto 1.5rem auto'
+          }} />
+          <h3 style={{ 
+            fontFamily: 'var(--font-serif)', 
+            color: 'var(--color-urushi)', 
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            marginBottom: '0.75rem'
+          }}>
+            {isEditMode ? '変更内容を送信中' : 'ご祈祷予約を確定中'}
+          </h3>
+          <p style={{ 
+            fontSize: '0.9rem', 
+            color: 'var(--color-shu)', 
+            fontWeight: 'bold',
+            margin: 0,
+            backgroundColor: 'rgba(211, 56, 28, 0.05)',
+            padding: '0.5rem 1rem',
+            borderRadius: '2px',
+            border: '1px solid rgba(211, 56, 28, 0.15)'
+          }}>
+            ⚠️ 画面が切り替わるまで操作しないでください
+          </p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.75rem' }}>
+            ※通信状況により、完了まで数秒かかる場合があります。
+          </p>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 export default VisitorPortal;
