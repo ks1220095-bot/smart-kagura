@@ -183,11 +183,20 @@ async function initSqlite() {
           construction_designer TEXT,
           construction_builder TEXT,
           construction_period TEXT,
-          reminder_sent INTEGER DEFAULT 0,
+           reminder_sent INTEGER DEFAULT 0,
           is_accepted INTEGER DEFAULT 0,
           is_receipt_issued INTEGER DEFAULT 0,
           is_cancelled INTEGER DEFAULT 0,
           is_changed INTEGER DEFAULT 0,
+          has_past_prayer INTEGER DEFAULT 0,
+          is_twin INTEGER DEFAULT 0,
+          child_name2 TEXT,
+          child_kana2 TEXT,
+          child_birthday2 TEXT,
+          is_manual INTEGER DEFAULT 0,
+          car_maker TEXT,
+          car_model TEXT,
+          car_number TEXT,
           notes TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -205,6 +214,10 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_name2 TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_kana2 TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_birthday2 TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN is_manual INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN car_maker TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN car_model TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN car_number TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -314,6 +327,15 @@ async function verifyPostgresSchema() {
         is_receipt_issued INTEGER DEFAULT 0,
         is_cancelled INTEGER DEFAULT 0,
         is_changed INTEGER DEFAULT 0,
+        has_past_prayer INTEGER DEFAULT 0,
+        is_twin INTEGER DEFAULT 0,
+        child_name2 VARCHAR(255),
+        child_kana2 VARCHAR(255),
+        child_birthday2 VARCHAR(50),
+        is_manual INTEGER DEFAULT 0,
+        car_maker VARCHAR(255),
+        car_model VARCHAR(255),
+        car_number VARCHAR(255),
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -351,6 +373,18 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_birthday2 VARCHAR(50)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_manual INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS car_maker VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS car_model VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS car_number VARCHAR(255)
     `);
 
     await client.query(`

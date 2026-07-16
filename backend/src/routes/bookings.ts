@@ -261,8 +261,9 @@ router.post('/', async (req, res) => {
           yakudoshi_type, father_name, father_kana, mother_name, mother_kana, child_name, child_kana, child_birthday,
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
           construction_name, construction_designer, construction_builder, construction_period, notes,
-          has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51)
+          has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
+          car_maker, car_model, car_number
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -274,7 +275,8 @@ router.post('/', async (req, res) => {
         b.kotobuki_type || null, b.kotobuki_other_text || null, b.tournament_name || null, b.tournament_schedule || null,
         b.construction_name || null, b.construction_designer || null, b.construction_builder || null, b.construction_period || null,
         b.notes || null,
-        b.has_past_prayer || 0, b.is_twin || 0, b.child_name2 || null, b.child_kana2 || null, b.child_birthday2 || null, b.is_manual || 0
+        b.has_past_prayer || 0, b.is_twin || 0, b.child_name2 || null, b.child_kana2 || null, b.child_birthday2 || null, b.is_manual || 0,
+        b.car_maker || null, b.car_model || null, b.car_number || null
       ]);
       b.id = result.rows[0].id;
       createdBookings.push(b);
@@ -325,6 +327,11 @@ router.post('/', async (req, res) => {
           if (b.prayer1 === '寿祝い' && b.kotobuki_type) {
             const kLabel = b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type;
             text += `・長寿祝区分　　　: ${kLabel}\n`;
+          }
+          if (b.prayer1 === '車のお祓い' && b.car_maker) {
+            text += `・お車メーカー名　: ${b.car_maker}\n`;
+            text += `・お車車種名　　　: ${b.car_model}\n`;
+            text += `・お車ナンバー　　: ${b.car_number}\n`;
           }
         } else {
           // Org details
@@ -752,8 +759,9 @@ router.put('/:id', async (req, res) => {
         kotobuki_type = $35, kotobuki_other_text = $36, tournament_name = $37, tournament_schedule = $38,
         construction_name = $39, construction_designer = $40, construction_builder = $41, construction_period = $42, notes = $43,
         has_past_prayer = $44, is_twin = $45, child_name2 = $46, child_kana2 = $47, child_birthday2 = $48,
+        car_maker = $49, car_model = $50, car_number = $51,
         is_changed = 1
-      WHERE id = $49
+      WHERE id = $52
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
@@ -765,6 +773,7 @@ router.put('/:id', async (req, res) => {
       booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null,
       booking.notes || null,
       booking.has_past_prayer || 0, booking.is_twin || 0, booking.child_name2 || null, booking.child_kana2 || null, booking.child_birthday2 || null,
+      booking.car_maker || null, booking.car_model || null, booking.car_number || null,
       req.params.id
     ]);
 
