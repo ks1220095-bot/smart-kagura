@@ -1565,9 +1565,6 @@ export const VisitorPortal: React.FC = () => {
                               />
                             </div>
                           </div>
-                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください
-                          </div>
                         </div>
 
                         {/* Wife Section */}
@@ -1616,9 +1613,6 @@ export const VisitorPortal: React.FC = () => {
                               />
                             </div>
                           </div>
-                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください
-                          </div>
                         </div>
                       </div>
                     ) : (
@@ -1633,9 +1627,11 @@ export const VisitorPortal: React.FC = () => {
                             onChange={(e) => setPrayerName(e.target.value)}
                             required
                           />
-                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
-                          </div>
+                          {prayer1 !== '安産祈願' && prayer1 !== '初宮詣（お宮参り）' && (
+                            <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                              ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                            </div>
+                          )}
                         </div>
                         <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                           <label>氏名フリガナ <span className="required">*</span></label>
@@ -1769,9 +1765,11 @@ export const VisitorPortal: React.FC = () => {
                         <div className="form-group" style={{ margin: 0 }}>
                           <label>お子様の氏名 <span className="required">*</span></label>
                           <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={childName} onChange={(e) => setChildName(e.target.value)} />
-                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
-                          </div>
+                          {prayer1 !== '初宮詣（お宮参り）' && (
+                            <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                              ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                            </div>
+                          )}
                         </div>
                         <div className="form-group" style={{ margin: 0 }}>
                           <label>お子様フリガナ <span className="required">*</span></label>
@@ -1813,9 +1811,11 @@ export const VisitorPortal: React.FC = () => {
                           <div className="form-group" style={{ margin: 0 }}>
                             <label>お子様の氏名 <span className="required">*</span></label>
                             <input type="text" className="form-control" placeholder="例：清瀧 次郎" value={childName2} onChange={(e) => setChildName2(e.target.value)} />
-                            <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                              ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
-                            </div>
+                            {prayer1 !== '初宮詣（お宮参り）' && (
+                              <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                                ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                              </div>
+                            )}
                           </div>
                           <div className="form-group" style={{ margin: 0 }}>
                             <label>お子様フリガナ <span className="required">*</span></label>
