@@ -530,8 +530,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
                   {activeSlots.map(slot => (
                     <div key={slot} style={{ display: 'flex', gap: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
                       {/* Time Indicator */}
-                      <div style={{ width: '70px', fontSize: '1.15rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', color: 'var(--color-mizuiro)', paddingTop: '0.2rem' }}>
-                        {slot}
+                      <div style={{ width: '90px', display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingTop: '0.2rem', borderRight: '1px dashed rgba(197, 160, 89, 0.25)', paddingRight: '0.5rem', flexShrink: 0 }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', color: 'var(--color-mizuiro)', lineHeight: 1 }}>
+                          {slot}
+                        </div>
+                        {(() => {
+                          const slotStats = getUniqueGroupStats(grouped[slot]);
+                          return (
+                            <div style={{ fontSize: '0.65rem', color: 'var(--color-accent-gray)', lineHeight: '1.3', marginTop: '0.25rem' }}>
+                              <div style={{ fontWeight: 500 }}>{slotStats.groupsCount}組 ({grouped[slot].length}件)</div>
+                              <div style={{ color: 'var(--color-gold)', fontWeight: 'bold', marginTop: '0.1rem', fontSize: '0.7rem' }}>👥 {slotStats.totalAttending}名</div>
+                            </div>
+                          );
+                        })()}
                       </div>
                       
                       {/* Bookings under this time slot */}

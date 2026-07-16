@@ -25,6 +25,39 @@ const FALLBACK_DATA: TalismanItem[] = [
   { title: '健康守', imageUrl: '/talisman_list.jpg', type: 'omamori' }
 ];
 
+function cleanTitle(col: cheerio.Cheerio<any>, img: cheerio.Cheerio<any>): string {
+  const cloned = col.clone();
+  
+  const ruby = cloned.find('ruby').first();
+  if (ruby.length > 0) {
+    ruby.find('rt, rp').remove();
+    const rubyText = ruby.text().trim();
+    if (rubyText) {
+      const parent = ruby.parent();
+      parent.find('rt, rp').remove();
+      parent.find('br').before('|||');
+      const parentParts = parent.text().split('|||')[0].trim();
+      if (parentParts && parentParts.length < 25) {
+        return parentParts;
+      }
+      return rubyText;
+    }
+  }
+  
+  cloned.find('rt, rp').remove();
+  let titleEl = cloned.find('strong, h3, h4, h5, p').first();
+  if (titleEl.length > 0) {
+    titleEl.find('br').before('|||');
+    let txt = titleEl.text();
+    let firstPart = txt.split('|||')[0].trim();
+    if (firstPart && firstPart.length < 25) {
+      return firstPart;
+    }
+  }
+  
+  return img.attr('alt')?.trim() || '';
+}
+
 async function scrapeCategory(url: string, type: 'ofuda' | 'omamori'): Promise<TalismanItem[]> {
   try {
     const response = await axios.get(url, {
@@ -36,12 +69,14 @@ async function scrapeCategory(url: string, type: 'ofuda' | 'omamori'): Promise<T
     const $ = cheerio.load(response.data);
     const items: TalismanItem[] = [];
 
-    // Scan for image blocks common in WordPress
-    $('.wp-block-image, .wp-block-gallery li, article img, .entry-content img, .post img').each((_, el) => {
-      const img = $(el).is('img') ? $(el) : $(el).find('img');
-      let src = img.attr('src') || img.attr('data-src') || '';
+    $('.wp-block-column').each((_, el) => {
+      const col = $(el);
+      const img = col.find('img').first();
+      if (img.length === 0) return;
       
-      // Resolve relative urls to absolute
+      let src = img.attr('src') || img.attr('data-src') || '';
+      if (!src || src.includes('logo') || src.includes('header') || src.includes('footer')) return;
+      
       if (src && !src.startsWith('http') && !src.startsWith('//')) {
         try {
           src = new URL(src, url).href;
@@ -50,30 +85,11 @@ async function scrapeCategory(url: string, type: 'ofuda' | 'omamori'): Promise<T
         }
       }
       
-      // Parse name from figcaption, alt tag, or adjacent text
-      let name = '';
-      const figcaption = $(el).find('figcaption').text().trim();
-      if (figcaption) {
-        name = figcaption;
-      } else {
-        name = img.attr('alt')?.trim() || '';
-      }
-
-      if (!name) {
-        // Check next sibling texts
-        const nextText = $(el).next().text().trim();
-        if (nextText && nextText.length < 50) {
-          name = nextText;
-        }
-      }
-
-      // Clean up names
-      name = name.replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
-
-      if (src && name && name.length < 100 && !src.includes('logo') && !src.includes('header') && !src.includes('footer')) {
-        // Avoid duplicate matches
-        if (!items.find(i => i.title === name)) {
-          items.push({ title: name, imageUrl: src, type });
+      const title = cleanTitle(col, img);
+      
+      if (src && title && title.length < 100) {
+        if (!items.find(i => i.title === title)) {
+          items.push({ title, imageUrl: src, type });
         }
       }
     });
