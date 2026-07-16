@@ -223,17 +223,59 @@ export const StaffPortal: React.FC = () => {
   const [manualCarModel, setManualCarModel] = useState('');
   const [manualCarNumber, setManualCarNumber] = useState('');
 
+  const [manualAnzanSkipHusband, setManualAnzanSkipHusband] = useState(false);
+  const [manualAnzanSkipWife, setManualAnzanSkipWife] = useState(false);
+
   const [manualPrayerItems, setManualPrayerItems] = useState<any[]>([]);
 
   const handleAddManualPrayerItem = () => {
     if (!manualPrayer1) return;
+
+    if (manualPrayer1 === '安産祈願') {
+      if (manualAnzanSkipHusband && manualAnzanSkipWife) {
+        alert('夫と妻のどちらか一方のお名前は必ず登録してください。');
+        return;
+      }
+      if (!manualAnzanSkipHusband && (!manualFatherName.trim() || !manualFatherKana.trim())) {
+        alert('夫のお名前とフリガナを入力してください（登録しない場合は「夫のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+      if (!manualAnzanSkipWife && (!manualMotherName.trim() || !manualMotherKana.trim())) {
+        alert('妻のお名前とフリガナを入力してください（登録しない場合は「妻のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+    } else {
+      if (manualType === 'individual' && (!manualName.trim() || !manualKana.trim())) {
+        alert('ご祈祷を受けられる方のお名前とフリガナを入力してください。');
+        return;
+      }
+    }
+
+    let resolvedName = manualName;
+    let resolvedKana = manualKana;
+
+    if (manualPrayer1 === '安産祈願') {
+      const parts = [];
+      const kanaParts = [];
+      if (!manualAnzanSkipHusband) {
+        parts.push(`${manualFatherName} (夫)`);
+        kanaParts.push(manualFatherKana);
+      }
+      if (!manualAnzanSkipWife) {
+        parts.push(`${manualMotherName} (妻)`);
+        kanaParts.push(manualMotherKana);
+      }
+      resolvedName = parts.join('・');
+      resolvedKana = kanaParts.join('・');
+    }
+
     const newItem = {
       id: Math.random().toString(36).substring(2, 9),
       prayer1: manualType === 'organization' && manualPrayer1 === 'その他（自由入力）' ? manualOrgCustomPrayer1 : manualPrayer1,
       prayer2: manualType === 'organization' ? manualPrayer2 || undefined : undefined,
       hatsuhoryo: manualHatsuhoryo,
-      name: manualType === 'individual' ? manualName : undefined,
-      kana: manualType === 'individual' ? manualKana : undefined,
+      name: manualType === 'individual' ? resolvedName : undefined,
+      kana: manualType === 'individual' ? resolvedKana : undefined,
       company_name: manualType === 'organization' ? manualCompanyName : undefined,
       company_kana: manualType === 'organization' ? manualCompanyKana : undefined,
       child_name: manualType === 'individual' ? manualChildName || undefined : undefined,
@@ -248,10 +290,10 @@ export const StaffPortal: React.FC = () => {
         : undefined,
       is_twin: manualIsTwin ? 1 : 0,
       yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
-      father_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherName || undefined : undefined,
-      father_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherKana || undefined : undefined,
-      mother_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherName || undefined : undefined,
-      mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
+      father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
+      father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherKana || undefined : undefined,
+      mother_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherName || undefined : undefined,
+      mother_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherKana || undefined : undefined,
       kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
       kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined,
       car_maker: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarMaker || undefined : undefined,
@@ -290,6 +332,12 @@ export const StaffPortal: React.FC = () => {
     setManualCarMaker('');
     setManualCarModel('');
     setManualCarNumber('');
+    setManualFatherName('');
+    setManualFatherKana('');
+    setManualMotherName('');
+    setManualMotherKana('');
+    setManualAnzanSkipHusband(false);
+    setManualAnzanSkipWife(false);
   };
 
   const handleRemoveManualPrayerItem = (id: string) => {
@@ -465,6 +513,45 @@ export const StaffPortal: React.FC = () => {
       }));
     } else {
       if (!manualPrayer1) return;
+
+      if (manualPrayer1 === '安産祈願') {
+        if (manualAnzanSkipHusband && manualAnzanSkipWife) {
+          alert('夫と妻のどちらか一方のお名前は必ず登録してください。');
+          return;
+        }
+        if (!manualAnzanSkipHusband && (!manualFatherName.trim() || !manualFatherKana.trim())) {
+          alert('夫のお名前とフリガナを入力してください（登録しない場合は「夫のお名前を登録しない」にチェックを入れてください）。');
+          return;
+        }
+        if (!manualAnzanSkipWife && (!manualMotherName.trim() || !manualMotherKana.trim())) {
+          alert('妻のお名前とフリガナを入力してください（登録しない場合は「妻のお名前を登録しない」にチェックを入れてください）。');
+          return;
+        }
+      } else {
+        if (manualType === 'individual' && (!manualName.trim() || !manualKana.trim())) {
+          alert('お名前とフリガナを入力してください。');
+          return;
+        }
+      }
+
+      let resolvedName = manualName;
+      let resolvedKana = manualKana;
+
+      if (manualPrayer1 === '安産祈願') {
+        const parts = [];
+        const kanaParts = [];
+        if (!manualAnzanSkipHusband) {
+          parts.push(`${manualFatherName} (夫)`);
+          kanaParts.push(manualFatherKana);
+        }
+        if (!manualAnzanSkipWife) {
+          parts.push(`${manualMotherName} (妻)`);
+          kanaParts.push(manualMotherKana);
+        }
+        resolvedName = parts.join('・');
+        resolvedKana = kanaParts.join('・');
+      }
+
       const single: Booking = {
         booking_type: manualType,
         booking_date: manualDate,
@@ -474,8 +561,8 @@ export const StaffPortal: React.FC = () => {
         hatsuhoryo: manualHatsuhoryo,
         payment_status: 'unpaid',
         attending_count: manualAttendingCount === '' ? 1 : manualAttendingCount,
-        name: manualType === 'individual' ? manualName : undefined,
-        kana: manualType === 'individual' ? manualKana : undefined,
+        name: manualType === 'individual' ? resolvedName : undefined,
+        kana: manualType === 'individual' ? resolvedKana : undefined,
         address: manualType === 'individual' ? manualAddress : undefined,
         phone: manualType === 'individual' ? manualPhone : undefined,
         email: manualType === 'individual' ? manualEmail : undefined,
@@ -511,10 +598,10 @@ export const StaffPortal: React.FC = () => {
           ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
           : undefined,
         yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
-        father_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherName || undefined : undefined,
-        father_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualFatherKana || undefined : undefined,
-        mother_name: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherName || undefined : undefined,
-        mother_kana: manualType === 'individual' && manualPrayer1 === '初宮詣（お宮参り）' ? manualMotherKana || undefined : undefined,
+        father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
+        father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherKana || undefined : undefined,
+        mother_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherName || undefined : undefined,
+        mother_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherKana || undefined : undefined,
         kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
         kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined
       };
@@ -1284,6 +1371,105 @@ export const StaffPortal: React.FC = () => {
                         </div>
                       );
                     })()}
+
+                    {/* 安産祈願用の夫婦のお名前入力欄（Type Narrowingエラーを防ぐためIIFEの外側に配置） */}
+                    {manualPrayer1 === '安産祈願' && (
+                      <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {/* 夫セクション */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>夫（旦那様）のお名前</span>
+                            <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, color: 'var(--color-accent-gray)' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={manualAnzanSkipHusband} 
+                                onChange={(e) => {
+                                  setManualAnzanSkipHusband(e.target.checked);
+                                  if (e.target.checked) {
+                                    setManualFatherName('');
+                                    setManualFatherKana('');
+                                  }
+                                }} 
+                              />
+                              夫の名前を登録しない
+                            </label>
+                          </div>
+                          <div className="form-row" style={{ margin: 0 }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>氏名 {!manualAnzanSkipHusband && <span className="required">*</span>}</label>
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="例：清瀧 一郎" 
+                                value={manualFatherName} 
+                                onChange={(e) => setManualFatherName(e.target.value)} 
+                                disabled={manualAnzanSkipHusband}
+                                required={!manualAnzanSkipHusband}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>フリガナ {!manualAnzanSkipHusband && <span className="required">*</span>}</label>
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="例：セイリュウ イチロウ" 
+                                value={manualFatherKana} 
+                                onChange={(e) => setManualFatherKana(e.target.value)} 
+                                disabled={manualAnzanSkipHusband}
+                                required={!manualAnzanSkipHusband}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 妻セクション */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>妻（妊婦様）のお名前</span>
+                            <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, color: 'var(--color-accent-gray)' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={manualAnzanSkipWife} 
+                                onChange={(e) => {
+                                  setManualAnzanSkipWife(e.target.checked);
+                                  if (e.target.checked) {
+                                    setManualMotherName('');
+                                    setManualMotherKana('');
+                                  }
+                                }} 
+                              />
+                              妻の名前を登録しない
+                            </label>
+                          </div>
+                          <div className="form-row" style={{ margin: 0 }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>氏名 {!manualAnzanSkipWife && <span className="required">*</span>}</label>
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="例：清瀧 花子" 
+                                value={manualMotherName} 
+                                onChange={(e) => setManualMotherName(e.target.value)} 
+                                disabled={manualAnzanSkipWife}
+                                required={!manualAnzanSkipWife}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>フリガナ {!manualAnzanSkipWife && <span className="required">*</span>}</label>
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="例：セイリュウ ハナコ" 
+                                value={manualMotherKana} 
+                                onChange={(e) => setManualMotherKana(e.target.value)} 
+                                disabled={manualAnzanSkipWife}
+                                required={!manualAnzanSkipWife}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   // Organization fields

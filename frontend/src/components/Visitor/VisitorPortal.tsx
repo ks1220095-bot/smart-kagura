@@ -241,6 +241,12 @@ export const VisitorPortal: React.FC = () => {
   const [faq2Open, setFaq2Open] = useState(false);
   const [faq3Open, setFaq3Open] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [anzanHusbandName, setAnzanHusbandName] = useState('');
+  const [anzanHusbandKana, setAnzanHusbandKana] = useState('');
+  const [anzanSkipHusband, setAnzanSkipHusband] = useState(false);
+  const [anzanWifeName, setAnzanWifeName] = useState('');
+  const [anzanWifeKana, setAnzanWifeKana] = useState('');
+  const [anzanSkipWife, setAnzanSkipWife] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
   useEffect(() => {
@@ -627,9 +633,25 @@ export const VisitorPortal: React.FC = () => {
       alert('願意を選択してください。');
       return;
     }
-    if (!prayerName.trim() || !prayerKana.trim()) {
-      alert('ご祈祷を受けられる方のお名前とフリガナを入力してください。');
-      return;
+
+    if (prayer1 === '安産祈願') {
+      if (anzanSkipHusband && anzanSkipWife) {
+        alert('夫と妻のどちらか一方のお名前は必ず登録してください。');
+        return;
+      }
+      if (!anzanSkipHusband && (!anzanHusbandName.trim() || !anzanHusbandKana.trim())) {
+        alert('夫のお名前とフリガナを入力してください（登録しない場合は「夫のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+      if (!anzanSkipWife && (!anzanWifeName.trim() || !anzanWifeKana.trim())) {
+        alert('妻のお名前とフリガナを入力してください（登録しない場合は「妻のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+    } else {
+      if (!prayerName.trim() || !prayerKana.trim()) {
+        alert('ご祈祷を受けられる方のお名前とフリガナを入力してください。');
+        return;
+      }
     }
 
     // Dynamic field validation
@@ -668,22 +690,41 @@ export const VisitorPortal: React.FC = () => {
       return;
     }
 
+    // Resolve displayed names
+    let resolvedName = prayerName;
+    let resolvedKana = prayerKana;
+
+    if (prayer1 === '安産祈願') {
+      const parts = [];
+      const kanaParts = [];
+      if (!anzanSkipHusband) {
+        parts.push(`${anzanHusbandName} (夫)`);
+        kanaParts.push(anzanHusbandKana);
+      }
+      if (!anzanSkipWife) {
+        parts.push(`${anzanWifeName} (妻)`);
+        kanaParts.push(anzanWifeKana);
+      }
+      resolvedName = parts.join('・');
+      resolvedKana = kanaParts.join('・');
+    }
+
     // Add to prayerItems
     const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
     const newItem: PrayerItem = {
       id: Math.random().toString(36).substring(2, 9),
       prayer1,
       hatsuhoryo,
-      name: prayerName,
-      kana: prayerKana,
+      name: resolvedName,
+      kana: resolvedKana,
       yakudoshi_type: prayer1 === '厄年のお祓い' ? yakudoshiType : undefined,
       child_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childName : undefined,
       child_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childKana : undefined,
       child_birthday: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childBirthday : undefined,
-      father_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherName : undefined,
-      father_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherKana : undefined,
-      mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherName : undefined,
-      mother_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherKana : undefined,
+      father_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
+      father_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
+      mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
+      mother_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
       kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
       kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
       is_twin: isCurrentTwin ? 1 : 0,
@@ -699,8 +740,8 @@ export const VisitorPortal: React.FC = () => {
 
     // Auto-fill representative name if empty
     if (prayerItems.length === 0) {
-      if (!name) setName(prayerName);
-      if (!kana) setKana(prayerKana);
+      if (!name) setName(resolvedName);
+      if (!kana) setKana(resolvedKana);
     }
 
     // Reset current prayer fields
@@ -722,6 +763,12 @@ export const VisitorPortal: React.FC = () => {
     setCarMaker('');
     setCarModel('');
     setCarNumber('');
+    setAnzanHusbandName('');
+    setAnzanHusbandKana('');
+    setAnzanSkipHusband(false);
+    setAnzanWifeName('');
+    setAnzanWifeKana('');
+    setAnzanSkipWife(false);
   };
 
   const handleRemovePrayerItem = (id: string) => {
@@ -1470,31 +1517,139 @@ export const VisitorPortal: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid-2">
-                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                        <label>ご祈祷を受ける方の氏名 <span className="required">*</span></label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="例：清瀧 太郎"
-                          value={prayerName}
-                          onChange={(e) => setPrayerName(e.target.value)}
-                        />
-                        <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                          ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                    {prayer1 === '安産祈願' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', gridColumn: 'span 2' }}>
+                        {/* Husband Section */}
+                        <div style={{ border: '1px solid rgba(197, 160, 89, 0.25)', padding: '1rem', borderRadius: '4px', backgroundColor: 'var(--color-washi-dark)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>夫（旦那様）のお名前</span>
+                            <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', margin: 0, color: 'var(--color-accent-gray)' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={anzanSkipHusband} 
+                                onChange={(e) => {
+                                  setAnzanSkipHusband(e.target.checked);
+                                  if (e.target.checked) {
+                                    setAnzanHusbandName('');
+                                    setAnzanHusbandKana('');
+                                  }
+                                }} 
+                              />
+                              夫のお名前を登録しない
+                            </label>
+                          </div>
+                          
+                          <div className="grid-2">
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>氏名 {!anzanSkipHusband && <span className="required">*</span>}</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="例：清瀧 太郎"
+                                value={anzanHusbandName}
+                                onChange={(e) => setAnzanHusbandName(e.target.value)}
+                                disabled={anzanSkipHusband}
+                                required={!anzanSkipHusband}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>フリガナ {!anzanSkipHusband && <span className="required">*</span>}</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="例：セイリュウ タロウ"
+                                value={anzanHusbandKana}
+                                onChange={(e) => setAnzanHusbandKana(e.target.value)}
+                                disabled={anzanSkipHusband}
+                                required={!anzanSkipHusband}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください
+                          </div>
+                        </div>
+
+                        {/* Wife Section */}
+                        <div style={{ border: '1px solid rgba(197, 160, 89, 0.25)', padding: '1rem', borderRadius: '4px', backgroundColor: 'var(--color-washi-dark)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>妻（妊婦様）のお名前</span>
+                            <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', margin: 0, color: 'var(--color-accent-gray)' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={anzanSkipWife} 
+                                onChange={(e) => {
+                                  setAnzanSkipWife(e.target.checked);
+                                  if (e.target.checked) {
+                                    setAnzanWifeName('');
+                                    setAnzanWifeKana('');
+                                  }
+                                }} 
+                              />
+                              妻のお名前を登録しない
+                            </label>
+                          </div>
+                          
+                          <div className="grid-2">
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>氏名 {!anzanSkipWife && <span className="required">*</span>}</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="例：清瀧 花子"
+                                value={anzanWifeName}
+                                onChange={(e) => setAnzanWifeName(e.target.value)}
+                                disabled={anzanSkipWife}
+                                required={!anzanSkipWife}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>フリガナ {!anzanSkipWife && <span className="required">*</span>}</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="例：セイリュウ ハナコ"
+                                value={anzanWifeKana}
+                                onChange={(e) => setAnzanWifeKana(e.target.value)}
+                                disabled={anzanSkipWife}
+                                required={!anzanSkipWife}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください
+                          </div>
                         </div>
                       </div>
-                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                        <label>氏名フリガナ <span className="required">*</span></label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="例：セイリュウ タロウ"
-                          value={prayerKana}
-                          onChange={(e) => setPrayerKana(e.target.value)}
-                        />
+                    ) : (
+                      <div className="grid-2" style={{ gridColumn: 'span 2' }}>
+                        <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                          <label>ご祈祷を受ける方の氏名 <span className="required">*</span></label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="例：清瀧 太郎"
+                            value={prayerName}
+                            onChange={(e) => setPrayerName(e.target.value)}
+                            required
+                          />
+                          <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                            ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                          <label>氏名フリガナ <span className="required">*</span></label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="例：セイリュウ タロウ"
+                            value={prayerKana}
+                            onChange={(e) => setPrayerKana(e.target.value)}
+                            required
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               ) : (
