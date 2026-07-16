@@ -1913,9 +1913,6 @@ export const VisitorPortal: React.FC = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>ご本人の氏名 <span className="required">*</span></label>
-                      <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.35rem 0', lineHeight: '1.4' }}>
-                        ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
-                      </div>
                       <input
                         type="text"
                         className="form-control"
@@ -1924,6 +1921,9 @@ export const VisitorPortal: React.FC = () => {
                         onChange={(e) => setName(e.target.value)}
                         required
                       />
+                      <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.4' }}>
+                        ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>フリガナ <span className="required">*</span></label>
