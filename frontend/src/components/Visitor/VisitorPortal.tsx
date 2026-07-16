@@ -2721,18 +2721,37 @@ export const VisitorPortal: React.FC = () => {
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>画像なし</span>
                               )}
                             </div>
-                            <span style={{
-                              fontSize: '0.8rem',
-                              fontWeight: 'bold',
-                              color: 'var(--color-urushi)',
-                              lineHeight: '1.4',
-                              flex: 1,
+                            <div style={{
                               display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
+                              flexDirection: 'column',
+                              gap: '0.2rem',
+                              flex: 1,
+                              justifyContent: 'center',
+                              alignItems: 'center'
                             }}>
-                              {item.title}
-                            </span>
+                              <span style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 'bold',
+                                color: 'var(--color-urushi)',
+                                lineHeight: '1.4'
+                              }}>
+                                {item.title}
+                              </span>
+                              {item.price && (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 'bold',
+                                  color: 'var(--color-gold)',
+                                  backgroundColor: 'rgba(197, 160, 89, 0.08)',
+                                  padding: '0.1rem 0.4rem',
+                                  borderRadius: '2px',
+                                  marginTop: '0.1rem',
+                                  display: 'inline-block'
+                                }}>
+                                  初穂料: {item.price}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

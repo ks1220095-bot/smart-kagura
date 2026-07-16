@@ -8,6 +8,7 @@ interface TalismanItem {
   title: string;
   imageUrl: string;
   type: 'ofuda' | 'omamori';
+  price?: string;
 }
 
 // Memory Cache to prevent repeated heavy scraping requests
@@ -17,12 +18,12 @@ const CACHE_DURATION = 1000 * 60 * 60 * 24; // Cache for 24 hours
 
 // Fallback data in case website structure changes or fetches fail
 const FALLBACK_DATA: TalismanItem[] = [
-  { title: '清瀧神社 御札 (木札)', imageUrl: '/talisman_list.jpg', type: 'ofuda' },
-  { title: '清瀧神社 御札 (紙札)', imageUrl: '/talisman_list.jpg', type: 'ofuda' },
-  { title: '交通安全守', imageUrl: '/talisman_list.jpg', type: 'omamori' },
-  { title: '厄除守', imageUrl: '/talisman_list.jpg', type: 'omamori' },
-  { title: '安産守', imageUrl: '/talisman_list.jpg', type: 'omamori' },
-  { title: '健康守', imageUrl: '/talisman_list.jpg', type: 'omamori' }
+  { title: '清瀧神社 御札 (木札)', imageUrl: '/talisman_list.jpg', type: 'ofuda', price: '2,000円' },
+  { title: '清瀧神社 御札 (紙札)', imageUrl: '/talisman_list.jpg', type: 'ofuda', price: '800円' },
+  { title: '交通安全守', imageUrl: '/talisman_list.jpg', type: 'omamori', price: '1,000円' },
+  { title: '厄除守', imageUrl: '/talisman_list.jpg', type: 'omamori', price: '600円' },
+  { title: '安産守', imageUrl: '/talisman_list.jpg', type: 'omamori', price: '800円' },
+  { title: '健康守', imageUrl: '/talisman_list.jpg', type: 'omamori', price: '600円' }
 ];
 
 function cleanTitle(col: cheerio.Cheerio<any>, img: cheerio.Cheerio<any>): string {
@@ -58,6 +59,15 @@ function cleanTitle(col: cheerio.Cheerio<any>, img: cheerio.Cheerio<any>): strin
   return img.attr('alt')?.trim() || '';
 }
 
+function extractPrice(col: cheerio.Cheerio<any>): string {
+  const textContent = col.text();
+  const priceMatch = textContent.match(/お初穂料\s*[　\s]*([0-9,]+)\s*円/);
+  if (priceMatch) {
+    return priceMatch[1] + '円';
+  }
+  return '';
+}
+
 async function scrapeCategory(url: string, type: 'ofuda' | 'omamori'): Promise<TalismanItem[]> {
   try {
     const response = await axios.get(url, {
@@ -86,10 +96,11 @@ async function scrapeCategory(url: string, type: 'ofuda' | 'omamori'): Promise<T
       }
       
       const title = cleanTitle(col, img);
+      const price = extractPrice(col);
       
       if (src && title && title.length < 100) {
         if (!items.find(i => i.title === title)) {
-          items.push({ title, imageUrl: src, type });
+          items.push({ title, imageUrl: src, type, price });
         }
       }
     });
@@ -112,7 +123,7 @@ router.get('/', async (req, res) => {
   try {
     const [ofudas, omamoris] = await Promise.all([
       scrapeCategory('https://seiryuujinja.com/jyuyohin/ofuda/', 'ofuda'),
-      scrapeCategory('https://seiryuujinja.com/jyuyohin/omamori/', 'omamori')
+      scrapeCategory('https://seiryuujinja.com/jyuyohin/oammori/', 'omamori')
     ]);
 
     const combined = [...ofudas, ...omamoris];
