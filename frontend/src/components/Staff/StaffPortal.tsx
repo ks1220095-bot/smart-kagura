@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key } from 'lucide-react';
+import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key, Coins } from 'lucide-react';
 import type { Booking } from '../../types';
 import Dashboard from './Dashboard';
 import CalendarView from './CalendarView';
@@ -811,6 +811,7 @@ export const StaffPortal: React.FC = () => {
               <Settings size={16} />
               予約枠上限設定
             </button>
+            <a href="/regi/index.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', backgroundColor: 'transparent', color: 'var(--color-urushi)', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}><Coins size={16} />授与品レジ ↗</a>
           </div>
 
           {/* Quick manual booking add button */}
