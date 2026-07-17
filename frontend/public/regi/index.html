@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="神社専用の授与品レジおよびご祈祷合算日次報告書管理システム。お札・お守り・御朱印・縁起物の在庫管理と会計処理、取引取消機能を備えています。">
   <title>神社授与品レジ ＆ 日次報告書作成システム</title>
   
@@ -61,31 +61,43 @@
               <i class="fa-solid fa-magnifying-glass search-icon"></i>
               <input type="text" id="search-input" placeholder="授与品名・IDで検索...">
             </div>
-            <div class="category-filters">
-              <button class="category-btn active" data-category="all">すべて</button>
-              <button class="category-btn" data-category="ofuda">お札</button>
-              <button class="category-btn" data-category="omamori">お守り</button>
-              <button class="category-btn" data-category="goshuin">御朱印</button>
-              <button class="category-btn" data-category="engimono">縁起物</button>
-              <button class="category-btn" data-category="other">その他</button>
+            
+            <div class="controls-wrapper">
+              <!-- カテゴリフィルター -->
+              <div class="category-filters">
+                <button class="category-btn active" data-category="all">すべて</button>
+                <button class="category-btn" data-category="ofuda">お札</button>
+                <button class="category-btn" data-category="omamori">お守り</button>
+                <button class="category-btn" data-category="goshuin">御朱印</button>
+                <button class="category-btn" data-category="engimono">縁起物</button>
+                <button class="category-btn" data-category="other">その他</button>
+              </div>
+
+              <!-- カラム数コントローラー -->
+              <div class="grid-cols-controller" aria-label="グリッド列数の変更">
+                <button class="col-ctrl-btn" data-cols="1" title="1列で表示"><i class="fa-solid fa-square"></i></button>
+                <button class="col-ctrl-btn active" data-cols="2" title="2列で表示"><i class="fa-solid fa-grip-lines-vertical"></i></button>
+                <button class="col-ctrl-btn" data-cols="3" title="3列で表示"><i class="fa-solid fa-grip"></i></button>
+                <button class="col-ctrl-btn" data-cols="4" title="4列で表示"><i class="fa-solid fa-table-cells"></i></button>
+              </div>
             </div>
           </div>
           
-          <div id="items-grid" class="items-grid">
+          <div id="items-grid" class="items-grid cols-2">
             <div class="loading-spinner">
               <i class="fa-solid fa-circle-notch fa-spin"></i> 授与品データを読み込み中...
             </div>
           </div>
         </div>
         
-        <!-- カート（会計）エリア -->
-        <aside class="cart-area" aria-label="会計カート">
+        <!-- カート（会計）エリア (PC・タブレット用) -->
+        <aside class="cart-area" id="cart-desktop-aside" aria-label="会計カート">
           <h2 class="cart-title"><i class="fa-solid fa-basket-shopping"></i> 授与カート</h2>
           
           <div id="cart-items-list" class="cart-items-list">
             <div class="cart-empty">
               <i class="fa-solid fa-leaf empty-icon"></i>
-              <p>カートは空です。<br>授与品の数量を選択し、「追加」ボタンを押してください。</p>
+              <p>カートは空です。<br>写真タップで詳細確認、または個数を選んでカートに追加してください。</p>
             </div>
           </div>
           
@@ -123,7 +135,7 @@
       </div>
     </section>
 
-    <!-- 2. 取引履歴パネル -->
+    <!-- 2. 当日取引履歴パネル -->
     <section id="panel-history" class="tab-panel" role="tabpanel">
       <div class="history-container">
         <div class="history-header">
@@ -178,41 +190,157 @@
       </div>
     </section>
 
-    <!-- 4. 在庫・マスタ管理パネル -->
+    <!-- 4. 在庫・マスタ管理パネル (ビジュアルカードエディタへ刷新) -->
     <section id="panel-master" class="tab-panel" role="tabpanel">
       <div class="master-container">
         <div class="master-header">
-          <h2>授与品 在庫一覧 ＆ クイック調整</h2>
-          <span class="sub-text">※ 詳細な追加・編集はスプレッドシート上で行ってください。</span>
+          <h2>授与品 ビジュアル管理 ＆ 編集</h2>
+          <button id="btn-show-add-item" class="btn-primary"><i class="fa-solid fa-plus"></i> 新規授与品を登録</button>
         </div>
         
-        <div class="table-wrapper">
-          <table id="master-table" class="master-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>画像</th>
-                <th>授与品名</th>
-                <th>初穂料</th>
-                <th>在庫数</th>
-                <th>クイック調整</th>
-                <th>備考</th>
-              </tr>
-            </thead>
-            <tbody id="master-table-body">
-              <!-- JSで動的に追加されます -->
-            </tbody>
-          </table>
+        <!-- 管理画面側カラムコントローラー -->
+        <div class="search-filter-bar" style="margin-bottom: 1.5rem; justify-content: flex-end;">
+          <div class="grid-cols-controller" id="master-cols-controller" aria-label="管理グリッド列数の変更">
+            <button class="col-ctrl-btn" data-cols="1"><i class="fa-solid fa-square"></i></button>
+            <button class="col-ctrl-btn active" data-cols="2"><i class="fa-solid fa-grip-lines-vertical"></i></button>
+            <button class="col-ctrl-btn" data-cols="3"><i class="fa-solid fa-grip"></i></button>
+            <button class="col-ctrl-btn" data-cols="4"><i class="fa-solid fa-table-cells"></i></button>
+          </div>
+        </div>
+        
+        <div id="master-grid" class="items-grid cols-2">
+          <!-- JSで動的にビジュアルカード型エディタが描画されます -->
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- トースト通知 -->
-  <div id="toast-container" class="toast-container"></div>
+  <!-- スマホ用フローティングカートボタン＆ハーフシートコンテナ -->
+  <div id="mobile-cart-bar" class="mobile-cart-bar">
+    <div class="mobile-cart-bar-inner">
+      <span><i class="fa-solid fa-basket-shopping"></i> カート (<span id="mobile-cart-count">0</span>)</span>
+      <span id="mobile-cart-total" style="font-weight: 700;">0 円</span>
+    </div>
+  </div>
+  
+  <div id="mobile-cart-sheet" class="mobile-cart-sheet">
+    <div class="mobile-cart-sheet-backdrop" id="mobile-cart-backdrop"></div>
+    <div class="mobile-cart-sheet-content">
+      <div class="mobile-cart-sheet-header">
+        <h3><i class="fa-solid fa-basket-shopping"></i> カート詳細</h3>
+        <button id="btn-close-mobile-cart" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="mobile-cart-sheet-body" id="mobile-cart-items-list-container">
+        <!-- JSでカート一覧がコピーされます -->
+      </div>
+      <div class="mobile-cart-sheet-footer" id="mobile-cart-summary-container">
+        <!-- デスクトップカートからサマリー設定がミラーコピーされます -->
+      </div>
+    </div>
+  </div>
 
-  <!-- 確認用モーダル (会計完了時など) -->
+  <!-- 写真拡大・詳細ポップアップモーダル (新設) -->
+  <div id="modal-item-detail" class="modal-overlay">
+    <div class="modal-content large-detail">
+      <button id="btn-close-detail-modal" class="modal-close-corner"><i class="fa-solid fa-xmark"></i></button>
+      <div class="detail-modal-layout">
+        <!-- 左側：額縁入り拡大写真 -->
+        <div class="detail-modal-image-panel">
+          <img id="detail-modal-img" src="" alt="" class="detail-modal-zoomed-img">
+        </div>
+        <!-- 右側：和風詳細テキストとカート追加 -->
+        <div class="detail-modal-info-panel">
+          <h2 id="detail-modal-name" class="detail-modal-name font-serif">家内安全御札</h2>
+          <div class="detail-modal-price" id="detail-modal-price">1,500 円</div>
+          <div class="detail-modal-section">
+            <span class="detail-modal-section-label">説明</span>
+            <p id="detail-modal-desc" class="detail-modal-desc-text">ご家族の健康と安全を祈願した木札です。</p>
+          </div>
+          <div class="detail-modal-section">
+            <span class="detail-modal-section-label">備考</span>
+            <p id="detail-modal-remark" class="detail-modal-remark-text">大サイズ</p>
+          </div>
+          <div class="detail-modal-section">
+            <span class="detail-modal-section-label">在庫数</span>
+            <span id="detail-modal-stock" class="item-stock">残 50</span>
+          </div>
+          <div class="detail-modal-action-row">
+            <select id="detail-modal-qty" class="qty-select" style="max-width: 120px;">
+              <option value="1">1体</option>
+            </select>
+            <button id="btn-detail-modal-add" class="btn-primary">
+              <i class="fa-solid fa-plus"></i> カートに追加
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新規授与品登録モーダル (新設) -->
+  <div id="modal-add-item" class="modal-overlay">
+    <div class="modal-content form-modal">
+      <div class="modal-header success" style="background-color: var(--color-green);">
+        <i class="fa-solid fa-plus modal-title-icon"></i>
+        <h3>新規授与品の登録</h3>
+      </div>
+      <form id="form-add-item">
+        <div class="modal-body form-body">
+          <div class="form-group">
+            <label for="add-item-name">商品名 <span class="required">※</span></label>
+            <input type="text" id="add-item-name" required placeholder="例: 厄除け守">
+          </div>
+          <div class="form-group-row">
+            <div class="form-group">
+              <label for="add-item-price">初穂料 (円) <span class="required">※</span></label>
+              <input type="number" id="add-item-price" required min="0" placeholder="800">
+            </div>
+            <div class="form-group">
+              <label for="add-item-stock">初期在庫数 <span class="required">※</span></label>
+              <input type="number" id="add-item-stock" required min="0" placeholder="50">
+            </div>
+          </div>
+          <div class="form-group-row">
+            <div class="form-group">
+              <label for="add-item-category">カテゴリ <span class="required">※</span></label>
+              <select id="add-item-category" required>
+                <option value="ofuda">お札</option>
+                <option value="omamori">お守り</option>
+                <option value="goshuin">御朱印</option>
+                <option value="engimono">縁起物</option>
+                <option value="other">その他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="add-item-remark">備考</label>
+              <input type="text" id="add-item-remark" placeholder="例: 赤色/箱入り">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="add-item-desc">説明書き</label>
+            <textarea id="add-item-desc" rows="2" placeholder="例: 身につけて厄いから身を守るお守りです。"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>授与品写真 (ドラッグ＆ドロップまたはクリックで選択)</label>
+            <div class="image-upload-dropzone" id="add-item-dropzone">
+              <i class="fa-solid fa-cloud-arrow-up dropzone-icon"></i>
+              <p>写真をここにドロップ、またはタップしてファイルを選択</p>
+              <input type="file" id="add-item-file" accept="image/*" style="display: none;">
+              <img id="add-item-image-preview" src="" class="dropzone-preview" style="display: none;">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-close-add-modal" class="btn-secondary" style="color: var(--color-text);">キャンセル</button>
+          <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> 登録する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 確認用モーダル (会計完了時) -->
   <div id="modal-checkout-success" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header success">
@@ -246,6 +374,9 @@
       </div>
     </div>
   </div>
+
+  <!-- トースト通知 -->
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="app.js"></script>
 </body>
