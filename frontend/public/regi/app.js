@@ -1,5 +1,5 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (金種キーパッド加算完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (並び替え整理完全版)
  */
 
 // ==========================================
@@ -185,7 +185,7 @@ function getRubyName(name, furigana) {
   return `<ruby>${name}<rt>${furigana}</rt></ruby>`;
 }
 
-// ユーティリティ: 数量オプションの生成 (1〜10、および20〜100)
+// ユーティリティ: 数量オプションの生成
 function generateQtyOptions(stock) {
   const maxQty = Math.min(stock, 100);
   let options = [];
@@ -511,7 +511,6 @@ function openMobileCart() {
   DOM.mobileCartSheet.classList.add('open');
   DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
   
-  // モバイル用おつり計算キーパッドを含むUIを動的構成
   DOM.mobileCartSummaryContainer.innerHTML = `
     <div class="summary-row font-large" style="margin-bottom:0.75rem;">
       <span>合計初穂料</span>
@@ -524,7 +523,6 @@ function openMobileCart() {
         <span class="unit">円</span>
       </div>
     </div>
-    <!-- モバイル用キーパッド -->
     <div class="change-presets-container-mobile" style="margin-bottom:1rem;">
       ${document.querySelector('.change-presets-container').innerHTML}
     </div>
@@ -574,7 +572,7 @@ function closeMobileCart() {
 }
 
 // ==========================================
-// データ通信処理
+// データ通信処理 (並び順永続ソート対応)
 // ==========================================
 async function loadMasterData(forceReload = false) {
   if (GAS_API_URL === 'YOUR_GAS_API_URL') {
@@ -582,7 +580,7 @@ async function loadMasterData(forceReload = false) {
       showToast('GASのAPI URLが設定されていないため、デモ用のモックデータを使用します。', 'info');
     }
     state.isUsingMock = true;
-    state.items = MOCK_ITEMS;
+    state.items = sortItemsBySavedOrder(MOCK_ITEMS);
     renderItems();
     renderMasterGrid();
     return;
@@ -594,7 +592,7 @@ async function loadMasterData(forceReload = false) {
     const data = await res.json();
     
     if (data.status === 'success') {
-      state.items = data.items.map(item => {
+      const apiItems = data.items.map(item => {
         let category = item.category || 'other';
         if (!item.category) {
           if (item.name.includes('札') || item.name.includes('守札')) category = 'ofuda';
@@ -602,12 +600,14 @@ async function loadMasterData(forceReload = false) {
           else if (item.name.includes('朱印')) category = 'goshuin';
           else if (item.name.includes('絵馬') || item.name.includes('置物') || item.name.includes('矢')) category = 'engimono';
         }
-        
         let stock = Number(item.stock);
         if (isNaN(stock)) stock = 0;
         
         return { ...item, stock, category };
       });
+      
+      // 保存済みの並び順でソート
+      state.items = sortItemsBySavedOrder(apiItems);
       renderItems();
       renderMasterGrid();
       if (forceReload) showToast('マスタデータをスプレッドシートと同期しました。', 'success');
@@ -618,11 +618,56 @@ async function loadMasterData(forceReload = false) {
     console.error(err);
     showToast('接続に失敗したため、デモ用モックデータを使用します。', 'error');
     state.isUsingMock = true;
-    state.items = MOCK_ITEMS;
+    state.items = sortItemsBySavedOrder(MOCK_ITEMS);
     renderItems();
     renderMasterGrid();
   } finally {
     showLoader(false);
+  }
+}
+
+// 永続化された並び順にソートするヘルパー
+function sortItemsBySavedOrder(itemsList) {
+  const savedOrder = localStorage.getItem('regi_items_order');
+  if (!savedOrder) return itemsList;
+  
+  try {
+    const orderIds = JSON.parse(savedOrder);
+    if (Array.isArray(orderIds)) {
+      return [...itemsList].sort((a, b) => {
+        const idxA = orderIds.indexOf(a.id);
+        const idxB = orderIds.indexOf(b.id);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      });
+    }
+  } catch (e) {
+    console.error('Failed to parse saved items order:', e);
+  }
+  return itemsList;
+}
+
+// GASへ順序変更を送信する関数 (非同期で処理)
+async function saveOrderToGAS(orderIds) {
+  if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
+    return;
+  }
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'reorderMaster',
+        itemIds: orderIds
+      })
+    });
+    const data = await res.json();
+    if (data.status !== 'success') {
+      console.warn('GAS order update failed:', data.message);
+    }
+  } catch (err) {
+    console.error('Failed to sync master order with GAS:', err);
   }
 }
 
@@ -1331,7 +1376,7 @@ function renderDailyReportView(data) {
 }
 
 // ==========================================
-// マスタ管理画面
+// マスタ管理画面 (ドラッグ＆ドロップ並び替えソート対応)
 // ==========================================
 function renderMasterGrid() {
   DOM.masterGrid.innerHTML = '';
@@ -1340,6 +1385,7 @@ function renderMasterGrid() {
     const card = document.createElement('div');
     card.className = 'item-card';
     card.id = `master-card-${item.id}`;
+    card.setAttribute('draggable', 'true'); // ドラッグ可能に設定
     
     const isHidden = item.display === false;
     
@@ -1353,6 +1399,11 @@ function renderMasterGrid() {
     const rubyNameHtml = getRubyName(item.name, item.furigana);
     
     card.innerHTML = `
+      <!-- ドラッググリップハンドル -->
+      <div class="card-drag-handle" title="ドラッグして並び替え">
+        <i class="fa-solid fa-grip-vertical"></i>
+      </div>
+      
       <div class="item-image-wrapper dropzone-wrapper" id="master-dropzone-${item.id}" style="cursor:pointer; position:relative;">
         ${imageHtml}
         <div class="dropzone-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); color:#fff; display:none; flex-direction:column; align-items:center; justify-content:center; font-size:0.8rem;">
@@ -1377,6 +1428,67 @@ function renderMasterGrid() {
       </div>
     `;
     
+    // HTML5 Drag and Drop イベント定義 (ハンドルのみでドラッグ起動する制御)
+    card.addEventListener('dragstart', (e) => {
+      // グリップハンドルを掴んだときだけドラッグソートを許可
+      if (!e.target.closest('.card-drag-handle') && e.target.className !== 'card-drag-handle') {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.setData('text/plain', item.id);
+      card.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      const cards = DOM.masterGrid.querySelectorAll('.item-card');
+      cards.forEach(c => c.classList.remove('drag-over'));
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    card.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (!card.classList.contains('dragging')) {
+        card.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      
+      const dragSourceId = e.dataTransfer.getData('text/plain');
+      if (!dragSourceId || dragSourceId === item.id) return;
+
+      const srcIdx = state.items.findIndex(i => i.id === dragSourceId);
+      const destIdx = state.items.findIndex(i => i.id === item.id);
+      
+      if (srcIdx !== -1 && destIdx !== -1) {
+        // 配列要素の再配置
+        const [movedItem] = state.items.splice(srcIdx, 1);
+        state.items.splice(destIdx, 0, movedItem);
+        
+        // ローカル順序の保存
+        const orderIds = state.items.map(i => i.id);
+        localStorage.setItem('regi_items_order', JSON.stringify(orderIds));
+        
+        // 両画面の再描画
+        renderMasterGrid();
+        renderItems();
+        
+        // GASサーバーに順序を同期送信 (非同期)
+        await saveOrderToGAS(orderIds);
+        showToast('授与品の並び順を保存・変更しました。', 'success');
+      }
+    });
+
     const dropzone = card.querySelector(`#master-dropzone-${item.id}`);
     const fileInput = card.querySelector(`#master-file-input-${item.id}`);
     const imgElement = card.querySelector(`#master-img-view-${item.id}`) || card.querySelector('.item-image-placeholder');
@@ -1642,6 +1754,17 @@ async function handleAddItemSubmit(e) {
       imageUrl: newItem.image ? newItem.image.data : ''
     };
     state.items.push(mockNew);
+    
+    // 新規登録時もlocalStorageの順序配列の末尾に追加して永続化
+    const savedOrder = localStorage.getItem('regi_items_order');
+    if (savedOrder) {
+      try {
+        const orderIds = JSON.parse(savedOrder);
+        orderIds.push(mockNew.id);
+        localStorage.setItem('regi_items_order', JSON.stringify(orderIds));
+      } catch (e) {}
+    }
+    
     showToast(`「${newItem.name}」を新規登録しました(デモ)。`, 'success');
     renderMasterGrid();
     renderItems();
@@ -1659,11 +1782,22 @@ async function handleAddItemSubmit(e) {
     });
     const data = await res.json();
     if (data.status === 'success') {
-      state.items.push({
+      const added = {
         ...newItem,
         id: data.item.id,
         imageUrl: data.item.imageUrl
-      });
+      };
+      state.items.push(added);
+      
+      const savedOrder = localStorage.getItem('regi_items_order');
+      if (savedOrder) {
+        try {
+          const orderIds = JSON.parse(savedOrder);
+          orderIds.push(added.id);
+          localStorage.setItem('regi_items_order', JSON.stringify(orderIds));
+        } catch (e) {}
+      }
+      
       showToast(`「${newItem.name}」を正常に新規登録しました。`, 'success');
       renderMasterGrid();
       renderItems();

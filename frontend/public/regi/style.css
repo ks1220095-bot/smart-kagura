@@ -381,6 +381,48 @@ rt {
   border-color: var(--color-gold);
 }
 
+/* ドラッグ＆ドロップ用のスタイリング */
+.item-card.dragging {
+  opacity: 0.4;
+  border: 2.5px dashed var(--color-gold) !important;
+  box-shadow: none;
+  transform: scale(0.96);
+}
+
+.item-card.drag-over {
+  border: 2.5px solid var(--color-vermilion) !important;
+  box-shadow: var(--shadow-md);
+}
+
+/* ドラッグ＆ドロップグリップハンドル */
+.card-drag-handle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 20;
+  transition: var(--transition-smooth);
+}
+
+.card-drag-handle:hover {
+  background-color: var(--color-light-gray);
+  color: var(--color-dark);
+  border-color: var(--color-gold);
+}
+
+.card-drag-handle:active {
+  cursor: grabbing;
+}
+
 .item-image-wrapper {
   aspect-ratio: 4/3;
   width: 100%;
@@ -772,7 +814,7 @@ rt {
   color: var(--color-text-muted);
 }
 
-/* 新設: 全金種加算対応・マルチおつり計算キーパッド */
+/* 全金種加算対応・マルチおつり計算キーパッド */
 .change-presets-container,
 .change-presets-container-mobile {
   display: flex;
