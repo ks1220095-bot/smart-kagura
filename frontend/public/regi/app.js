@@ -1,5 +1,5 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (カート削除 ＆ 数量100拡張完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (金種キーパッド加算完全版)
  */
 
 // ==========================================
@@ -45,7 +45,7 @@ const state = {
   isUsingMock: false,
   cancelTargetTxId: null,
   
-  gridCols: 2, // 初期表示列数
+  gridCols: 2,
   pinchCooldown: false,
   pendingAddImage: null
 };
@@ -77,8 +77,6 @@ const DOM = {
   cashReceived: document.getElementById('cash-received'),
   cartChangeAmount: document.getElementById('cart-change-amount'),
   btnCheckout: document.getElementById('btn-checkout'),
-  presetBtns: document.querySelectorAll('.preset-btn'),
-  btnExactAmount: document.getElementById('btn-exact-amount'),
   
   // カラム数調整ボタン
   colsBtns: document.querySelectorAll('#panel-register .col-ctrl-btn'),
@@ -138,7 +136,10 @@ const DOM = {
   btnCancelConfirmNo: document.getElementById('btn-cancel-confirm-no'),
   btnCancelConfirmYes: document.getElementById('btn-cancel-confirm-yes'),
   
-  toastContainer: document.getElementById('toast-container')
+  toastContainer: document.getElementById('toast-container'),
+  
+  // 特殊おつりキーパッド
+  btnExactAmount: document.getElementById('btn-exact-amount')
 };
 
 // ==========================================
@@ -184,22 +185,17 @@ function getRubyName(name, furigana) {
   return `<ruby>${name}<rt>${furigana}</rt></ruby>`;
 }
 
-// ユーティリティ: 数量プルダウン選択肢（1〜10、および10刻み〜100）の動的生成
+// ユーティリティ: 数量オプションの生成 (1〜10、および20〜100)
 function generateQtyOptions(stock) {
   const maxQty = Math.min(stock, 100);
   let options = [];
   
-  // 1〜10
   for (let i = 1; i <= Math.min(maxQty, 10); i++) {
     options.push(i);
   }
-  
-  // 20〜100 (10単位)
   for (let i = 20; i <= maxQty; i += 10) {
     options.push(i);
   }
-  
-  // 在庫数が10の倍数でない端数の場合、かつ含まれていない場合は最後に追加
   if (maxQty > 10 && maxQty % 10 !== 0 && !options.includes(maxQty)) {
     options.push(maxQty);
   }
@@ -309,7 +305,6 @@ function setupEventListeners() {
     });
   });
 
-  // レジのカラム調整ボタン (1〜8列)
   DOM.colsBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       state.gridCols = parseInt(btn.dataset.cols) || 2;
@@ -317,7 +312,6 @@ function setupEventListeners() {
     });
   });
 
-  // マスタのカラム調整ボタン (1〜8列)
   DOM.masterColsBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       state.gridCols = parseInt(btn.dataset.cols) || 2;
@@ -335,18 +329,29 @@ function setupEventListeners() {
 
   DOM.cashReceived.addEventListener('input', calculateChange);
   
-  DOM.presetBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+  // デスクトップ用・全金種加算おつりキーパッド制御
+  const keypad = document.querySelector('.change-presets-container');
+  if (keypad) {
+    keypad.addEventListener('click', (e) => {
+      const btn = e.target.closest('.preset-btn');
+      if (!btn) return;
+      
       const val = parseInt(btn.dataset.value);
       if (!isNaN(val)) {
-        DOM.cashReceived.value = val;
+        const cur = parseInt(DOM.cashReceived.value) || 0;
+        DOM.cashReceived.value = cur + val;
         calculateChange();
       }
     });
-  });
+  }
 
   DOM.btnExactAmount.addEventListener('click', () => {
     DOM.cashReceived.value = getCartTotal();
+    calculateChange();
+  });
+
+  document.getElementById('btn-clear-amount').addEventListener('click', () => {
+    DOM.cashReceived.value = '';
     calculateChange();
   });
 
@@ -371,7 +376,7 @@ function setupEventListeners() {
     }
   });
 
-  // 写真詳細モーダル内のハイブリッド数量ステッパー制御 (10単位リスト対応)
+  // 写真詳細モーダル内のハイブリッド数量ステッパー制御
   document.getElementById('btn-detail-minus').addEventListener('click', () => {
     const select = DOM.detailModalQty;
     if (select.selectedIndex > 0) {
@@ -492,7 +497,7 @@ function switchTab(tabKey) {
   });
 
   if (tabKey === 'register') {
-    renderItems(); // 最新データの強制反映
+    renderItems();
   } else if (tabKey === 'history') {
     fetchTransactions();
   } else if (tabKey === 'master') {
@@ -506,17 +511,22 @@ function openMobileCart() {
   DOM.mobileCartSheet.classList.add('open');
   DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
   
+  // モバイル用おつり計算キーパッドを含むUIを動的構成
   DOM.mobileCartSummaryContainer.innerHTML = `
-    <div class="summary-row font-large" style="margin-bottom:1rem;">
+    <div class="summary-row font-large" style="margin-bottom:0.75rem;">
       <span>合計初穂料</span>
       <span style="color:var(--color-vermilion); font-family:var(--font-serif); font-weight:700;">${getCartTotal().toLocaleString()} 円</span>
     </div>
-    <div class="cash-input-group" style="margin-bottom:1rem;">
+    <div class="cash-input-group" style="margin-bottom:0.75rem;">
       <label for="cash-received-mobile">お預かり金</label>
       <div class="input-with-unit">
         <input type="number" id="cash-received-mobile" class="mobile-cash-input" value="${DOM.cashReceived.value}" placeholder="0">
         <span class="unit">円</span>
       </div>
+    </div>
+    <!-- モバイル用キーパッド -->
+    <div class="change-presets-container-mobile" style="margin-bottom:1rem;">
+      ${document.querySelector('.change-presets-container').innerHTML}
     </div>
     <div class="summary-row change-row" style="margin-bottom:1rem;">
       <span>お釣り</span>
@@ -529,6 +539,29 @@ function openMobileCart() {
   cashInputMob.addEventListener('input', (e) => {
     DOM.cashReceived.value = e.target.value;
     calculateChange();
+    document.getElementById('cart-change-amount-mobile').textContent = DOM.cartChangeAmount.textContent;
+    document.getElementById('cart-change-amount-mobile').style.color = DOM.cartChangeAmount.style.color;
+  });
+  
+  const mobKeypad = DOM.mobileCartSummaryContainer.querySelector('.change-presets-container-mobile');
+  mobKeypad.addEventListener('click', (e) => {
+    const btn = e.target.closest('.preset-btn');
+    if (!btn) return;
+    
+    if (btn.id === 'btn-exact-amount') {
+      DOM.cashReceived.value = getCartTotal();
+    } else if (btn.id === 'btn-clear-amount') {
+      DOM.cashReceived.value = '';
+    } else {
+      const val = parseInt(btn.dataset.value);
+      if (!isNaN(val)) {
+        const cur = parseInt(DOM.cashReceived.value) || 0;
+        DOM.cashReceived.value = cur + val;
+      }
+    }
+    
+    calculateChange();
+    cashInputMob.value = DOM.cashReceived.value;
     document.getElementById('cart-change-amount-mobile').textContent = DOM.cartChangeAmount.textContent;
     document.getElementById('cart-change-amount-mobile').style.color = DOM.cartChangeAmount.style.color;
   });
@@ -760,7 +793,7 @@ async function executeCancelTransaction() {
 }
 
 // ==========================================
-// レジ画面 UI描画 (100拡張・10単位プルダウン)
+// レジ画面 UI描画
 // ==========================================
 function renderItems() {
   DOM.itemsGrid.innerHTML = '';
@@ -768,7 +801,6 @@ function renderItems() {
   const filtered = state.items.filter(item => {
     const matchesCategory = state.selectedCategory === 'all' || item.category === state.selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(state.searchQuery) || item.id.toLowerCase().includes(state.searchQuery);
-    
     const matchesDisplay = item.display !== false;
     return matchesCategory && matchesSearch && matchesDisplay;
   });
@@ -798,7 +830,6 @@ function renderItems() {
     let stockClass = '';
     if (item.stock > 0 && item.stock <= 5) stockClass = 'warning';
 
-    // 10単位プルダウンのリスト生成 (1〜10、20〜100)
     let qtyOptions = '';
     const qtyList = generateQtyOptions(item.stock);
     qtyList.forEach(q => {
@@ -903,7 +934,7 @@ function addToCart(item, quantity = 1) {
   showToast(`${item.name}をカートに追加しました。`, 'success');
 }
 
-// カートからの完全削除 (新設)
+// カートから一撃削除
 window.removeFromCart = function(itemId) {
   const match = state.cart.find(item => item.id === itemId);
   if (match) {
@@ -911,7 +942,6 @@ window.removeFromCart = function(itemId) {
     updateCartUI();
     showToast(`${match.name}をカートから削除しました。`, 'info');
     
-    // モバイル用ハーフカート同期
     if (DOM.mobileCartSheet.classList.contains('open')) {
       DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
       openMobileCart();
@@ -925,7 +955,6 @@ window.updateQuantity = function(itemId, change) {
 
   const newQty = cartItem.quantity + change;
   if (newQty <= 0) {
-    // 数量が0以下になる場合は自動で削除
     removeFromCart(itemId);
   } else {
     if (newQty > cartItem.maxStock) {
@@ -970,7 +999,6 @@ function updateCartUI() {
         <button class="quantity-btn" onclick="updateQuantity('${item.id}', -1)">-</button>
         <span class="cart-item-qty">${item.quantity}</span>
         <button class="quantity-btn" onclick="updateQuantity('${item.id}', 1)">+</button>
-        <!-- ゴミ箱ボタン -->
         <button class="delete-cart-item-btn" onclick="removeFromCart('${item.id}')" title="カートから削除">
           <i class="fa-solid fa-trash-can"></i>
         </button>
@@ -1303,7 +1331,7 @@ function renderDailyReportView(data) {
 }
 
 // ==========================================
-// マスタ管理画面 (カード型ビジュアルエディタ - ルビ・安定対応)
+// マスタ管理画面
 // ==========================================
 function renderMasterGrid() {
   DOM.masterGrid.innerHTML = '';
@@ -1447,7 +1475,7 @@ async function toggleItemDisplay(item) {
   }
 }
 
-// インライン編集モード (ふりがな追加)
+// インライン編集モード
 function enterInlineEditMode(item) {
   const card = document.getElementById(`master-card-${item.id}`);
   card.classList.add('editing');

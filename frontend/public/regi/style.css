@@ -286,7 +286,7 @@ button, input, select, textarea {
   border-color: var(--color-green);
 }
 
-/* コラム数コントローラー (数字ボタン型) */
+/* コラム数コントローラー */
 .grid-cols-controller {
   display: flex;
   border: 1px solid var(--color-border);
@@ -459,7 +459,7 @@ rt {
   font-weight: 700;
 }
 
-/* ハイブリッド数量ステッパー (`[−] [プルダウン▼] [＋]`) */
+/* ハイブリッド数量ステッパー */
 .item-qty-selector {
   display: flex;
   gap: 0.4rem;
@@ -505,7 +505,7 @@ rt {
 
 .stepper-select {
   flex: 1;
-  width: 50px; /* 100など3桁数値に対応するため少し広げる */
+  width: 50px;
   border: none;
   outline: none;
   background-color: transparent;
@@ -668,7 +668,7 @@ rt {
   border-color: var(--color-text-muted);
 }
 
-/* 新設: カート個別ゴミ箱削除ボタン */
+/* カート個別ゴミ箱削除ボタン */
 .delete-cart-item-btn {
   background: none;
   border: none;
@@ -772,26 +772,71 @@ rt {
   color: var(--color-text-muted);
 }
 
-/* お釣りショートカット */
-.change-presets {
+/* 新設: 全金種加算対応・マルチおつり計算キーパッド */
+.change-presets-container,
+.change-presets-container-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.preset-group {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 0.4rem;
 }
 
-.preset-btn {
-  padding: 0.5rem 0;
-  font-size: 0.8rem;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition-smooth);
+.bill-group {
+  grid-template-columns: repeat(3, 1fr);
 }
 
+.coin-group {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.action-group {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.preset-btn {
+  padding: 0.55rem 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  background-color: var(--color-surface);
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* 日本の紙幣・硬貨別イメージカラー */
+.bill-10000 { background-color: #FAF5E6; border-color: #E8D3A7; color: #735F38; } /* 壱万円 (金茶) */
+.bill-5000 { background-color: #FAF0F5; border-color: #E6C8DA; color: #805070; }  /* 伍千円 (紫) */
+.bill-1000 { background-color: #EEF7FA; border-color: #C5E3EB; color: #3A6975; }  /* 千円 (青系) */
+
+.coin-500 { background-color: #FAF6E8; border-color: #D6C292; color: #7A693D; }   /* 500円 (真鍮) */
+.coin-100 { background-color: #F3F4F6; border-color: #D1D5DB; color: #4B5563; }   /* 100円 (白銅) */
+.coin-50 { background-color: #F9FAFB; border-color: #E5E7EB; color: #374151; }    /* 50円 (ニッケル) */
+.coin-10 { background-color: #FAF0EB; border-color: #E6B5A1; color: #8F482D; }    /* 10円 (銅) */
+.coin-5 { background-color: #FAF8F0; border-color: #EBE0C5; color: #8A723D; }     /* 5円 (黄銅) */
+.coin-1 { background-color: #F8FAFC; border-color: #E2E8F0; color: #64748B; }     /* 1円 (アルミ) */
+
+.act-exact { background-color: rgba(63, 81, 69, 0.08); border-color: var(--color-green); color: var(--color-green); }
+.act-clear { background-color: rgba(215, 75, 52, 0.08); border-color: var(--color-vermilion); color: var(--color-vermilion); }
+
 .preset-btn:hover {
-  border-color: var(--color-gold);
-  background-color: var(--color-light-gray);
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+  box-shadow: var(--shadow-sm);
+}
+
+.preset-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.9);
 }
 
 .change-row {

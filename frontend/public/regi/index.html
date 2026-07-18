@@ -73,7 +73,7 @@
                 <button class="category-btn" data-category="other">その他</button>
               </div>
 
-              <!-- カラム数コントローラー (最大8列対応) -->
+              <!-- カラム数コントローラー -->
               <div class="grid-cols-controller" aria-label="グリッド列数の変更">
                 <button class="col-ctrl-btn" data-cols="1">1</button>
                 <button class="col-ctrl-btn active" data-cols="2">2</button>
@@ -119,11 +119,28 @@
               </div>
             </div>
             
-            <div class="change-presets">
-              <button type="button" class="preset-btn" data-value="1000">1,000円</button>
-              <button type="button" class="preset-btn" data-value="5000">5,000円</button>
-              <button type="button" class="preset-btn" data-value="10000">10,000円</button>
-              <button type="button" id="btn-exact-amount" class="preset-btn">ちょうど</button>
+            <!-- 全金種加算対応・マルチおつり計算キーパッド -->
+            <div class="change-presets-container">
+              <!-- 紙幣 -->
+              <div class="preset-group bill-group">
+                <button type="button" class="preset-btn bill-10000" data-value="10000">1万円</button>
+                <button type="button" class="preset-btn bill-5000" data-value="5000">5千円</button>
+                <button type="button" class="preset-btn bill-1000" data-value="1000">千円</button>
+              </div>
+              <!-- 硬貨 -->
+              <div class="preset-group coin-group">
+                <button type="button" class="preset-btn coin-500" data-value="500">500円</button>
+                <button type="button" class="preset-btn coin-100" data-value="100">100円</button>
+                <button type="button" class="preset-btn coin-50" data-value="50">50円</button>
+                <button type="button" class="preset-btn coin-10" data-value="10">10円</button>
+                <button type="button" class="preset-btn coin-5" data-value="5">5円</button>
+                <button type="button" class="preset-btn coin-1" data-value="1">1円</button>
+              </div>
+              <!-- 特殊機能 -->
+              <div class="preset-group action-group">
+                <button type="button" id="btn-exact-amount" class="preset-btn act-exact">ちょうど</button>
+                <button type="button" id="btn-clear-amount" class="preset-btn act-clear">クリア</button>
+              </div>
             </div>
             
             <div class="summary-row change-row">
@@ -202,7 +219,7 @@
           <button id="btn-show-add-item" class="btn-primary"><i class="fa-solid fa-plus"></i> 新規授与品を登録</button>
         </div>
         
-        <!-- 管理画面側カラムコントローラー (最大8列対応) -->
+        <!-- 管理画面側カラムコントローラー -->
         <div class="search-filter-bar" style="margin-bottom: 1.5rem; justify-content: flex-end;">
           <div class="grid-cols-controller" id="master-cols-controller" aria-label="管理グリッド列数の変更">
             <button class="col-ctrl-btn" data-cols="1">1</button>
@@ -248,7 +265,7 @@
     </div>
   </div>
 
-  <!-- 写真拡大・詳細ポップアップモーダル (ルビ ＆ ハイブリッド数量ステッパー対応) -->
+  <!-- 写真拡大・詳細ポップアップモーダル -->
   <div id="modal-item-detail" class="modal-overlay">
     <div class="modal-content large-detail">
       <button id="btn-close-detail-modal" class="modal-close-corner"><i class="fa-solid fa-xmark"></i></button>
@@ -274,7 +291,6 @@
             <span id="detail-modal-stock" class="item-stock">残 50</span>
           </div>
           <div class="detail-modal-action-row">
-            <!-- ハイブリッド数量ステッパー: ＋ーボタンとプルダウン選択の完全融合 -->
             <div class="qty-stepper" style="max-width: 120px; width: 100%;">
               <button class="stepper-btn" id="btn-detail-minus">−</button>
               <select id="detail-modal-qty" class="stepper-select">
@@ -291,7 +307,7 @@
     </div>
   </div>
 
-  <!-- 新規授与品登録モーダル (ふりがな追加) -->
+  <!-- 新規授与品登録モーダル -->
   <div id="modal-add-item" class="modal-overlay">
     <div class="modal-content form-modal">
       <div class="modal-header success" style="background-color: var(--color-green);">
