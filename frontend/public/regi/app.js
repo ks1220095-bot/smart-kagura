@@ -1369,7 +1369,7 @@ function renderHistoryTable() {
   });
 }
 
-// 日次報告書
+// 日次報告書 (社入表記への統一 ＆ 押印欄の削除)
 async function generateDailyReport() {
   if (!state.selectedDate) {
     showToast('日付を選択してください。', 'error');
@@ -1379,7 +1379,7 @@ async function generateDailyReport() {
   showLoader(true);
   DOM.reportSheetView.innerHTML = `
     <div class="loading-spinner">
-      <i class="fa-solid fa-circle-notch fa-spin"></i> 売上・ご祈祷データを集計中...
+      <i class="fa-solid fa-circle-notch fa-spin"></i> 社入・ご祈祷データを集計中...
     </div>
   `;
 
@@ -1395,8 +1395,8 @@ async function generateDailyReport() {
       const itemDetails = {};
 
       validTx.forEach(tx => {
+        itemSalesTotal += tx.total; // 単純モック計算
         tx.items.forEach(item => {
-          itemSalesTotal += item.price * item.quantity;
           if (!itemDetails[item.name]) {
             itemDetails[item.name] = { quantity: 0, amount: 0 };
           }
@@ -1490,7 +1490,7 @@ function renderDailyReportView(data) {
   DOM.reportSheetView.innerHTML = `
     <div class="report-paper">
       <div class="report-paper-header">
-        <h2 class="report-paper-title">日次売上報告書</h2>
+        <h2 class="report-paper-title">日次社入報告書</h2>
         <div class="report-paper-meta" style="display:flex; justify-content:space-between; margin-top:1rem; font-size:0.9rem; color:var(--color-text-muted);">
           <span>奉仕日: ${formattedDate}</span>
           <span>出力日: ${new Date().toLocaleDateString('ja-JP')}</span>
@@ -1549,11 +1549,6 @@ function renderDailyReportView(data) {
           </tr>
         </tbody>
       </table>
-      
-      <div class="report-signature">
-        <div class="signature-box">宮司 印</div>
-        <div class="signature-box">担当者 印</div>
-      </div>
     </div>
   `;
 }
