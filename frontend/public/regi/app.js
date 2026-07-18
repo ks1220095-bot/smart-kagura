@@ -784,7 +784,17 @@ async function saveOrderToGAS(orderIds) {
 // 会計確定
 async function processCheckout() {
   const total = getCartTotal();
-  const cash = parseInt(DOM.cashReceived.value) || 0;
+  
+  // お預かり金インプットの入力値を取得
+  const cashInputVal = DOM.cashReceived.value.trim();
+  let cash = 0;
+  
+  // 【新仕様】お預かり金欄が空欄（未入力）の場合は自動的に「ちょうど」として処理
+  if (cashInputVal === '') {
+    cash = total;
+  } else {
+    cash = parseInt(cashInputVal) || 0;
+  }
   
   if (cash < total) {
     showToast('お預かり金が不足しています。', 'error');
