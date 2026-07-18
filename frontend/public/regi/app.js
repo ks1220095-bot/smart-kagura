@@ -1,27 +1,26 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (ビジュアル編集・レスポンシブ・ジェスチャー完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (ふりがな・最大8列・ピンチジェスチャー完全版)
  */
 
 // ==========================================
 // 設定値
 // ==========================================
-// デプロイしたGASのウェブアプリURLを設定してください
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwf6XuzV04Vna-0QF8MoeI4GihPm71Vyfzzd4jURcvdeky2TC8vfZtEz2n4KN1AFEEB/exec';
 
 // ==========================================
-// ローカルモックデータ (GAS未設定時のフォールバック用)
+// ローカルモックデータ (ふりがな初期設定あり)
 // ==========================================
 const MOCK_ITEMS = [
-  { id: 'M-01', name: '家内安全御札', price: 1500, description: 'ご家族の健康と安全を祈願した木札です。', stock: 50, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
-  { id: 'M-02', name: '商売繁盛御札', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
-  { id: 'M-03', name: '交通安全お守り', price: 800, description: '日々の交通安全・道中安全を祈願したお守りです。', stock: 100, category: 'omamori', remark: '錦袋', display: true, imageUrl: '' },
-  { id: 'M-04', name: '厄除けお守り', price: 800, description: '災厄を払い、身を守るお守りです。', stock: 5, category: 'omamori', remark: '赤/紫', display: true, imageUrl: '' },
-  { id: 'M-05', name: '授与用通常御朱印', price: 500, description: '当神社の通常御朱印です。', stock: 200, category: 'goshuin', remark: '記帳・書置き', display: true, imageUrl: '' },
-  { id: 'M-06', name: '限定金字御朱印', price: 1000, description: '季節限定の金文字御朱印です。', stock: 50, category: 'goshuin', remark: '書置きのみ', display: true, imageUrl: '' },
-  { id: 'M-07', name: '吉祥干支置物', price: 1200, description: '当年の干支を象った縁起の良い置物です。', stock: 40, category: 'engimono', remark: '箱入り', display: true, imageUrl: '' },
-  { id: 'M-08', name: '破魔矢', price: 1500, description: '魔を除け、幸運を射止める破魔矢です。', stock: 60, category: 'engimono', remark: '絵馬付き', display: true, imageUrl: '' },
-  { id: 'M-09', name: '御朱印帳 (和柄)', price: 2000, description: '当神社オリジナルの御朱印帳です。', stock: 20, category: 'other', remark: '限定版', display: true, imageUrl: '' },
-  { id: 'M-10', name: '祈願絵馬', price: 700, description: '願い事を書くための木製絵馬です。', stock: 80, category: 'other', remark: '干支デザイン', display: true, imageUrl: '' }
+  { id: 'M-01', name: '家内安全御札', furigana: 'かないあんぜんおふだ', price: 1500, description: 'ご家族の健康と安全を祈願した木札です。', stock: 50, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
+  { id: 'M-02', name: '商売繁盛御札', furigana: 'しょうばいはんじょうおふだ', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
+  { id: 'M-03', name: '交通安全お守り', furigana: 'こうつうあんぜんおまもり', price: 800, description: '日々の交通安全・道中安全を祈願したお守りです。', stock: 100, category: 'omamori', remark: '錦袋', display: true, imageUrl: '' },
+  { id: 'M-04', name: '厄除けお守り', furigana: 'やくよけおまもり', price: 800, description: '災厄を払い、身を守るお守りです。', stock: 5, category: 'omamori', remark: '赤/紫', display: true, imageUrl: '' },
+  { id: 'M-05', name: '授与用通常御朱印', furigana: 'じゅよようつうじょうごしゅいん', price: 500, description: '当神社の通常御朱印です。', stock: 200, category: 'goshuin', remark: '記帳・書置き', display: true, imageUrl: '' },
+  { id: 'M-06', name: '限定金字御朱印', furigana: 'げんていきんじごしゅいん', price: 1000, description: '季節限定の金文字御朱印です。', stock: 50, category: 'goshuin', remark: '書置きのみ', display: true, imageUrl: '' },
+  { id: 'M-07', name: '吉祥干支置物', furigana: 'きっしょうえとおきもの', price: 1200, description: '当年の干支を象った縁起の良い置物です。', stock: 40, category: 'engimono', remark: '箱入り', display: true, imageUrl: '' },
+  { id: 'M-08', name: '破魔矢', furigana: 'はまや', price: 1500, description: '魔を除け、幸運を射止める破魔矢です。', stock: 60, category: 'engimono', remark: '絵馬付き', display: true, imageUrl: '' },
+  { id: 'M-09', name: '御朱印帳 (和柄)', furigana: 'ごしゅいんちょう', price: 2000, description: '当神社オリジナルの御朱印帳です。', stock: 20, category: 'other', remark: '限定版', display: true, imageUrl: '' },
+  { id: 'M-10', name: '祈願絵馬', furigana: 'きがんえま', price: 700, description: '願い事を書くための木製絵馬です。', stock: 80, category: 'other', remark: '干支デザイン', display: true, imageUrl: '' }
 ];
 
 const MOCK_PRAYERS = {
@@ -36,9 +35,9 @@ const MOCK_PRAYERS = {
 // アプリケーション状態管理 (State)
 // ==========================================
 const state = {
-  items: [],              // 授与品マスタ
-  cart: [],               // カート内
-  transactions: [],       // 当日取引履歴
+  items: [],
+  cart: [],
+  transactions: [],
   currentTab: 'register',
   selectedCategory: 'all',
   searchQuery: '',
@@ -46,11 +45,8 @@ const state = {
   isUsingMock: false,
   cancelTargetTxId: null,
   
-  // カラム数およびジェスチャー管理
-  gridCols: 2,            // デフォルト列数
+  gridCols: 2, // 初期表示列数
   pinchCooldown: false,
-  
-  // 新規追加時の画像キャッシュ
   pendingAddImage: null
 };
 
@@ -88,7 +84,7 @@ const DOM = {
   colsBtns: document.querySelectorAll('#panel-register .col-ctrl-btn'),
   masterColsBtns: document.querySelectorAll('#master-cols-controller .col-ctrl-btn'),
   
-  // スマホ用フローティングカート関係
+  // スマホ用カート
   mobileCartBar: document.getElementById('mobile-cart-bar'),
   mobileCartCount: document.getElementById('mobile-cart-count'),
   mobileCartTotal: document.getElementById('mobile-cart-total'),
@@ -98,7 +94,7 @@ const DOM = {
   mobileCartItemsListContainer: document.getElementById('mobile-cart-items-list-container'),
   mobileCartSummaryContainer: document.getElementById('mobile-cart-summary-container'),
   
-  // 拡大写真・詳細モーダル
+  // 詳細ポップアップ
   modalItemDetail: document.getElementById('modal-item-detail'),
   btnCloseDetailModal: document.getElementById('btn-close-detail-modal'),
   detailModalImg: document.getElementById('detail-modal-img'),
@@ -110,11 +106,11 @@ const DOM = {
   detailModalQty: document.getElementById('detail-modal-qty'),
   btnDetailModalAdd: document.getElementById('btn-detail-modal-add'),
 
-  // 取引履歴
+  // 履歴
   historyTableBody: document.getElementById('history-table-body'),
   btnRefreshHistory: document.getElementById('btn-refresh-history'),
   
-  // 日次報告書
+  // 報告書
   reportDate: document.getElementById('report-date'),
   btnGenerateReport: document.getElementById('btn-generate-report'),
   btnPrintReport: document.getElementById('btn-print-report'),
@@ -132,12 +128,11 @@ const DOM = {
   addItemFile: document.getElementById('add-item-file'),
   addItemImagePreview: document.getElementById('add-item-image-preview'),
 
-  // 会計成功モーダル
+  // モーダル
   modalCheckoutSuccess: document.getElementById('modal-checkout-success'),
   modalChangeText: document.getElementById('modal-change-text'),
   btnCloseModal: document.getElementById('btn-close-modal'),
   
-  // 取消確認モーダル
   modalCancelConfirm: document.getElementById('modal-cancel-confirm'),
   cancelTargetTxIdText: document.getElementById('cancel-target-txid'),
   btnCancelConfirmNo: document.getElementById('btn-cancel-confirm-no'),
@@ -169,6 +164,16 @@ function setupDateTime() {
 }
 
 // ==========================================
+// ユーティリティ: <ruby>タグ生成ヘルパー
+// ==========================================
+function getRubyName(name, furigana) {
+  if (!furigana || furigana === name) {
+    return name;
+  }
+  return `<ruby>${name}<rt>${furigana}</rt></ruby>`;
+}
+
+// ==========================================
 // カラム調整＆ローカルストレージ
 // ==========================================
 function loadGridColsSetting() {
@@ -180,17 +185,13 @@ function loadGridColsSetting() {
 }
 
 function updateGridColsUI() {
-  // レジ画面グリッドクラスの適用
   DOM.itemsGrid.className = `items-grid cols-${state.gridCols}`;
-  // マスタ画面グリッドクラスの適用
   DOM.masterGrid.className = `items-grid cols-${state.gridCols}`;
   
-  // アクティブボタン表示の切り替え (レジ側)
   DOM.colsBtns.forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.cols) === state.gridCols);
   });
   
-  // アクティブボタン表示の切り替え (マスタ側)
   DOM.masterColsBtns.forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.cols) === state.gridCols);
   });
@@ -199,7 +200,7 @@ function updateGridColsUI() {
 }
 
 // ==========================================
-// タッチジェスチャー（ピンチイン・アウト）検知
+// タッチジェスチャー（ピンチイン・アウト：最大8列）
 // ==========================================
 let touchStartDistance = 0;
 function handleTouchStart(e) {
@@ -220,7 +221,7 @@ function handleTouchMove(e) {
     
     const ratio = currentDistance / touchStartDistance;
     
-    // ピンチアウト (拡大: 列数を減らす)
+    // ピンチアウト (拡大: カラム数を減らす)
     if (ratio > 1.35) {
       if (state.gridCols > 1) {
         state.gridCols--;
@@ -228,9 +229,9 @@ function handleTouchMove(e) {
         triggerPinchCooldown();
       }
     }
-    // ピンチイン (縮小: 列数を増やす)
+    // ピンチイン (縮小: カラム数を増やす。最大8列まで拡張)
     else if (ratio < 0.70) {
-      if (state.gridCols < 4) {
+      if (state.gridCols < 8) {
         state.gridCols++;
         updateGridColsUI();
         triggerPinchCooldown();
@@ -249,22 +250,19 @@ function triggerPinchCooldown() {
   state.pinchCooldown = true;
   setTimeout(() => {
     state.pinchCooldown = false;
-  }, 400); // 連続動作のクールダウン
+  }, 400);
 }
 
 // ==========================================
 // イベントリスナーのセットアップ
 // ==========================================
 function setupEventListeners() {
-  // タブ切り替え
   Object.keys(DOM.tabs).forEach(tabKey => {
     DOM.tabs[tabKey].addEventListener('click', () => switchTab(tabKey));
   });
 
-  // 同期ボタン
   DOM.btnSync.addEventListener('click', () => loadMasterData(true));
 
-  // 検索・フィルタ
   DOM.searchInput.addEventListener('input', (e) => {
     state.searchQuery = e.target.value.toLowerCase();
     renderItems();
@@ -279,25 +277,22 @@ function setupEventListeners() {
     });
   });
 
-  // レジのカラム調整ボタン
+  // レジのカラム調整ボタン (1〜8列)
   DOM.colsBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const cols = parseInt(btn.dataset.cols) || 2;
-      state.gridCols = cols;
+    btn.addEventListener('click', () => {
+      state.gridCols = parseInt(btn.dataset.cols) || 2;
       updateGridColsUI();
     });
   });
 
-  // マスタのカラム調整ボタン
+  // マスタのカラム調整ボタン (1〜8列)
   DOM.masterColsBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const cols = parseInt(btn.dataset.cols) || 2;
-      state.gridCols = cols;
+    btn.addEventListener('click', () => {
+      state.gridCols = parseInt(btn.dataset.cols) || 2;
       updateGridColsUI();
     });
   });
 
-  // ピンチジェスチャーのリスナー登録
   DOM.itemsGrid.addEventListener('touchstart', handleTouchStart, { passive: true });
   DOM.itemsGrid.addEventListener('touchmove', handleTouchMove, { passive: true });
   DOM.itemsGrid.addEventListener('touchend', handleTouchEnd, { passive: true });
@@ -306,7 +301,6 @@ function setupEventListeners() {
   DOM.masterGrid.addEventListener('touchmove', handleTouchMove, { passive: true });
   DOM.masterGrid.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-  // カート内のお釣り計算
   DOM.cashReceived.addEventListener('input', calculateChange);
   
   DOM.presetBtns.forEach(btn => {
@@ -324,16 +318,13 @@ function setupEventListeners() {
     calculateChange();
   });
 
-  // 会計確定
   DOM.btnCheckout.addEventListener('click', processCheckout);
 
-  // 会計完了モーダルクローズ
   DOM.btnCloseModal.addEventListener('click', () => {
     DOM.modalCheckoutSuccess.style.display = 'none';
     clearCart();
   });
 
-  // 写真詳細・拡大モーダル
   DOM.btnCloseDetailModal.addEventListener('click', () => {
     DOM.modalItemDetail.style.display = 'none';
   });
@@ -348,7 +339,6 @@ function setupEventListeners() {
     }
   });
 
-  // 取引取消モーダル
   DOM.btnCancelConfirmNo.addEventListener('click', () => {
     DOM.modalCancelConfirm.style.display = 'none';
     state.cancelTargetTxId = null;
@@ -356,22 +346,18 @@ function setupEventListeners() {
 
   DOM.btnCancelConfirmYes.addEventListener('click', executeCancelTransaction);
 
-  // 履歴更新
   DOM.btnRefreshHistory.addEventListener('click', fetchTransactions);
 
-  // 日次報告
   DOM.btnGenerateReport.addEventListener('click', generateDailyReport);
   DOM.btnPrintReport.addEventListener('click', () => window.print());
   DOM.reportDate.addEventListener('change', (e) => {
     state.selectedDate = e.target.value;
   });
 
-  // スマホ用ハーフシートカート制御
   DOM.mobileCartBar.addEventListener('click', openMobileCart);
   DOM.btnCloseMobileCart.addEventListener('click', closeMobileCart);
   DOM.mobileCartBackdrop.addEventListener('click', closeMobileCart);
 
-  // 新規授与品登録モーダル
   DOM.btnShowAddItem.addEventListener('click', () => {
     resetAddItemForm();
     DOM.modalAddItem.style.display = 'flex';
@@ -383,15 +369,12 @@ function setupEventListeners() {
   
   DOM.formAddItem.addEventListener('submit', handleAddItemSubmit);
 
-  // 新規追加ドラッグ＆ドロップドラッグイベント
   setupDragAndDrop(DOM.addItemDropzone, DOM.addItemFile, DOM.addItemImagePreview, (fileData) => {
     state.pendingAddImage = fileData;
   });
 }
 
-// ==========================================
-// ドラッグ＆ドロップの共通設定
-// ==========================================
+// Drag & Drop
 function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
   dropzone.addEventListener('click', () => fileInput.click());
   
@@ -407,7 +390,6 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
-    
     if (e.dataTransfer.files.length > 0) {
       handleImageFile(e.dataTransfer.files[0], previewImg, callback);
     }
@@ -430,26 +412,21 @@ function handleImageFile(file, previewImg, callback) {
   reader.onload = (e) => {
     previewImg.src = e.target.result;
     previewImg.style.display = 'block';
-    
-    // ドロップゾーン内のテキストとアイコンを隠す
     const children = previewImg.parentElement.children;
     for (let child of children) {
       if (child !== previewImg && child !== previewImg.parentElement.querySelector('input[type="file"]')) {
         child.style.display = 'none';
       }
     }
-    
     callback({
-      data: e.target.result, // base64 DataURL
+      data: e.target.result,
       name: file.name
     });
   };
   reader.readAsDataURL(file);
 }
 
-// ==========================================
-// タブ切り替え
-// ==========================================
+// Tab Switching
 function switchTab(tabKey) {
   state.currentTab = tabKey;
   
@@ -470,17 +447,12 @@ function switchTab(tabKey) {
   }
 }
 
-// ==========================================
-// モバイルカートハーフシート制御
-// ==========================================
+// Mobile Cart
 function openMobileCart() {
   if (state.cart.length === 0) return;
   DOM.mobileCartSheet.classList.add('open');
-  
-  // デスクトップ用カートのアイテムと計算部をハーフシート側に複製投影する
   DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
   
-  // 合計、インプット、お釣り部分を複製
   DOM.mobileCartSummaryContainer.innerHTML = `
     <div class="summary-row font-large" style="margin-bottom:1rem;">
       <span>合計初穂料</span>
@@ -500,7 +472,6 @@ function openMobileCart() {
     <button id="btn-checkout-mobile" class="btn-primary btn-block"><i class="fa-solid fa-check"></i> 会計を確定</button>
   `;
   
-  // イベントの再バインド
   const cashInputMob = document.getElementById('cash-received-mobile');
   cashInputMob.addEventListener('input', (e) => {
     DOM.cashReceived.value = e.target.value;
@@ -555,7 +526,7 @@ async function loadMasterData(forceReload = false) {
     }
   } catch (err) {
     console.error(err);
-    showToast('スプレッドシートからの取得に失敗したため、デモ用モックデータを使用します。', 'error');
+    showToast('接続に失敗したため、デモ用モックデータを使用します。', 'error');
     state.isUsingMock = true;
     state.items = MOCK_ITEMS;
     renderItems();
@@ -565,7 +536,7 @@ async function loadMasterData(forceReload = false) {
   }
 }
 
-// 会計の確定
+// 会計確定
 async function processCheckout() {
   const total = getCartTotal();
   const cash = parseInt(DOM.cashReceived.value) || 0;
@@ -668,7 +639,7 @@ async function fetchTransactions() {
   }
 }
 
-// 取引取消の実行
+// 取引取消
 async function executeCancelTransaction() {
   const txId = state.cancelTargetTxId;
   if (!txId) return;
@@ -714,7 +685,7 @@ async function executeCancelTransaction() {
         });
       }
       
-      showToast(`取引 ${txId} を正常に取り消しました。`, 'success');
+      showToast(`取引 ${txId} を取り消しました。`, 'success');
       DOM.modalCancelConfirm.style.display = 'none';
       state.cancelTargetTxId = null;
       renderItems();
@@ -732,7 +703,7 @@ async function executeCancelTransaction() {
 }
 
 // ==========================================
-// レジ画面 UI描画
+// レジ画面 UI描画 (ルビ対応)
 // ==========================================
 function renderItems() {
   DOM.itemsGrid.innerHTML = '';
@@ -740,7 +711,7 @@ function renderItems() {
   const filtered = state.items.filter(item => {
     const matchesCategory = state.selectedCategory === 'all' || item.category === state.selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(state.searchQuery) || item.id.toLowerCase().includes(state.searchQuery);
-    const matchesDisplay = item.display !== false; // 非表示設定のものは除外
+    const matchesDisplay = item.display !== false;
     return matchesCategory && matchesSearch && matchesDisplay;
   });
 
@@ -774,13 +745,16 @@ function renderItems() {
       qtyOptions += `<option value="${q}">${q}体</option>`;
     }
     
+    // ルビ処理の適用
+    const rubyNameHtml = getRubyName(item.name, item.furigana);
+    
     card.innerHTML = `
       ${isOutOfStock ? '<span class="stock-badge sold-out">在庫切れ</span>' : ''}
       <div class="item-image-wrapper" id="img-wrapper-${item.id}">
         ${imageHtml}
       </div>
       <div class="item-info">
-        <h3 class="item-name">${item.name}</h3>
+        <h3 class="item-name">${rubyNameHtml}</h3>
         <p class="item-desc">${item.description || '説明なし'}</p>
         <div class="item-price-stock">
           <span class="item-price">${item.price.toLocaleString()} 円</span>
@@ -798,7 +772,6 @@ function renderItems() {
       </div>
     `;
     
-    // 写真タップで拡大表示イベント
     const imgWrapper = card.querySelector(`#img-wrapper-${item.id}`);
     imgWrapper.addEventListener('click', () => {
       showItemDetailPopup(item);
@@ -817,9 +790,7 @@ function renderItems() {
   });
 }
 
-// ==========================================
-// カート操作
-// ==========================================
+// カート関連
 function addToCart(item, quantity = 1) {
   const existing = state.cart.find(cartItem => cartItem.id === item.id);
   
@@ -860,18 +831,11 @@ window.updateQuantity = function(itemId, change) {
   }
   
   updateCartUI();
-  
-  // モバイルハーフシート表示中ならそこも再描画
   if (DOM.mobileCartSheet.classList.contains('open')) {
     DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
-    // 金額再更新
     openMobileCart();
   }
 };
-
-function getCartTotal() {
-  return state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-}
 
 function updateCartUI() {
   DOM.cartItemsList.innerHTML = '';
@@ -887,8 +851,6 @@ function updateCartUI() {
     DOM.btnCheckout.disabled = true;
     DOM.cashReceived.value = '';
     calculateChange();
-    
-    // スマホ用フローティングバー非表示
     DOM.mobileCartBar.style.display = 'none';
     closeMobileCart();
     return;
@@ -913,12 +875,10 @@ function updateCartUI() {
   DOM.cartTotalPrice.textContent = `${total.toLocaleString()} 円`;
   DOM.btnCheckout.disabled = false;
   
-  // スマホ用フローティングバー更新
   const totalCount = state.cart.reduce((sum, item) => sum + item.quantity, 0);
   DOM.mobileCartCount.textContent = totalCount;
   DOM.mobileCartTotal.textContent = `${total.toLocaleString()} 円`;
   
-  // レスポンシブ幅（1024px以下）の時のみフローティングバーを表示
   if (window.innerWidth <= 1024) {
     DOM.mobileCartBar.style.display = 'flex';
   } else {
@@ -957,14 +917,13 @@ function showCheckoutSuccess(change) {
 }
 
 // ==========================================
-// 写真拡大・詳細ポップアップ表示
+// 写真拡大・詳細ポップアップ表示 (ルビ対応)
 // ==========================================
 function showItemDetailPopup(item) {
-  DOM.detailModalName.textContent = item.name;
+  DOM.detailModalName.innerHTML = getRubyName(item.name, item.furigana);
   DOM.detailModalPrice.textContent = `${item.price.toLocaleString()} 円`;
   DOM.detailModalDesc.textContent = item.description || '説明なし';
   DOM.detailModalRemark.textContent = item.remark || 'なし';
-  
   DOM.detailModalStock.textContent = item.stock <= 0 ? '在庫切れ' : `残 ${item.stock}`;
   DOM.detailModalStock.className = `item-stock ${item.stock <= 5 && item.stock > 0 ? 'warning' : ''}`;
   
@@ -976,7 +935,6 @@ function showItemDetailPopup(item) {
     DOM.detailModalImg.style.display = 'none';
   }
   
-  // 数量プルダウン初期化
   DOM.detailModalQty.innerHTML = '';
   const maxQty = Math.min(item.stock, 10);
   if (maxQty <= 0) {
@@ -989,13 +947,10 @@ function showItemDetailPopup(item) {
     DOM.btnDetailModalAdd.disabled = false;
   }
   DOM.btnDetailModalAdd.dataset.itemId = item.id;
-  
   DOM.modalItemDetail.style.display = 'flex';
 }
 
-// ==========================================
-// 当日取引履歴 描画
-// ==========================================
+// 取引履歴描画
 function renderHistoryTable() {
   DOM.historyTableBody.innerHTML = '';
 
@@ -1010,7 +965,6 @@ function renderHistoryTable() {
 
   state.transactions.forEach(tx => {
     const row = document.createElement('tr');
-    
     let detailsHtml = '<ul class="history-details-list" style="list-style:none; padding:0;">';
     tx.items.forEach(item => {
       detailsHtml += `<li class="history-details-item" style="margin-bottom:0.25rem;">${item.name} (${item.price.toLocaleString()}円) × ${item.quantity}</li>`;
@@ -1036,15 +990,7 @@ function renderHistoryTable() {
   });
 }
 
-window.confirmCancelTransaction = function(txId) {
-  state.cancelTargetTxId = txId;
-  DOM.cancelTargetTxIdText.textContent = txId;
-  DOM.modalCancelConfirm.style.display = 'flex';
-};
-
-// ==========================================
-// 日次報告書集計
-// ==========================================
+// 日次報告書
 async function generateDailyReport() {
   if (!state.selectedDate) {
     showToast('日付を選択してください。', 'error');
@@ -1119,12 +1065,6 @@ async function generateDailyReport() {
   } catch (err) {
     console.error(err);
     showToast(`報告書集計エラー: ${err.message}`, 'error');
-    DOM.reportSheetView.innerHTML = `
-      <div class="report-empty-state">
-        <i class="fa-solid fa-triangle-exclamation empty-icon" style="color:var(--color-vermilion);"></i>
-        <p>エラーが発生しました。設定をご確認ください。<br>${err.message}</p>
-      </div>
-    `;
   } finally {
     showLoader(false);
   }
@@ -1240,7 +1180,7 @@ function renderDailyReportView(data) {
 }
 
 // ==========================================
-// マスタ管理画面 (カード型ビジュアルエディタ) 描画
+// マスタ管理画面 (カード型ビジュアルエディタ - ルビ対応)
 // ==========================================
 function renderMasterGrid() {
   DOM.masterGrid.innerHTML = '';
@@ -1250,13 +1190,14 @@ function renderMasterGrid() {
     card.className = 'item-card';
     card.id = `master-card-${item.id}`;
     
-    // 非表示マークのオーバーレイ設定
     const isHidden = item.display === false;
-    
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
       imageHtml = `<img src="${item.imageUrl}" alt="${item.name}" class="item-image" id="master-img-view-${item.id}">`;
     }
+    
+    // ルビ表記の適用
+    const rubyNameHtml = getRubyName(item.name, item.furigana);
     
     card.innerHTML = `
       <div class="item-image-wrapper dropzone-wrapper" id="master-dropzone-${item.id}" style="cursor:pointer; position:relative;">
@@ -1269,8 +1210,7 @@ function renderMasterGrid() {
         ${isHidden ? '<span class="stock-badge" style="background-color:var(--color-text-muted);">非表示</span>' : ''}
       </div>
       <div class="item-info" id="master-info-container-${item.id}">
-        <!-- 表示モード表示 -->
-        <h3 class="item-name">${item.name}</h3>
+        <h3 class="item-name">${rubyNameHtml}</h3>
         <p class="item-desc" style="-webkit-line-clamp: 1; height: 1.2rem;">${item.description || '説明なし'}</p>
         <div class="item-price-stock">
           <span class="item-price">${item.price.toLocaleString()} 円</span>
@@ -1284,7 +1224,6 @@ function renderMasterGrid() {
       </div>
     `;
     
-    // イベント処理: 画像ドラッグ＆ドロップとクリックファイル選択
     const dropzone = card.querySelector(`#master-dropzone-${item.id}`);
     const fileInput = card.querySelector(`#master-file-input-${item.id}`);
     const imgElement = card.querySelector(`#master-img-view-${item.id}`) || card.querySelector('.item-image-placeholder');
@@ -1294,7 +1233,6 @@ function renderMasterGrid() {
     dropzone.addEventListener('mouseleave', () => overlay.style.display = 'none');
     
     setupDragAndDrop(dropzone, fileInput, imgElement, async (fileData) => {
-      // 画像ドロップ時に即座にGASにアップロード・保存して同期する
       showLoader(true);
       if (state.isUsingMock) {
         item.imageUrl = fileData.data;
@@ -1319,7 +1257,7 @@ function renderMasterGrid() {
         const data = await res.json();
         if (data.status === 'success') {
           item.imageUrl = data.item.imageUrl;
-          showToast('写真をアップデートし、Googleドライブへ保存しました。', 'success');
+          showToast('写真をアップデートしました。', 'success');
           renderMasterGrid();
           renderItems();
         } else {
@@ -1333,11 +1271,9 @@ function renderMasterGrid() {
       }
     });
 
-    // イベント: 目（表示/非表示トグル）
     const btnToggle = card.querySelector(`#btn-toggle-display-${item.id}`);
     btnToggle.addEventListener('click', () => toggleItemDisplay(item));
 
-    // イベント: 鉛筆（インライン編集モードへの移行）
     const btnEdit = card.querySelector(`#btn-edit-master-${item.id}`);
     btnEdit.addEventListener('click', () => enterInlineEditMode(item));
 
@@ -1345,7 +1281,7 @@ function renderMasterGrid() {
   });
 }
 
-// 表示・非表示トグル処理
+// 表示・非表示トグル
 async function toggleItemDisplay(item) {
   const nextDisplayState = !(item.display !== false);
   
@@ -1372,7 +1308,7 @@ async function toggleItemDisplay(item) {
     const data = await res.json();
     if (data.status === 'success') {
       item.display = nextDisplayState;
-      showToast(`「${item.name}」の表示ステータスを更新しました。`, 'success');
+      showToast(`表示ステータスを更新しました。`, 'success');
       renderMasterGrid();
       renderItems();
     } else {
@@ -1386,19 +1322,22 @@ async function toggleItemDisplay(item) {
   }
 }
 
-// インライン編集モードの描画と処理
+// インライン編集モード (ふりがな追加)
 function enterInlineEditMode(item) {
   const card = document.getElementById(`master-card-${item.id}`);
   card.classList.add('editing');
   
   const container = document.getElementById(`master-info-container-${item.id}`);
   
-  // 編集用の入力欄を生成
   container.innerHTML = `
     <div style="display:flex; flex-direction:column; gap:0.5rem;">
       <div style="display:flex; gap:0.25rem; align-items:center;">
         <label style="font-size:0.75rem; font-weight:700; min-width:45px;">商品名</label>
         <input type="text" id="edit-name-${item.id}" class="edit-input" value="${item.name}">
+      </div>
+      <div style="display:flex; gap:0.25rem; align-items:center;">
+        <label style="font-size:0.75rem; font-weight:700; min-width:45px;">ふりがな</label>
+        <input type="text" id="edit-furigana-${item.id}" class="edit-input" value="${item.furigana || ''}" placeholder="ルビ(ひらがな表記)">
       </div>
       <div style="display:flex; gap:0.25rem; align-items:center;">
         <label style="font-size:0.75rem; font-weight:700; min-width:45px;">初穂料</label>
@@ -1433,15 +1372,14 @@ function enterInlineEditMode(item) {
     </div>
   `;
   
-  // キャンセルボタン
   document.getElementById(`btn-cancel-edit-${item.id}`).addEventListener('click', () => {
     card.classList.remove('editing');
     renderMasterGrid();
   });
   
-  // 保存ボタン
   document.getElementById(`btn-save-edit-${item.id}`).addEventListener('click', async () => {
     const newName = document.getElementById(`edit-name-${item.id}`).value.trim();
+    const newFurigana = document.getElementById(`edit-furigana-${item.id}`).value.trim();
     const newPrice = parseInt(document.getElementById(`edit-price-${item.id}`).value) || 0;
     const newStock = parseInt(document.getElementById(`edit-stock-${item.id}`).value) || 0;
     const newDesc = document.getElementById(`edit-desc-${item.id}`).value;
@@ -1456,6 +1394,7 @@ function enterInlineEditMode(item) {
     const updatedItem = {
       ...item,
       name: newName,
+      furigana: newFurigana,
       price: newPrice,
       stock: newStock,
       description: newDesc,
@@ -1495,7 +1434,7 @@ function enterInlineEditMode(item) {
             imageUrl: data.item.imageUrl
           };
         }
-        showToast('授与品データを保存し、同期しました。', 'success');
+        showToast('授与品データを同期・保存しました。', 'success');
         card.classList.remove('editing');
         renderMasterGrid();
         renderItems();
@@ -1511,16 +1450,12 @@ function enterInlineEditMode(item) {
   });
 }
 
-// ==========================================
-// 新規授与品の登録
-// ==========================================
+// 新規登録
 function resetAddItemForm() {
   DOM.formAddItem.reset();
   state.pendingAddImage = null;
   DOM.addItemImagePreview.src = '';
   DOM.addItemImagePreview.style.display = 'none';
-  
-  // ドロップゾーンの中身を初期化
   const dropzone = DOM.addItemDropzone;
   const icon = dropzone.querySelector('.dropzone-icon');
   const text = dropzone.querySelector('p');
@@ -1533,13 +1468,14 @@ async function handleAddItemSubmit(e) {
   
   const newItem = {
     name: document.getElementById('add-item-name').value.trim(),
+    furigana: document.getElementById('add-item-furigana').value.trim(),
     price: parseInt(document.getElementById('add-item-price').value) || 0,
     stock: parseInt(document.getElementById('add-item-stock').value) || 0,
     category: document.getElementById('add-item-category').value,
     remark: document.getElementById('add-item-remark').value.trim(),
     description: document.getElementById('add-item-desc').value.trim(),
     display: true,
-    image: state.pendingAddImage // Base64データ
+    image: state.pendingAddImage
   };
 
   DOM.modalAddItem.style.display = 'none';
@@ -1589,12 +1525,8 @@ async function handleAddItemSubmit(e) {
   }
 }
 
-// ==========================================
-// 共通UIユーティリティ
-// ==========================================
+// 共通ユーティリティ
 function showLoader(show) {
-  // グローバルローダーはないため、ローカルのトースト等でフィードバックするか、
-  // ロード時に適切な進捗スピナーを置く。今回は同期ボタンやレジグリッドの透明化で対応
   if (DOM.itemsGrid) {
     DOM.itemsGrid.style.opacity = show ? '0.5' : '1';
     DOM.itemsGrid.style.pointerEvents = show ? 'none' : 'auto';
