@@ -985,7 +985,7 @@ function renderItems() {
     const isOutOfStock = item.stock <= 0;
     card.className = `item-card ${isOutOfStock ? 'out-of-stock' : ''}`;
     card.id = `regi-card-${item.id}`;
-    card.setAttribute('draggable', 'true'); // ドラッグ可能に設定
+    card.setAttribute('draggable', 'false'); // 最初はドラッグ不可
     
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
@@ -1038,18 +1038,34 @@ function renderItems() {
       </div>
     `;
     
+    // グリップハンドルを掴んだときだけ draggable=true にする
+    card.addEventListener('mousedown', (e) => {
+      const isHandle = e.target.closest('.card-drag-handle');
+      if (isHandle) {
+        card.setAttribute('draggable', 'true');
+      } else {
+        card.setAttribute('draggable', 'false');
+      }
+    });
+
+    card.addEventListener('touchstart', (e) => {
+      const isHandle = e.target.closest('.card-drag-handle');
+      if (isHandle) {
+        card.setAttribute('draggable', 'true');
+      } else {
+        card.setAttribute('draggable', 'false');
+      }
+    }, { passive: true });
+
     // HTML5 ドラッグ＆ドロップイベント設定
     card.addEventListener('dragstart', (e) => {
-      if (!e.target.closest('.card-drag-handle') && e.target.className !== 'card-drag-handle') {
-        e.preventDefault();
-        return;
-      }
       e.dataTransfer.setData('text/plain', item.id);
       card.classList.add('dragging');
     });
 
     card.addEventListener('dragend', () => {
       card.classList.remove('dragging');
+      card.setAttribute('draggable', 'false'); // リセット
       const cards = DOM.itemsGrid.querySelectorAll('.item-card');
       cards.forEach(c => c.classList.remove('drag-over'));
     });
@@ -1563,7 +1579,7 @@ function renderMasterGrid() {
     const card = document.createElement('div');
     card.className = 'item-card';
     card.id = `master-card-${item.id}`;
-    card.setAttribute('draggable', 'true');
+    card.setAttribute('draggable', 'false'); // 最初はドラッグ不可
     
     const isHidden = item.display === false;
     
@@ -1605,18 +1621,34 @@ function renderMasterGrid() {
       </div>
     `;
     
-    // HTML5 Drag and Drop イベント定義 (ハンドルのみでドラッグ起動する制御)
-    card.addEventListener('dragstart', (e) => {
-      if (!e.target.closest('.card-drag-handle') && e.target.className !== 'card-drag-handle') {
-        e.preventDefault();
-        return;
+    // グリップハンドルを掴んだときだけ draggable=true にする
+    card.addEventListener('mousedown', (e) => {
+      const isHandle = e.target.closest('.card-drag-handle');
+      if (isHandle) {
+        card.setAttribute('draggable', 'true');
+      } else {
+        card.setAttribute('draggable', 'false');
       }
+    });
+
+    card.addEventListener('touchstart', (e) => {
+      const isHandle = e.target.closest('.card-drag-handle');
+      if (isHandle) {
+        card.setAttribute('draggable', 'true');
+      } else {
+        card.setAttribute('draggable', 'false');
+      }
+    }, { passive: true });
+
+    // ドラッグ＆ドロップイベント設定
+    card.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', item.id);
       card.classList.add('dragging');
     });
 
     card.addEventListener('dragend', () => {
       card.classList.remove('dragging');
+      card.setAttribute('draggable', 'false'); // リセット
       const cards = DOM.masterGrid.querySelectorAll('.item-card');
       cards.forEach(c => c.classList.remove('drag-over'));
     });
