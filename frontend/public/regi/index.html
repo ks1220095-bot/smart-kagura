@@ -194,6 +194,19 @@
             <label for="report-date">対象日付</label>
             <input type="date" id="report-date" class="input-date">
           </div>
+          
+          <div class="control-group" style="gap:0.3rem;">
+            <label>出力内訳の選択</label>
+            <div style="display:flex; gap:1.2rem; align-items:center; height:38px; background:var(--color-bg-sub); padding:0 1rem; border:1px solid var(--color-border); border-radius:var(--radius-sm);">
+              <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; cursor:pointer; font-weight:normal; margin:0; color:var(--color-text);">
+                <input type="checkbox" id="chk-include-items" checked style="accent-color:var(--color-vermilion); width:16px; height:16px;"> 授与品内訳
+              </label>
+              <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; cursor:pointer; font-weight:normal; margin:0; color:var(--color-text);">
+                <input type="checkbox" id="chk-include-prayers" checked style="accent-color:var(--color-green); width:16px; height:16px;"> ご祈祷内訳
+              </label>
+            </div>
+          </div>
+          
           <button id="btn-generate-report" class="btn-primary">
             <i class="fa-solid fa-file-shield"></i> 日次報告書を集計・同期
           </button>

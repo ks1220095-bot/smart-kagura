@@ -1454,6 +1454,10 @@ function renderDailyReportView(data) {
   const dateObj = new Date(data.date);
   const formattedDate = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
   
+  // 出力項目のチェック状態を取得
+  const includeItems = document.getElementById('chk-include-items').checked;
+  const includePrayers = document.getElementById('chk-include-prayers').checked;
+  
   let itemRowsHtml = '';
   if (Object.keys(data.itemDetails).length === 0) {
     itemRowsHtml = '<tr><td colspan="3" class="text-center">授与履歴なし</td></tr>';
@@ -1488,6 +1492,56 @@ function renderDailyReportView(data) {
 
   const itemTotalQty = Object.values(data.itemDetails).reduce((sum, item) => sum + item.quantity, 0);
 
+  // 授与品内訳セクション
+  let itemsSectionHtml = '';
+  if (includeItems) {
+    itemsSectionHtml = `
+      <h3 style="margin-bottom:0.75rem; border-left:3px solid var(--color-vermilion); padding-left:0.5rem; margin-top:2rem;">授与品 内訳</h3>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>授与品名</th>
+            <th style="width: 120px;">授与数</th>
+            <th style="width: 180px;">初穂料総額</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRowsHtml}
+          <tr style="font-weight: bold; background-color: #FAF9F6;">
+            <td>授与品 小計</td>
+            <td class="text-center">${itemTotalQty} 体</td>
+            <td class="text-right">${data.itemSalesTotal.toLocaleString()} 円</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  // ご祈祷内訳セクション
+  let prayersSectionHtml = '';
+  if (includePrayers) {
+    prayersSectionHtml = `
+      <h3 style="margin-bottom:0.75rem; border-left:3px solid var(--color-green); padding-left:0.5rem; margin-top:2rem;">ご祈祷 内訳</h3>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>祈祷種別</th>
+            <th style="width: 120px;">件数</th>
+            <th style="width: 180px;">初穂料総額</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${prayerRowsHtml}
+          <tr style="font-weight: bold; background-color: #FAF9F6;">
+            <td>ご祈祷 小計</td>
+            <td class="text-center">${data.prayerCount} 件</td>
+            <td class="text-right">${data.prayerSalesTotal.toLocaleString()} 円</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  }
+
   DOM.reportSheetView.innerHTML = `
     <div class="report-paper">
       <div class="report-paper-header">
@@ -1513,43 +1567,8 @@ function renderDailyReportView(data) {
         </div>
       </div>
       
-      <h3 style="margin-bottom:0.75rem; border-left:3px solid var(--color-vermilion); padding-left:0.5rem;">授与品 内訳</h3>
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>授与品名</th>
-            <th style="width: 120px;">授与数</th>
-            <th style="width: 180px;">初穂料総額</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemRowsHtml}
-          <tr style="font-weight: bold; background-color: #FAF9F6;">
-            <td>授与品 小計</td>
-            <td class="text-center">${itemTotalQty} 体</td>
-            <td class="text-right">${data.itemSalesTotal.toLocaleString()} 円</td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <h3 style="margin-bottom:0.75rem; border-left:3px solid var(--color-green); padding-left:0.5rem; margin-top:2rem;">ご祈祷 内訳</h3>
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>祈祷種別</th>
-            <th style="width: 120px;">件数</th>
-            <th style="width: 180px;">初穂料総額</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${prayerRowsHtml}
-          <tr style="font-weight: bold; background-color: #FAF9F6;">
-            <td>ご祈祷 小計</td>
-            <td class="text-center">${data.prayerCount} 件</td>
-            <td class="text-right">${data.prayerSalesTotal.toLocaleString()} 円</td>
-          </tr>
-        </tbody>
-      </table>
+      ${itemsSectionHtml}
+      ${prayersSectionHtml}
     </div>
   `;
 }
