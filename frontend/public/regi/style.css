@@ -286,7 +286,7 @@ button, input, select, textarea {
   border-color: var(--color-green);
 }
 
-/* コラム数コントローラー (新設: 数字ボタン型) */
+/* コラム数コントローラー (数字ボタン型) */
 .grid-cols-controller {
   display: flex;
   border: 1px solid var(--color-border);
@@ -326,7 +326,7 @@ button, input, select, textarea {
   border-right-color: var(--color-green);
 }
 
-/* ルビ（ふりがな）の和モダン表示定義 (新設) */
+/* ルビ（ふりがな）の和モダン表示定義 */
 ruby {
   ruby-position: over;
   ruby-align: center;
@@ -419,7 +419,6 @@ rt {
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.4;
-  /* ルビ表示用に少し上部余白を確保 */
   margin-top: 0.2rem;
 }
 
@@ -506,7 +505,7 @@ rt {
 
 .stepper-select {
   flex: 1;
-  width: 44px;
+  width: 50px; /* 100など3桁数値に対応するため少し広げる */
   border: none;
   outline: none;
   background-color: transparent;
@@ -646,7 +645,7 @@ rt {
 .cart-item-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin: 0 0.5rem;
 }
 
@@ -667,6 +666,28 @@ rt {
 .quantity-btn:hover {
   background-color: var(--color-light-gray);
   border-color: var(--color-text-muted);
+}
+
+/* 新設: カート個別ゴミ箱削除ボタン */
+.delete-cart-item-btn {
+  background: none;
+  border: none;
+  color: var(--color-vermilion);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+}
+
+.delete-cart-item-btn:hover {
+  background-color: rgba(215, 75, 52, 0.08);
+  transform: scale(1.1);
 }
 
 .cart-item-qty {
@@ -1498,7 +1519,6 @@ rt {
     padding-bottom: 5rem;
   }
   
-  /* タブレット時は、5〜8列の指定がされていても最大4列に強制制限 */
   .items-grid.cols-5,
   .items-grid.cols-6,
   .items-grid.cols-7,
@@ -1534,7 +1554,6 @@ rt {
     align-self: flex-end;
   }
 
-  /* スマホ時は、3〜8列が指定されていても最大2列に強制制限 */
   .items-grid.cols-3,
   .items-grid.cols-4,
   .items-grid.cols-5,
@@ -1544,7 +1563,6 @@ rt {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* 写真拡大ポップアップの1カラム化 */
   .detail-modal-layout {
     flex-direction: column;
     max-height: 90vh;

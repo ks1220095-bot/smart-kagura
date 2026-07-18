@@ -1,5 +1,5 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (ハイブリッド数量ステッパー対応完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (カート削除 ＆ 数量100拡張完全版)
  */
 
 // ==========================================
@@ -12,7 +12,7 @@ const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwf6XuzV04Vna-0QF8M
 // ==========================================
 const MOCK_ITEMS = [
   { id: 'M-01', name: '家内安全御札', furigana: 'かないあんぜんおふだ', price: 1500, description: 'ご家族の健康と安全を祈願した木札です。', stock: 50, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
-  { id: 'M-02', name: '商繁盛御札', furigana: 'しょうばいはんじょうおふだ', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
+  { id: 'M-02', name: '商売繁盛御札', furigana: 'しょうばいはんじょうおふだ', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
   { id: 'M-03', name: '交通安全お守り', furigana: 'こうつうあんぜんおまもり', price: 800, description: '日々の交通安全・道中安全を祈願したお守りです。', stock: 100, category: 'omamori', remark: '錦袋', display: true, imageUrl: '' },
   { id: 'M-04', name: '厄除けお守り', furigana: 'やくよけおまもり', price: 800, description: '災厄を払い、身を守るお守りです。', stock: 0, category: 'omamori', remark: '赤/紫', display: true, imageUrl: '' },
   { id: 'M-05', name: '授与用通常御朱印', furigana: 'じゅよようつうじょうごしゅいん', price: 500, description: '当神社の通常御朱印です。', stock: 200, category: 'goshuin', remark: '記帳・書置き', display: true, imageUrl: '' },
@@ -169,10 +169,8 @@ function setupDateTime() {
 function formatGoogleDriveUrl(url) {
   if (!url) return '';
   
-  // docs.google.com/uc?export=view&id=XXXX または open?id=XXXX, /d/XXXX を検出
   const match = url.match(/(?:id=|\/d\/|src=)([a-zA-Z0-9_-]{25,})/);
   if (match && (url.includes('google.com') || url.includes('drive.google'))) {
-    // 外部クッキー制限を受けないlh3.googleusercontent.comの直リンクへ自動置換
     return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
   return url;
@@ -184,6 +182,29 @@ function getRubyName(name, furigana) {
     return name;
   }
   return `<ruby>${name}<rt>${furigana}</rt></ruby>`;
+}
+
+// ユーティリティ: 数量プルダウン選択肢（1〜10、および10刻み〜100）の動的生成
+function generateQtyOptions(stock) {
+  const maxQty = Math.min(stock, 100);
+  let options = [];
+  
+  // 1〜10
+  for (let i = 1; i <= Math.min(maxQty, 10); i++) {
+    options.push(i);
+  }
+  
+  // 20〜100 (10単位)
+  for (let i = 20; i <= maxQty; i += 10) {
+    options.push(i);
+  }
+  
+  // 在庫数が10の倍数でない端数の場合、かつ含まれていない場合は最後に追加
+  if (maxQty > 10 && maxQty % 10 !== 0 && !options.includes(maxQty)) {
+    options.push(maxQty);
+  }
+  
+  return options;
 }
 
 // ==========================================
@@ -234,7 +255,6 @@ function handleTouchMove(e) {
     
     const ratio = currentDistance / touchStartDistance;
     
-    // ピンチアウト (拡大: カラム数を減らす)
     if (ratio > 1.35) {
       if (state.gridCols > 1) {
         state.gridCols--;
@@ -242,7 +262,6 @@ function handleTouchMove(e) {
         triggerPinchCooldown();
       }
     }
-    // ピンチイン (縮小: カラム数を増やす。最大8列まで拡張)
     else if (ratio < 0.70) {
       if (state.gridCols < 8) {
         state.gridCols++;
@@ -352,12 +371,11 @@ function setupEventListeners() {
     }
   });
 
-  // 写真詳細モーダル内のハイブリッド数量ステッパー制御
+  // 写真詳細モーダル内のハイブリッド数量ステッパー制御 (10単位リスト対応)
   document.getElementById('btn-detail-minus').addEventListener('click', () => {
     const select = DOM.detailModalQty;
     if (select.selectedIndex > 0) {
       select.selectedIndex--;
-      // 変更イベントを発火
       const event = new Event('change');
       select.dispatchEvent(event);
     }
@@ -474,7 +492,7 @@ function switchTab(tabKey) {
   });
 
   if (tabKey === 'register') {
-    renderItems(); // タブ切り替え時に必ずレジ画面を再描画して最新データ（在庫・画像）を反映
+    renderItems(); // 最新データの強制反映
   } else if (tabKey === 'history') {
     fetchTransactions();
   } else if (tabKey === 'master') {
@@ -742,7 +760,7 @@ async function executeCancelTransaction() {
 }
 
 // ==========================================
-// レジ画面 UI描画 (ルビ・ハイブリッドステッパー対応)
+// レジ画面 UI描画 (100拡張・10単位プルダウン)
 // ==========================================
 function renderItems() {
   DOM.itemsGrid.innerHTML = '';
@@ -750,6 +768,7 @@ function renderItems() {
   const filtered = state.items.filter(item => {
     const matchesCategory = state.selectedCategory === 'all' || item.category === state.selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(state.searchQuery) || item.id.toLowerCase().includes(state.searchQuery);
+    
     const matchesDisplay = item.display !== false;
     return matchesCategory && matchesSearch && matchesDisplay;
   });
@@ -779,14 +798,13 @@ function renderItems() {
     let stockClass = '';
     if (item.stock > 0 && item.stock <= 5) stockClass = 'warning';
 
-    // セレクトボックスの選択肢（在庫数に合わせて動的に制限）
+    // 10単位プルダウンのリスト生成 (1〜10、20〜100)
     let qtyOptions = '';
-    const maxSelectQty = Math.min(item.stock, 10);
-    for (let q = 1; q <= maxSelectQty; q++) {
+    const qtyList = generateQtyOptions(item.stock);
+    qtyList.forEach(q => {
       qtyOptions += `<option value="${q}">${q}</option>`;
-    }
+    });
     
-    // ルビ処理の適用
     const rubyNameHtml = getRubyName(item.name, item.furigana);
     
     card.innerHTML = `
@@ -803,7 +821,6 @@ function renderItems() {
         </div>
         
         <div class="item-qty-selector">
-          <!-- [−] [プルダウン] [＋] のハイブリッドステッパー -->
           <div class="qty-stepper" style="width: 105px;">
             <button class="stepper-btn" id="btn-minus-${item.id}" ${isOutOfStock ? 'disabled' : ''}>−</button>
             <select id="qty-select-${item.id}" class="stepper-select" ${isOutOfStock ? 'disabled' : ''}>
@@ -829,7 +846,6 @@ function renderItems() {
       const btnMinus = card.querySelector(`#btn-minus-${item.id}`);
       const btnPlus = card.querySelector(`#btn-plus-${item.id}`);
       
-      // カード全体のクリックイベントがポップアップになるため、ステッパー上の伝播を防ぐ
       select.addEventListener('click', (e) => e.stopPropagation());
       select.addEventListener('change', (e) => e.stopPropagation());
       
@@ -887,25 +903,42 @@ function addToCart(item, quantity = 1) {
   showToast(`${item.name}をカートに追加しました。`, 'success');
 }
 
+// カートからの完全削除 (新設)
+window.removeFromCart = function(itemId) {
+  const match = state.cart.find(item => item.id === itemId);
+  if (match) {
+    state.cart = state.cart.filter(item => item.id !== itemId);
+    updateCartUI();
+    showToast(`${match.name}をカートから削除しました。`, 'info');
+    
+    // モバイル用ハーフカート同期
+    if (DOM.mobileCartSheet.classList.contains('open')) {
+      DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
+      openMobileCart();
+    }
+  }
+};
+
 window.updateQuantity = function(itemId, change) {
   const cartItem = state.cart.find(item => item.id === itemId);
   if (!cartItem) return;
 
   const newQty = cartItem.quantity + change;
   if (newQty <= 0) {
-    state.cart = state.cart.filter(item => item.id !== itemId);
+    // 数量が0以下になる場合は自動で削除
+    removeFromCart(itemId);
   } else {
     if (newQty > cartItem.maxStock) {
       showToast('在庫上限を超える数量は指定できません。', 'error');
       return;
     }
     cartItem.quantity = newQty;
-  }
-  
-  updateCartUI();
-  if (DOM.mobileCartSheet.classList.contains('open')) {
-    DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
-    openMobileCart();
+    updateCartUI();
+    
+    if (DOM.mobileCartSheet.classList.contains('open')) {
+      DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
+      openMobileCart();
+    }
   }
 };
 
@@ -937,6 +970,10 @@ function updateCartUI() {
         <button class="quantity-btn" onclick="updateQuantity('${item.id}', -1)">-</button>
         <span class="cart-item-qty">${item.quantity}</span>
         <button class="quantity-btn" onclick="updateQuantity('${item.id}', 1)">+</button>
+        <!-- ゴミ箱ボタン -->
+        <button class="delete-cart-item-btn" onclick="removeFromCart('${item.id}')" title="カートから削除">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
       </div>
       <span class="cart-item-price">${(item.price * item.quantity).toLocaleString()} 円</span>
     `;
@@ -996,7 +1033,7 @@ function showCheckoutSuccess(change) {
 }
 
 // ==========================================
-// 写真拡大・詳細ポップアップ表示 (ルビ・ハイブリッド対応)
+// 写真拡大・詳細ポップアップ表示 (100拡張)
 // ==========================================
 function showItemDetailPopup(item) {
   DOM.detailModalName.innerHTML = getRubyName(item.name, item.furigana);
@@ -1018,16 +1055,16 @@ function showItemDetailPopup(item) {
   }
   
   DOM.detailModalQty.innerHTML = '';
-  const maxQty = Math.min(item.stock, 10);
-  if (isOutOfStock || maxQty <= 0) {
+  const qtyList = generateQtyOptions(item.stock);
+  if (isOutOfStock || qtyList.length === 0) {
     DOM.detailModalQty.innerHTML = '<option value="0">0</option>';
     DOM.btnDetailModalAdd.disabled = true;
     document.getElementById('btn-detail-minus').disabled = true;
     document.getElementById('btn-detail-plus').disabled = true;
   } else {
-    for (let q = 1; q <= maxQty; q++) {
+    qtyList.forEach(q => {
       DOM.detailModalQty.innerHTML += `<option value="${q}">${q}</option>`;
-    }
+    });
     DOM.btnDetailModalAdd.disabled = false;
     document.getElementById('btn-detail-minus').disabled = false;
     document.getElementById('btn-detail-plus').disabled = false;
