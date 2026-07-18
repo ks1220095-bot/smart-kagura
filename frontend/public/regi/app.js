@@ -1,5 +1,5 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (ふりがな・最大8列・ピンチジェスチャー完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (画像安定化・在庫自動保護・8列対応完全版)
  */
 
 // ==========================================
@@ -14,7 +14,7 @@ const MOCK_ITEMS = [
   { id: 'M-01', name: '家内安全御札', furigana: 'かないあんぜんおふだ', price: 1500, description: 'ご家族の健康と安全を祈願した木札です。', stock: 50, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
   { id: 'M-02', name: '商売繁盛御札', furigana: 'しょうばいはんじょうおふだ', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
   { id: 'M-03', name: '交通安全お守り', furigana: 'こうつうあんぜんおまもり', price: 800, description: '日々の交通安全・道中安全を祈願したお守りです。', stock: 100, category: 'omamori', remark: '錦袋', display: true, imageUrl: '' },
-  { id: 'M-04', name: '厄除けお守り', furigana: 'やくよけおまもり', price: 800, description: '災厄を払い、身を守るお守りです。', stock: 5, category: 'omamori', remark: '赤/紫', display: true, imageUrl: '' },
+  { id: 'M-04', name: '厄除けお守り', furigana: 'やくよけおまもり', price: 800, description: '災厄を払い、身を守るお守りです。', stock: 0, category: 'omamori', remark: '赤/紫', display: true, imageUrl: '' },
   { id: 'M-05', name: '授与用通常御朱印', furigana: 'じゅよようつうじょうごしゅいん', price: 500, description: '当神社の通常御朱印です。', stock: 200, category: 'goshuin', remark: '記帳・書置き', display: true, imageUrl: '' },
   { id: 'M-06', name: '限定金字御朱印', furigana: 'げんていきんじごしゅいん', price: 1000, description: '季節限定の金文字御朱印です。', stock: 50, category: 'goshuin', remark: '書置きのみ', display: true, imageUrl: '' },
   { id: 'M-07', name: '吉祥干支置物', furigana: 'きっしょうえとおきもの', price: 1200, description: '当年の干支を象った縁起の良い置物です。', stock: 40, category: 'engimono', remark: '箱入り', display: true, imageUrl: '' },
@@ -164,8 +164,21 @@ function setupDateTime() {
 }
 
 // ==========================================
-// ユーティリティ: <ruby>タグ生成ヘルパー
+// ユーティリティ: Googleドライブ共有リンクの安定化
 // ==========================================
+function formatGoogleDriveUrl(url) {
+  if (!url) return '';
+  
+  // docs.google.com/uc?export=view&id=XXXX または open?id=XXXX, /d/XXXX を検出
+  const match = url.match(/(?:id=|\/d\/|src=)([a-zA-Z0-9_-]{25,})/);
+  if (match && (url.includes('google.com') || url.includes('drive.google'))) {
+    // 外部クッキー制限を受けないlh3.googleusercontent.comの直リンクへ自動置換
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  }
+  return url;
+}
+
+// ユーティリティ: <ruby>タグ生成ヘルパー
 function getRubyName(name, furigana) {
   if (!furigana || furigana === name) {
     return name;
@@ -440,7 +453,9 @@ function switchTab(tabKey) {
     DOM.panels[key].classList.toggle('active', key === tabKey);
   });
 
-  if (tabKey === 'history') {
+  if (tabKey === 'register') {
+    renderItems(); // タブ切り替え時に必ずレジ画面を再描画して最新在庫・画像状況を反映
+  } else if (tabKey === 'history') {
     fetchTransactions();
   } else if (tabKey === 'master') {
     renderMasterGrid();
@@ -516,7 +531,12 @@ async function loadMasterData(forceReload = false) {
           else if (item.name.includes('朱印')) category = 'goshuin';
           else if (item.name.includes('絵馬') || item.name.includes('置物') || item.name.includes('矢')) category = 'engimono';
         }
-        return { ...item, category };
+        
+        // 在庫数が不正値または空欄だった場合は0を保証
+        let stock = Number(item.stock);
+        if (isNaN(stock)) stock = 0;
+        
+        return { ...item, stock, category };
       });
       renderItems();
       renderMasterGrid();
@@ -703,7 +723,7 @@ async function executeCancelTransaction() {
 }
 
 // ==========================================
-// レジ画面 UI描画 (ルビ対応)
+// レジ画面 UI描画 (ルビ・安定表示対応)
 // ==========================================
 function renderItems() {
   DOM.itemsGrid.innerHTML = '';
@@ -711,6 +731,9 @@ function renderItems() {
   const filtered = state.items.filter(item => {
     const matchesCategory = state.selectedCategory === 'all' || item.category === state.selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(state.searchQuery) || item.id.toLowerCase().includes(state.searchQuery);
+    
+    // 在庫切れ(0体以下)の商品は表示トグルがどうあれ自動で「在庫切れ」と扱い、
+    // かつ商品マスタで手動で「非表示」に設定されたアイテムのみ除外する
     const matchesDisplay = item.display !== false;
     return matchesCategory && matchesSearch && matchesDisplay;
   });
@@ -727,12 +750,16 @@ function renderItems() {
 
   filtered.forEach(item => {
     const card = document.createElement('div');
+    
+    // 在庫0以下の商品は手動設定なしで自動的に「在庫切れ（out-of-stock）」状態へ移行
     const isOutOfStock = item.stock <= 0;
     card.className = `item-card ${isOutOfStock ? 'out-of-stock' : ''}`;
     
+    // Googleドライブ直リンク安定化と、ロードエラー時の完璧プレースホルダーフェードアウト
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
-      imageHtml = `<img src="${item.imageUrl}" alt="${item.name}" class="item-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      const stableUrl = formatGoogleDriveUrl(item.imageUrl);
+      imageHtml = `<img src="${stableUrl}" alt="${item.name}" class="item-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                    <div class="item-image-placeholder" style="display:none;"><i class="fa-solid fa-om"></i></div>`;
     }
     
@@ -792,6 +819,11 @@ function renderItems() {
 
 // カート関連
 function addToCart(item, quantity = 1) {
+  if (item.stock <= 0) {
+    showToast('在庫切れのためカートに追加できません。', 'error');
+    return;
+  }
+  
   const existing = state.cart.find(cartItem => cartItem.id === item.id);
   
   if (existing) {
@@ -917,18 +949,21 @@ function showCheckoutSuccess(change) {
 }
 
 // ==========================================
-// 写真拡大・詳細ポップアップ表示 (ルビ対応)
+// 写真拡大・詳細ポップアップ表示 (ルビ・安定対応)
 // ==========================================
 function showItemDetailPopup(item) {
   DOM.detailModalName.innerHTML = getRubyName(item.name, item.furigana);
   DOM.detailModalPrice.textContent = `${item.price.toLocaleString()} 円`;
   DOM.detailModalDesc.textContent = item.description || '説明なし';
   DOM.detailModalRemark.textContent = item.remark || 'なし';
-  DOM.detailModalStock.textContent = item.stock <= 0 ? '在庫切れ' : `残 ${item.stock}`;
+  
+  const isOutOfStock = item.stock <= 0;
+  DOM.detailModalStock.textContent = isOutOfStock ? '在庫切れ' : `残 ${item.stock}`;
   DOM.detailModalStock.className = `item-stock ${item.stock <= 5 && item.stock > 0 ? 'warning' : ''}`;
   
   if (item.imageUrl) {
-    DOM.detailModalImg.src = item.imageUrl;
+    const stableUrl = formatGoogleDriveUrl(item.imageUrl);
+    DOM.detailModalImg.src = stableUrl;
     DOM.detailModalImg.style.display = 'block';
   } else {
     DOM.detailModalImg.src = '';
@@ -937,7 +972,7 @@ function showItemDetailPopup(item) {
   
   DOM.detailModalQty.innerHTML = '';
   const maxQty = Math.min(item.stock, 10);
-  if (maxQty <= 0) {
+  if (isOutOfStock || maxQty <= 0) {
     DOM.detailModalQty.innerHTML = '<option value="0">0体</option>';
     DOM.btnDetailModalAdd.disabled = true;
   } else {
@@ -1180,7 +1215,7 @@ function renderDailyReportView(data) {
 }
 
 // ==========================================
-// マスタ管理画面 (カード型ビジュアルエディタ - ルビ対応)
+// マスタ管理画面 (カード型ビジュアルエディタ - ルビ・安定対応)
 // ==========================================
 function renderMasterGrid() {
   DOM.masterGrid.innerHTML = '';
@@ -1191,9 +1226,13 @@ function renderMasterGrid() {
     card.id = `master-card-${item.id}`;
     
     const isHidden = item.display === false;
+    
+    // Googleドライブ直リンク安定化と、ロードエラー時のプレースホルダーフォールバック
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
-      imageHtml = `<img src="${item.imageUrl}" alt="${item.name}" class="item-image" id="master-img-view-${item.id}">`;
+      const stableUrl = formatGoogleDriveUrl(item.imageUrl);
+      imageHtml = `<img src="${stableUrl}" alt="${item.name}" class="item-image" id="master-img-view-${item.id}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                   <div class="item-image-placeholder" style="display:none;"><i class="fa-solid fa-om"></i></div>`;
     }
     
     // ルビ表記の適用
@@ -1524,6 +1563,18 @@ async function handleAddItemSubmit(e) {
     showLoader(false);
   }
 }
+
+// 共通ヘルパー (合計値)
+function getCartTotal() {
+  return state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+}
+
+// 確認ダイアログ
+window.confirmCancelTransaction = function(txId) {
+  state.cancelTargetTxId = txId;
+  DOM.cancelTargetTxIdText.textContent = txId;
+  DOM.modalCancelConfirm.style.display = 'flex';
+};
 
 // 共通ユーティリティ
 function showLoader(show) {
