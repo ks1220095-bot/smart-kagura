@@ -948,7 +948,7 @@ async function executeCancelTransaction() {
 }
 
 // ==========================================
-// レジ画面 UI描画
+// レジ画面 UI描画 (双方向ドラッグ＆ドロップソート対応)
 // ==========================================
 function renderItems() {
   DOM.itemsGrid.innerHTML = '';
@@ -974,6 +974,8 @@ function renderItems() {
     const card = document.createElement('div');
     const isOutOfStock = item.stock <= 0;
     card.className = `item-card ${isOutOfStock ? 'out-of-stock' : ''}`;
+    card.id = `regi-card-${item.id}`;
+    card.setAttribute('draggable', 'true'); // ドラッグ可能に設定
     
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
@@ -994,6 +996,11 @@ function renderItems() {
     const rubyNameHtml = getRubyName(item.name, item.furigana);
     
     card.innerHTML = `
+      <!-- ドラッググリップハンドル -->
+      <div class="card-drag-handle" title="ドラッグして並び替え">
+        <i class="fa-solid fa-grip-vertical"></i>
+      </div>
+      
       ${isOutOfStock ? '<span class="stock-badge sold-out">在庫切れ</span>' : ''}
       <div class="item-image-wrapper" id="img-wrapper-${item.id}">
         ${imageHtml}
@@ -1020,6 +1027,62 @@ function renderItems() {
         </div>
       </div>
     `;
+    
+    // HTML5 ドラッグ＆ドロップイベント設定
+    card.addEventListener('dragstart', (e) => {
+      if (!e.target.closest('.card-drag-handle') && e.target.className !== 'card-drag-handle') {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.setData('text/plain', item.id);
+      card.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      const cards = DOM.itemsGrid.querySelectorAll('.item-card');
+      cards.forEach(c => c.classList.remove('drag-over'));
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    card.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (!card.classList.contains('dragging')) {
+        card.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      
+      const dragSourceId = e.dataTransfer.getData('text/plain');
+      if (!dragSourceId || dragSourceId === item.id) return;
+
+      const srcIdx = state.items.findIndex(i => i.id === dragSourceId);
+      const destIdx = state.items.findIndex(i => i.id === item.id);
+      
+      if (srcIdx !== -1 && destIdx !== -1) {
+        const [movedItem] = state.items.splice(srcIdx, 1);
+        state.items.splice(destIdx, 0, movedItem);
+        
+        const orderIds = state.items.map(i => i.id);
+        localStorage.setItem('regi_items_order', JSON.stringify(orderIds));
+        
+        renderItems();
+        renderMasterGrid();
+        
+        await saveOrderToGAS(orderIds);
+        showToast('授与品の並び順を保存・変更しました。', 'success');
+      }
+    });
     
     const imgWrapper = card.querySelector(`#img-wrapper-${item.id}`);
     imgWrapper.addEventListener('click', () => {
