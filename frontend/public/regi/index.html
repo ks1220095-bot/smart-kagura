@@ -248,7 +248,7 @@
     </div>
   </div>
 
-  <!-- 写真拡大・詳細ポップアップモーダル (ルビ対応) -->
+  <!-- 写真拡大・詳細ポップアップモーダル (ルビ ＆ ハイブリッド数量ステッパー対応) -->
   <div id="modal-item-detail" class="modal-overlay">
     <div class="modal-content large-detail">
       <button id="btn-close-detail-modal" class="modal-close-corner"><i class="fa-solid fa-xmark"></i></button>
@@ -274,9 +274,14 @@
             <span id="detail-modal-stock" class="item-stock">残 50</span>
           </div>
           <div class="detail-modal-action-row">
-            <select id="detail-modal-qty" class="qty-select" style="max-width: 120px;">
-              <option value="1">1体</option>
-            </select>
+            <!-- ハイブリッド数量ステッパー: ＋ーボタンとプルダウン選択の完全融合 -->
+            <div class="qty-stepper" style="max-width: 120px; width: 100%;">
+              <button class="stepper-btn" id="btn-detail-minus">−</button>
+              <select id="detail-modal-qty" class="stepper-select">
+                <option value="1">1</option>
+              </select>
+              <button class="stepper-btn" id="btn-detail-plus">＋</button>
+            </div>
             <button id="btn-detail-modal-add" class="btn-primary">
               <i class="fa-solid fa-plus"></i> カートに追加
             </button>

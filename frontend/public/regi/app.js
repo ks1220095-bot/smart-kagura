@@ -1,5 +1,5 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (画像安定化・在庫自動保護・8列対応完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (ハイブリッド数量ステッパー対応完全版)
  */
 
 // ==========================================
@@ -12,7 +12,7 @@ const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwf6XuzV04Vna-0QF8M
 // ==========================================
 const MOCK_ITEMS = [
   { id: 'M-01', name: '家内安全御札', furigana: 'かないあんぜんおふだ', price: 1500, description: 'ご家族の健康と安全を祈願した木札です。', stock: 50, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
-  { id: 'M-02', name: '商売繁盛御札', furigana: 'しょうばいはんじょうおふだ', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
+  { id: 'M-02', name: '商繁盛御札', furigana: 'しょうばいはんじょうおふだ', price: 1500, description: 'ご事業の繁栄と商売の繁盛を祈願した木札です。', stock: 30, category: 'ofuda', remark: '大サイズ', display: true, imageUrl: '' },
   { id: 'M-03', name: '交通安全お守り', furigana: 'こうつうあんぜんおまもり', price: 800, description: '日々の交通安全・道中安全を祈願したお守りです。', stock: 100, category: 'omamori', remark: '錦袋', display: true, imageUrl: '' },
   { id: 'M-04', name: '厄除けお守り', furigana: 'やくよけおまもり', price: 800, description: '災厄を払い、身を守るお守りです。', stock: 0, category: 'omamori', remark: '赤/紫', display: true, imageUrl: '' },
   { id: 'M-05', name: '授与用通常御朱印', furigana: 'じゅよようつうじょうごしゅいん', price: 500, description: '当神社の通常御朱印です。', stock: 200, category: 'goshuin', remark: '記帳・書置き', display: true, imageUrl: '' },
@@ -352,6 +352,26 @@ function setupEventListeners() {
     }
   });
 
+  // 写真詳細モーダル内のハイブリッド数量ステッパー制御
+  document.getElementById('btn-detail-minus').addEventListener('click', () => {
+    const select = DOM.detailModalQty;
+    if (select.selectedIndex > 0) {
+      select.selectedIndex--;
+      // 変更イベントを発火
+      const event = new Event('change');
+      select.dispatchEvent(event);
+    }
+  });
+  
+  document.getElementById('btn-detail-plus').addEventListener('click', () => {
+    const select = DOM.detailModalQty;
+    if (select.selectedIndex < select.options.length - 1) {
+      select.selectedIndex++;
+      const event = new Event('change');
+      select.dispatchEvent(event);
+    }
+  });
+
   DOM.btnCancelConfirmNo.addEventListener('click', () => {
     DOM.modalCancelConfirm.style.display = 'none';
     state.cancelTargetTxId = null;
@@ -454,7 +474,7 @@ function switchTab(tabKey) {
   });
 
   if (tabKey === 'register') {
-    renderItems(); // タブ切り替え時に必ずレジ画面を再描画して最新在庫・画像状況を反映
+    renderItems(); // タブ切り替え時に必ずレジ画面を再描画して最新データ（在庫・画像）を反映
   } else if (tabKey === 'history') {
     fetchTransactions();
   } else if (tabKey === 'master') {
@@ -532,7 +552,6 @@ async function loadMasterData(forceReload = false) {
           else if (item.name.includes('絵馬') || item.name.includes('置物') || item.name.includes('矢')) category = 'engimono';
         }
         
-        // 在庫数が不正値または空欄だった場合は0を保証
         let stock = Number(item.stock);
         if (isNaN(stock)) stock = 0;
         
@@ -723,7 +742,7 @@ async function executeCancelTransaction() {
 }
 
 // ==========================================
-// レジ画面 UI描画 (ルビ・安定表示対応)
+// レジ画面 UI描画 (ルビ・ハイブリッドステッパー対応)
 // ==========================================
 function renderItems() {
   DOM.itemsGrid.innerHTML = '';
@@ -731,9 +750,6 @@ function renderItems() {
   const filtered = state.items.filter(item => {
     const matchesCategory = state.selectedCategory === 'all' || item.category === state.selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(state.searchQuery) || item.id.toLowerCase().includes(state.searchQuery);
-    
-    // 在庫切れ(0体以下)の商品は表示トグルがどうあれ自動で「在庫切れ」と扱い、
-    // かつ商品マスタで手動で「非表示」に設定されたアイテムのみ除外する
     const matchesDisplay = item.display !== false;
     return matchesCategory && matchesSearch && matchesDisplay;
   });
@@ -750,12 +766,9 @@ function renderItems() {
 
   filtered.forEach(item => {
     const card = document.createElement('div');
-    
-    // 在庫0以下の商品は手動設定なしで自動的に「在庫切れ（out-of-stock）」状態へ移行
     const isOutOfStock = item.stock <= 0;
     card.className = `item-card ${isOutOfStock ? 'out-of-stock' : ''}`;
     
-    // Googleドライブ直リンク安定化と、ロードエラー時の完璧プレースホルダーフェードアウト
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
       const stableUrl = formatGoogleDriveUrl(item.imageUrl);
@@ -766,10 +779,11 @@ function renderItems() {
     let stockClass = '';
     if (item.stock > 0 && item.stock <= 5) stockClass = 'warning';
 
+    // セレクトボックスの選択肢（在庫数に合わせて動的に制限）
     let qtyOptions = '';
     const maxSelectQty = Math.min(item.stock, 10);
     for (let q = 1; q <= maxSelectQty; q++) {
-      qtyOptions += `<option value="${q}">${q}体</option>`;
+      qtyOptions += `<option value="${q}">${q}</option>`;
     }
     
     // ルビ処理の適用
@@ -789,9 +803,14 @@ function renderItems() {
         </div>
         
         <div class="item-qty-selector">
-          <select id="qty-select-${item.id}" class="qty-select" ${isOutOfStock ? 'disabled' : ''}>
-            ${qtyOptions || '<option value="0">0体</option>'}
-          </select>
+          <!-- [−] [プルダウン] [＋] のハイブリッドステッパー -->
+          <div class="qty-stepper" style="width: 105px;">
+            <button class="stepper-btn" id="btn-minus-${item.id}" ${isOutOfStock ? 'disabled' : ''}>−</button>
+            <select id="qty-select-${item.id}" class="stepper-select" ${isOutOfStock ? 'disabled' : ''}>
+              ${qtyOptions || '<option value="0">0</option>'}
+            </select>
+            <button class="stepper-btn" id="btn-plus-${item.id}" ${isOutOfStock ? 'disabled' : ''}>＋</button>
+          </div>
           <button id="btn-add-${item.id}" class="btn-add-item" ${isOutOfStock ? 'disabled' : ''}>
             <i class="fa-solid fa-plus"></i> 追加
           </button>
@@ -806,9 +825,30 @@ function renderItems() {
 
     if (!isOutOfStock) {
       const btnAdd = card.querySelector(`#btn-add-${item.id}`);
+      const select = card.querySelector(`#qty-select-${item.id}`);
+      const btnMinus = card.querySelector(`#btn-minus-${item.id}`);
+      const btnPlus = card.querySelector(`#btn-plus-${item.id}`);
+      
+      // カード全体のクリックイベントがポップアップになるため、ステッパー上の伝播を防ぐ
+      select.addEventListener('click', (e) => e.stopPropagation());
+      select.addEventListener('change', (e) => e.stopPropagation());
+      
+      btnMinus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (select.selectedIndex > 0) {
+          select.selectedIndex--;
+        }
+      });
+      
+      btnPlus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (select.selectedIndex < select.options.length - 1) {
+          select.selectedIndex++;
+        }
+      });
+      
       btnAdd.addEventListener('click', (e) => {
         e.stopPropagation();
-        const select = card.querySelector(`#qty-select-${item.id}`);
         const qty = parseInt(select.value) || 1;
         addToCart(item, qty);
       });
@@ -943,13 +983,20 @@ function clearCart() {
   updateCartUI();
 }
 
+// 確認ダイアログ
+window.confirmCancelTransaction = function(txId) {
+  state.cancelTargetTxId = txId;
+  DOM.cancelTargetTxIdText.textContent = txId;
+  DOM.modalCancelConfirm.style.display = 'flex';
+};
+
 function showCheckoutSuccess(change) {
   DOM.modalChangeText.textContent = `${change.toLocaleString()} 円`;
   DOM.modalCheckoutSuccess.style.display = 'flex';
 }
 
 // ==========================================
-// 写真拡大・詳細ポップアップ表示 (ルビ・安定対応)
+// 写真拡大・詳細ポップアップ表示 (ルビ・ハイブリッド対応)
 // ==========================================
 function showItemDetailPopup(item) {
   DOM.detailModalName.innerHTML = getRubyName(item.name, item.furigana);
@@ -973,13 +1020,17 @@ function showItemDetailPopup(item) {
   DOM.detailModalQty.innerHTML = '';
   const maxQty = Math.min(item.stock, 10);
   if (isOutOfStock || maxQty <= 0) {
-    DOM.detailModalQty.innerHTML = '<option value="0">0体</option>';
+    DOM.detailModalQty.innerHTML = '<option value="0">0</option>';
     DOM.btnDetailModalAdd.disabled = true;
+    document.getElementById('btn-detail-minus').disabled = true;
+    document.getElementById('btn-detail-plus').disabled = true;
   } else {
     for (let q = 1; q <= maxQty; q++) {
-      DOM.detailModalQty.innerHTML += `<option value="${q}">${q}体</option>`;
+      DOM.detailModalQty.innerHTML += `<option value="${q}">${q}</option>`;
     }
     DOM.btnDetailModalAdd.disabled = false;
+    document.getElementById('btn-detail-minus').disabled = false;
+    document.getElementById('btn-detail-plus').disabled = false;
   }
   DOM.btnDetailModalAdd.dataset.itemId = item.id;
   DOM.modalItemDetail.style.display = 'flex';
@@ -1227,7 +1278,6 @@ function renderMasterGrid() {
     
     const isHidden = item.display === false;
     
-    // Googleドライブ直リンク安定化と、ロードエラー時のプレースホルダーフォールバック
     let imageHtml = `<div class="item-image-placeholder"><i class="fa-solid fa-om"></i></div>`;
     if (item.imageUrl) {
       const stableUrl = formatGoogleDriveUrl(item.imageUrl);
@@ -1235,7 +1285,6 @@ function renderMasterGrid() {
                    <div class="item-image-placeholder" style="display:none;"><i class="fa-solid fa-om"></i></div>`;
     }
     
-    // ルビ表記の適用
     const rubyNameHtml = getRubyName(item.name, item.furigana);
     
     card.innerHTML = `
