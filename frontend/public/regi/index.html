@@ -265,6 +265,25 @@
     </div>
   </div>
 
+  <!-- 職員共有連絡メモ帳 (画面右端追従型スライドドロワー) -->
+  <div id="shared-memo-drawer" class="shared-memo-drawer">
+    <button id="btn-toggle-memo" class="btn-toggle-memo" aria-label="職員共有メモ帳を開閉">
+      <i class="fa-solid fa-clipboard-list"></i>
+      <span class="memo-tab-text">職員連絡メモ</span>
+    </button>
+    <div class="memo-drawer-content">
+      <div class="memo-drawer-header">
+        <h3><i class="fa-solid fa-pen-fancy"></i> 職員連絡メモ</h3>
+        <button id="btn-sync-memo" class="btn-sync-memo-icon" title="サーバーの最新メモと同期"><i class="fa-solid fa-rotate"></i></button>
+      </div>
+      <div class="memo-drawer-body">
+        <p class="memo-desc-text">職員間での連絡事項や申し送りをご記入ください。内容は自動保存され、他端末とも共有できます。</p>
+        <textarea id="shared-memo-input" class="shared-memo-textarea" placeholder="連絡事項を入力してください..."></textarea>
+        <div id="memo-status" class="memo-status">保存済み</div>
+      </div>
+    </div>
+  </div>
+
   <!-- 写真拡大・詳細ポップアップモーダル -->
   <div id="modal-item-detail" class="modal-overlay">
     <div class="modal-content large-detail">

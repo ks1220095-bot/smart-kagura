@@ -1,5 +1,5 @@
 /**
- * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (並び替え整理完全版)
+ * 神社向け授与品レジ＆ご祈祷合算システム - フロントエンドロジック (並び替え整理＆共有メモ完全版)
  */
 
 // ==========================================
@@ -139,7 +139,14 @@ const DOM = {
   toastContainer: document.getElementById('toast-container'),
   
   // 特殊おつりキーパッド
-  btnExactAmount: document.getElementById('btn-exact-amount')
+  btnExactAmount: document.getElementById('btn-exact-amount'),
+  
+  // 職員共有連絡メモ帳
+  drawerMemo: document.getElementById('shared-memo-drawer'),
+  btnToggleMemo: document.getElementById('btn-toggle-memo'),
+  btnSyncMemo: document.getElementById('btn-sync-memo'),
+  memoInput: document.getElementById('shared-memo-input'),
+  memoStatus: document.getElementById('memo-status')
 };
 
 // ==========================================
@@ -150,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   loadGridColsSetting();
   loadMasterData();
+  initMemoControl();
 });
 
 function setupDateTime() {
@@ -289,7 +297,10 @@ function setupEventListeners() {
     DOM.tabs[tabKey].addEventListener('click', () => switchTab(tabKey));
   });
 
-  DOM.btnSync.addEventListener('click', () => loadMasterData(true));
+  DOM.btnSync.addEventListener('click', () => {
+    loadMasterData(true);
+    syncMemoFromGAS(true);
+  });
 
   DOM.searchInput.addEventListener('input', (e) => {
     state.searchQuery = e.target.value.toLowerCase();
@@ -572,6 +583,105 @@ function closeMobileCart() {
 }
 
 // ==========================================
+// 職員共有連絡メモ帳ロジック (追従・自動保存・同期・フォールバック対応)
+// ==========================================
+function initMemoControl() {
+  // 1. 開閉トグル
+  DOM.btnToggleMemo.addEventListener('click', () => {
+    DOM.drawerMemo.classList.toggle('open');
+  });
+
+  // 2. ローカルストレージからの下書き復元
+  const savedMemo = localStorage.getItem('regi_shared_memo');
+  if (savedMemo) {
+    DOM.memoInput.value = savedMemo;
+  }
+
+  // 3. 入力監視＆自動保存 (Debounce: 400ms)
+  let saveTimer = null;
+  DOM.memoInput.addEventListener('input', (e) => {
+    DOM.memoStatus.textContent = '変更を保存中...';
+    DOM.memoStatus.style.color = 'var(--color-vermilion)';
+    
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const text = e.target.value;
+      localStorage.setItem('regi_shared_memo', text);
+      DOM.memoStatus.textContent = 'ローカル保存済み';
+      DOM.memoStatus.style.color = 'var(--color-text-muted)';
+      
+      // GASサーバーに送信
+      await syncMemoToGAS(text);
+    }, 400);
+  });
+
+  // 4. 手動同期ボタン
+  DOM.btnSyncMemo.addEventListener('click', async () => {
+    await syncMemoFromGAS(true);
+  });
+
+  // 5. 初回読み込み時にGASサーバーの最新メモを取得
+  syncMemoFromGAS(false);
+}
+
+async function syncMemoToGAS(text) {
+  if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
+    return;
+  }
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'saveMemo',
+        memo: text
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      DOM.memoStatus.textContent = '共有同期 完了';
+      DOM.memoStatus.style.color = 'var(--color-green)';
+    } else {
+      console.warn('Failed to save memo on GAS:', data.message);
+    }
+  } catch (err) {
+    console.warn('Failed to connect to GAS to save memo:', err);
+  }
+}
+
+async function syncMemoFromGAS(showToastMsg = false) {
+  if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
+    if (showToastMsg) {
+      showToast('デモモードのためローカル保存のみ有効です。', 'info');
+    }
+    return;
+  }
+  
+  DOM.memoStatus.textContent = '読み込み中...';
+  try {
+    const res = await fetch(`${GAS_API_URL}?action=getMemo`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      DOM.memoInput.value = data.memo || '';
+      localStorage.setItem('regi_shared_memo', data.memo || '');
+      DOM.memoStatus.textContent = '共有同期 完了';
+      DOM.memoStatus.style.color = 'var(--color-green)';
+      if (showToastMsg) {
+        showToast('最新の共有メモと同期しました。', 'success');
+      }
+    } else {
+      throw new Error(data.message);
+    }
+  } catch (err) {
+    console.warn('Failed to load memo from GAS:', err);
+    DOM.memoStatus.textContent = 'ローカル接続中';
+    DOM.memoStatus.style.color = 'var(--color-text-muted)';
+    if (showToastMsg) {
+      showToast('サーバーとの同期に失敗しました（ローカルに一時保存）。', 'error');
+    }
+  }
+}
+
+// ==========================================
 // データ通信処理 (並び順永続ソート対応)
 // ==========================================
 async function loadMasterData(forceReload = false) {
@@ -649,7 +759,7 @@ function sortItemsBySavedOrder(itemsList) {
   return itemsList;
 }
 
-// GASへ順序変更を送信する関数 (非同期で処理)
+// GASへ順序変更を送信する関数
 async function saveOrderToGAS(orderIds) {
   if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
     return;
@@ -1385,7 +1495,7 @@ function renderMasterGrid() {
     const card = document.createElement('div');
     card.className = 'item-card';
     card.id = `master-card-${item.id}`;
-    card.setAttribute('draggable', 'true'); // ドラッグ可能に設定
+    card.setAttribute('draggable', 'true');
     
     const isHidden = item.display === false;
     
@@ -1399,7 +1509,6 @@ function renderMasterGrid() {
     const rubyNameHtml = getRubyName(item.name, item.furigana);
     
     card.innerHTML = `
-      <!-- ドラッググリップハンドル -->
       <div class="card-drag-handle" title="ドラッグして並び替え">
         <i class="fa-solid fa-grip-vertical"></i>
       </div>
@@ -1430,7 +1539,6 @@ function renderMasterGrid() {
     
     // HTML5 Drag and Drop イベント定義 (ハンドルのみでドラッグ起動する制御)
     card.addEventListener('dragstart', (e) => {
-      // グリップハンドルを掴んだときだけドラッグソートを許可
       if (!e.target.closest('.card-drag-handle') && e.target.className !== 'card-drag-handle') {
         e.preventDefault();
         return;

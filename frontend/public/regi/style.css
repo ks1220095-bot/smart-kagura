@@ -996,6 +996,153 @@ rt {
   border-top: 1px solid var(--color-border);
 }
 
+/* 職員共有連絡メモ帳 (画面右端追従型スライドドロワー) */
+.shared-memo-drawer {
+  position: fixed;
+  top: 140px;
+  right: -310px;
+  width: 310px;
+  height: 400px;
+  z-index: 850;
+  background-color: var(--color-bg);
+  border: 1.5px solid var(--color-gold);
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  box-shadow: -4px 4px 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.shared-memo-drawer.open {
+  right: 0;
+}
+
+/* 開閉ボタン */
+.btn-toggle-memo {
+  position: absolute;
+  left: -42px;
+  top: 25px;
+  width: 42px;
+  padding: 0.85rem 0.35rem;
+  background-color: var(--color-green);
+  color: var(--color-bg);
+  border: 1.5px solid var(--color-gold);
+  border-right: none;
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: -3px 2px 8px rgba(0, 0, 0, 0.08);
+  transition: var(--transition-smooth);
+  user-select: none;
+}
+
+.btn-toggle-memo:hover {
+  background-color: #2e3c33;
+  color: var(--color-gold);
+}
+
+.btn-toggle-memo i {
+  font-size: 1.15rem;
+}
+
+.memo-tab-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* メモ帳中身 */
+.memo-drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.memo-drawer-header {
+  background-color: var(--color-green);
+  color: var(--color-bg);
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--color-gold);
+}
+
+.memo-drawer-header h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-sync-memo-icon {
+  background: none;
+  border: none;
+  color: var(--color-bg);
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  transition: var(--transition-smooth);
+}
+
+.btn-sync-memo-icon:hover {
+  opacity: 1;
+  transform: rotate(180deg);
+  color: var(--color-gold);
+}
+
+.memo-drawer-body {
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+  background-color: var(--color-surface);
+}
+
+.memo-desc-text {
+  font-size: 0.73rem;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+.shared-memo-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  resize: none;
+  background-color: #FCFAF2; /* 和紙風クリーム背景 */
+  color: var(--color-text);
+  transition: var(--transition-smooth);
+}
+
+.shared-memo-textarea:focus {
+  outline: none;
+  border-color: var(--color-gold);
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 2px rgba(196, 162, 100, 0.15);
+}
+
+.memo-status {
+  font-size: 0.7rem;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
 /* 写真拡大・詳細ポップアップモーダル */
 .modal-content.large-detail {
   max-width: 780px;
@@ -1663,11 +1810,18 @@ rt {
   .detail-modal-info-panel {
     padding: 1.5rem;
   }
+  
+  /* スマホ時のメモドロワー表示最適化 */
+  .shared-memo-drawer {
+    width: 260px;
+    right: -260px;
+    height: 350px;
+  }
 }
 
 /* 印刷用スタイル */
 @media print {
-  .header, .nav-tabs, .report-controls, #toast-container, .modal-overlay, .mobile-cart-bar {
+  .header, .nav-tabs, .report-controls, #toast-container, .modal-overlay, .mobile-cart-bar, .shared-memo-drawer {
     display: none !important;
   }
   
