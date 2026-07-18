@@ -51,6 +51,50 @@ const LONGEVITY_TYPES = [
   '米寿（88歳）', '卒寿（90歳）', '白寿（99歳）', '百寿（100歳）', 'その他'
 ];
 
+const FAQ_ITEMS = [
+  {
+    q: 'Q. 本人以外の家族も参列できますか？',
+    a: 'A. はい、可能でございます。ただし、繁忙期（お正月・七五三の時期）では、殿内等でご起立の上、神事に参加していただく等のご協力をお願いすることがございます。'
+  },
+  {
+    q: 'Q. 駐車場はありますか？',
+    a: 'A. はい、境内に12台分の駐車スペースがございます。ただし、数に限りがございますので、極力お乗り合わせいただくか、公共交通機関でのご来社をお願いいたします。'
+  },
+  {
+    q: 'Q. 古いお札やお守りは引き取ってもらえますか？',
+    a: 'A. はい、可能でございます。毎日午前9時から午後4時30分までの間、社務所受付にてお預かりいたします。また、年末年始（12月25日〜1月15日頃まで）の間は境内に特別納札所を設けておりますので、そちらへ直接お納めいただけます。'
+  },
+  {
+    q: 'Q. 安産祈願のご祈祷の際、持参した腹帯を一緒にお祓いしてもらうことは出来ますか？',
+    a: 'A. はい、可能でございます。拝殿（ご祈祷をする場所）へご案内された際に、神職へお申し付けくださいませ。'
+  },
+  {
+    q: 'Q. ご祈祷料を入れた封筒やのし袋の表書きはどのように書けばいいですか？',
+    a: 'A. 「初穂料」、若しくは「玉串料」とご記入ください。'
+  },
+  {
+    q: 'Q. 厄年ではないけれど、お祓いを受けることは可能ですか？',
+    a: 'A. はい、可能でございます。災いを除き福を招く「除災招福」の御祈願をご案内しております。'
+  },
+  {
+    q: 'Q. どのような服装でお祓いを受ければいいですか？',
+    a: 'A. （丁寧な方はフォーマルな装いで参列されますが）過度に華美、ラフな服装でなければ問題ございません。'
+  },
+  {
+    q: 'Q. お祓いを受ける本人がいなくても、お祓いは可能ですか？',
+    a: 'A. ご本人様にご参列いただくことが望ましいですが、（何かしらの事情で参列が叶わない場合は）代理の方にお祓いを受けていただくことも可能でございます。'
+  },
+  {
+    q: 'Q. 車のお祓いをするときは、どこに車を停めたら良いですか？',
+    a: 'A. 清瀧神社 正面にてお祓いしております。正面の鳥居をくぐって参道中央付近でお停めください（社務の都合上により、停める場所が変更となる場合がございます）。'
+  },
+  {
+    q: 'Q. 初宮詣（お宮参り）の授与品に”歯固め石”はありますか？',
+    a: 'A. いいえ、ございません（もし必要な方は、境内の石をお持ちいただき、ご利用後に元の場所へお戻し下さい）。'
+  }
+];
+
+
 const getEraString = (y: number) => {
   if (y >= 2019) {
     const reiwa = y - 2018;
@@ -237,9 +281,6 @@ export const VisitorPortal: React.FC = () => {
   const [carMaker, setCarMaker] = useState('');
   const [carModel, setCarModel] = useState('');
   const [carNumber, setCarNumber] = useState('');
-  const [faq1Open, setFaq1Open] = useState(false);
-  const [faq2Open, setFaq2Open] = useState(false);
-  const [faq3Open, setFaq3Open] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [anzanHusbandName, setAnzanHusbandName] = useState('');
   const [anzanHusbandKana, setAnzanHusbandKana] = useState('');
@@ -2465,48 +2506,7 @@ export const VisitorPortal: React.FC = () => {
               <span>❓</span> ご予約にあたってのよくある質問（FAQ）
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {[
-                {
-                  q: 'Q. 本人以外の家族も参列できますか？',
-                  a: 'A. はい、可能でございます。ただし、繁忙期（お正月・七五三の時期）では、殿内等でご起立の上、神事に参加していただく等のご協力をお願いすることがございます。'
-                },
-                {
-                  q: 'Q. 駐車場はありますか？',
-                  a: 'A. はい、境内に12台分の駐車スペースがございます。ただし、数に限りがございますので、極力お乗り合わせいただくか、公共交通機関でのご来社をお願いいたします。'
-                },
-                {
-                  q: 'Q. 古いお札やお守りは引き取ってもらえますか？',
-                  a: 'A. はい、可能でございます。毎日午前9時から午後4時30分までの間、社務所受付にてお預かりいたします。また、年末年始（12月25日〜1月15日頃まで）の間は境内に特別納札所を設けておりますので、そちらへ直接お納めいただけます。'
-                },
-                {
-                  q: 'Q. 安産祈願のご祈祷の際、持参した腹帯を一緒にお祓いしてもらうことは出来ますか？',
-                  a: 'A. はい、可能でございます。拝殿（ご祈祷をする場所）へご案内された際に、神職へお申し付けくださいませ。'
-                },
-                {
-                  q: 'Q. ご祈祷料を入れた封筒やのし袋の表書きはどのように書けばいいですか？',
-                  a: 'A. 「初穂料」、若しくは「玉串料」とご記入ください。'
-                },
-                {
-                  q: 'Q. 厄年ではないけれど、お祓いを受けることは可能ですか？',
-                  a: 'A. はい、可能でございます。災いを除き福を招く「除災招福」の御祈願をご案内しております。'
-                },
-                {
-                  q: 'Q. どのような服装でお祓いを受ければいいですか？',
-                  a: 'A. （丁寧な方はフォーマルな装いで参列されますが）過度に華美、ラフな服装でなければ問題ございません。'
-                },
-                {
-                  q: 'Q. お祓いを受ける本人がいなくても、お祓いは可能ですか？',
-                  a: 'A. ご本人様にご参列いただくことが望ましいですが、（何かしらの事情で参列が叶わない場合は）代理の方にお祓いを受けていただくことも可能でございます。'
-                },
-                {
-                  q: 'Q. 車のお祓いをするときは、どこに車を停めたら良いですか？',
-                  a: 'A. 清瀧神社 正面にてお祓いしております。正面の鳥居をくぐって参道中央付近でお停めください（社務の都合上により、停める場所が変更となる場合がございます）。'
-                },
-                {
-                  q: 'Q. 初宮詣（お宮参り）の授与品に”歯固め石”はありますか？',
-                  a: 'A. いいえ、ございません（もし必要な方は、境内の石をお持ちいただき、ご利用後に元の場所へお戻し下さい）。'
-                }
-              ].map((faq, idx) => (
+              {FAQ_ITEMS.map((faq, idx) => (
                 <details
                   key={idx}
                   style={{
@@ -2978,129 +2978,47 @@ export const VisitorPortal: React.FC = () => {
               ご予約にあたってのよくあるご質問 (FAQ)
             </h3>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* FAQ 1 */}
-              <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', backgroundColor: '#ffffff' }}>
-                <button
-                  type="button"
-                  onClick={() => setFaq1Open(!faq1Open)}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {FAQ_ITEMS.map((faq, idx) => (
+                <details
+                  key={idx}
                   style={{
-                    width: '100%',
-                    padding: '1.25rem 1.5rem',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                    color: 'var(--color-urushi)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem'
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    backgroundColor: '#ffffff',
+                    padding: '0'
                   }}
                 >
-                  <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-start' }}>
-                    <span style={{ color: 'var(--color-mizuiro)' }}>Q.</span>
-                    <span>本人以外の家族も参列できますか？</span>
-                  </span>
-                  <span style={{ fontSize: '1rem', color: 'var(--color-gold)' }}>{faq1Open ? '▲' : '▼'}</span>
-                </button>
-                {faq1Open && (
-                  <div style={{
-                    padding: '1.25rem 1.5rem',
-                    borderTop: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-washi-dark)',
-                    fontSize: '0.9rem',
-                    lineHeight: '1.6',
-                    color: '#333'
-                  }}>
-                    <strong style={{ color: 'var(--color-urushi-light)' }}>A.</strong> はい、可能でございます。繁忙期（お正月・七五三の時期）では、殿内などでご起立の上、神事ご参列いただく場合がございますのでご了承願います。
+                  <summary
+                    style={{
+                      padding: '1rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 'bold',
+                      color: 'var(--color-urushi)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      listStyle: 'none'
+                    }}
+                  >
+                    <span>{faq.q}</span>
+                    <span className="accordion-icon" style={{ fontSize: '0.8rem', color: 'var(--color-gold)' }}>▼</span>
+                  </summary>
+                  <div
+                    style={{
+                      padding: '1rem',
+                      fontSize: '0.85rem',
+                      lineHeight: '1.7',
+                      color: 'var(--color-urushi-light)',
+                      borderTop: '1px dashed var(--color-border)',
+                      backgroundColor: 'var(--color-washi-dark)'
+                    }}
+                  >
+                    {faq.a}
                   </div>
-                )}
-              </div>
-
-              {/* FAQ 2 */}
-              <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', backgroundColor: '#ffffff' }}>
-                <button
-                  type="button"
-                  onClick={() => setFaq2Open(!faq2Open)}
-                  style={{
-                    width: '100%',
-                    padding: '1.25rem 1.5rem',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                    color: 'var(--color-urushi)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem'
-                  }}
-                >
-                  <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-start' }}>
-                    <span style={{ color: 'var(--color-mizuiro)' }}>Q.</span>
-                    <span>駐車場は利用できますか？</span>
-                  </span>
-                  <span style={{ fontSize: '1rem', color: 'var(--color-gold)' }}>{faq2Open ? '▲' : '▼'}</span>
-                </button>
-                {faq2Open && (
-                  <div style={{
-                    padding: '1.25rem 1.5rem',
-                    borderTop: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-washi-dark)',
-                    fontSize: '0.9rem',
-                    lineHeight: '1.6',
-                    color: '#333'
-                  }}>
-                    <strong style={{ color: 'var(--color-urushi-light)' }}>A.</strong> はい、利用可能でございます。清瀧神社 境内 裏手にて、12台ほど駐車可能でございます。台数に限りがございますので、ご利用される場合は、ご関係の皆様お声掛けにて乗り合わせていただけますと幸いでございます。
-                  </div>
-                )}
-              </div>
-
-              {/* FAQ 3 */}
-              <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', backgroundColor: '#ffffff' }}>
-                <button
-                  type="button"
-                  onClick={() => setFaq3Open(!faq3Open)}
-                  style={{
-                    width: '100%',
-                    padding: '1.25rem 1.5rem',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    fontWeight: 'bold',
-                    fontSize: '1.05rem',
-                    color: 'var(--color-urushi)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem'
-                  }}
-                >
-                  <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-start' }}>
-                    <span style={{ color: 'var(--color-mizuiro)' }}>Q.</span>
-                    <span>以前の古いお札・お守りを持って行きたいのですが、預かっていただくことは出来ますか？</span>
-                  </span>
-                  <span style={{ fontSize: '1rem', color: 'var(--color-gold)' }}>{faq3Open ? '▲' : '▼'}</span>
-                </button>
-                {faq3Open && (
-                  <div style={{
-                    padding: '1.25rem 1.5rem',
-                    borderTop: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-washi-dark)',
-                    fontSize: '0.9rem',
-                    lineHeight: '1.6',
-                    color: '#333'
-                  }}>
-                    <strong style={{ color: 'var(--color-urushi-light)' }}>A.</strong> はい、預かっております。平時は社務所が開いている時間帯（09:00~16:30 平日・土日・祝祭日)にお声掛けいただけますとお預かりいたします。また、年末年始の時期（旧年中の12月下旬辺り～翌年の中旬頃）は清瀧神社 境内 裏手にて納札所（お札を収める場所）を設けますのでそちらをご利用ください。
-                  </div>
-                )}
-              </div>
+                </details>
+              ))}
             </div>
           </div>
         )}
