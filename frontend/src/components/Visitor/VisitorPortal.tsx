@@ -6,6 +6,7 @@ import BookingSuccess from './BookingSuccess';
 
 const INDIVIDUAL_PRAYERS = [
   { value: '家内安全', price: 5000 },
+  { value: '身体健全', price: 5000 },
   { value: '厄年のお祓い', price: 5000 },
   { value: '八方除け', price: 5000 },
   { value: '除災招福（開運招福）', price: 5000 },
