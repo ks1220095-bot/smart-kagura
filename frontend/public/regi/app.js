@@ -1512,7 +1512,7 @@ function getTransactionGroupInfo(timestampStr, groupType) {
   return { key: 'unknown', label: 'その他分類' };
 }
 
-// 取引履歴描画 (日別・隔週別・隔月別 グループ分類対応)
+// 取引履歴描画 (日別・隔週別・隔月別 グループ分類対応 ＆ 内訳アコーディオン明細対応)
 function renderHistoryTable() {
   DOM.historyTableBody.innerHTML = '';
 
@@ -1576,12 +1576,20 @@ function renderHistoryTable() {
 
     // グループ内の各取引を描画
     grp.txs.forEach(tx => {
+      // 通常取引行 (アコーディオン開閉トグル用クラス tx-row)
       const row = document.createElement('tr');
-      let detailsHtml = '<ul class="history-details-list" style="list-style:none; padding:0; margin:0;">';
-      tx.items.forEach(item => {
-        detailsHtml += `<li class="history-details-item" style="margin-bottom:0.25rem;">${item.name} (${item.price.toLocaleString()}円) × ${item.quantity}</li>`;
-      });
-      detailsHtml += '</ul>';
+      row.className = 'tx-row';
+      row.id = `tx-row-${tx.transactionId}`;
+      
+      const totalItemsCount = tx.items.reduce((sum, item) => sum + item.quantity, 0);
+
+      // 内訳のプレビュー表示用トグルボタン
+      const toggleTriggerHtml = `
+        <div style="color:var(--color-green); font-weight:700; display:flex; align-items:center; justify-content:center; gap:0.35rem;">
+          <span>内訳を表示 (${totalItemsCount}品)</span>
+          <i class="fa-solid fa-chevron-down toggle-icon" id="icon-${tx.transactionId}"></i>
+        </div>
+      `;
 
       const isCancelled = tx.status === '取消';
       const statusClass = isCancelled ? 'cancelled' : 'active';
@@ -1589,19 +1597,99 @@ function renderHistoryTable() {
       row.innerHTML = `
         <td>${tx.timestamp}</td>
         <td style="font-family: monospace; font-size: 0.85rem;">${tx.transactionId}</td>
-        <td>${detailsHtml}</td>
+        <td class="toggle-trigger-cell">${toggleTriggerHtml}</td>
         <td style="font-family: var(--font-serif); font-weight:600; color:var(--color-vermilion);">${tx.total.toLocaleString()} 円</td>
         <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
         <td>
-          <button class="btn-cancel-tx" ${isCancelled ? 'disabled' : ''} onclick="confirmCancelTransaction('${tx.transactionId}')">
+          <button class="btn-cancel-tx" ${isCancelled ? 'disabled' : ''} onclick="confirmCancelTransaction('${tx.transactionId}'); event.stopPropagation();">
             <i class="fa-solid fa-trash-can"></i> 取消
           </button>
         </td>
       `;
+      
+      // 行全体をクリックしたときにアコーディオンを開閉する
+      row.addEventListener('click', () => toggleTxDetails(tx.transactionId));
       DOM.historyTableBody.appendChild(row);
+
+      // 詳細アコーディオン明細行 (初期非表示)
+      const detailRow = document.createElement('tr');
+      detailRow.className = 'tx-detail-row';
+      detailRow.id = `detail-${tx.transactionId}`;
+      detailRow.style.display = 'none';
+
+      let itemsTableRows = '';
+      tx.items.forEach(item => {
+        const itemSubtotal = item.price * item.quantity;
+        itemsTableRows += `
+          <tr>
+            <td style="text-align:left;">${item.name}</td>
+            <td style="text-align:center; color:var(--color-text-muted);">${item.price.toLocaleString()} 円</td>
+            <td style="text-align:center;">${item.quantity} 体</td>
+            <td style="text-align:right; font-weight:700; color:var(--color-vermilion);">${itemSubtotal.toLocaleString()} 円</td>
+          </tr>
+        `;
+      });
+
+      detailRow.innerHTML = `
+        <td colspan="6">
+          <div class="tx-detail-container">
+            <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; font-weight:700; color:#5c4e33;">
+              <i class="fa-solid fa-clipboard-list" style="margin-right:0.35rem; color:var(--color-gold);"></i> 授与品内訳明細
+            </h4>
+            <table class="detail-mini-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">授与品名</th>
+                  <th style="text-align:center; width:120px;">初穂料単価</th>
+                  <th style="text-align:center; width:80px;">授与数</th>
+                  <th style="text-align:right; width:150px;">初穂料小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsTableRows}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      `;
+      DOM.historyTableBody.appendChild(detailRow);
     });
   });
 }
+
+// 個別アコーディオンの開閉トグル
+function toggleTxDetails(txId) {
+  const detailEl = document.getElementById(`detail-${txId}`);
+  const iconEl = document.getElementById(`icon-${txId}`);
+  if (!detailEl) return;
+
+  const isOpen = detailEl.style.display !== 'none';
+  if (isOpen) {
+    detailEl.style.display = 'none';
+    if (iconEl) iconEl.classList.remove('open');
+  } else {
+    detailEl.style.display = 'table-row';
+    if (iconEl) iconEl.classList.add('open');
+  }
+}
+
+// 一括アコーディオン開閉
+function toggleAllTxDetails(open) {
+  const detailRows = DOM.historyTableBody.querySelectorAll('.tx-detail-row');
+  const icons = DOM.historyTableBody.querySelectorAll('.toggle-icon');
+  
+  detailRows.forEach(row => {
+    row.style.display = open ? 'table-row' : 'none';
+  });
+  
+  icons.forEach(icon => {
+    icon.classList.toggle('open', open);
+  });
+}
+
+// グローバル関数への露出
+window.toggleTxDetails = toggleTxDetails;
+window.toggleAllTxDetails = toggleAllTxDetails;
 
 // 日次報告書 (社入表記への統一 ＆ 押印欄の削除)
 async function generateDailyReport() {
