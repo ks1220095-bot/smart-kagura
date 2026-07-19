@@ -107,6 +107,7 @@ const DOM = {
   // 履歴
   historyTableBody: document.getElementById('history-table-body'),
   btnRefreshHistory: document.getElementById('btn-refresh-history'),
+  historyGroupSelect: document.getElementById('history-group-select'),
   
   // 報告書
   reportDate: document.getElementById('report-date'),
@@ -159,6 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadMasterData();
   initMemoControl();
   restoreCartState(); // ページ読み込み時にカート状態とお預かり金額を復元
+  if (state.transactions.length === 0) {
+    state.transactions = getMockTransactions(); // 動作確認用の美しい過去履歴を初期セット
+  }
 });
 
 function setupDateTime() {
@@ -448,6 +452,11 @@ function setupEventListeners() {
   DOM.btnCancelConfirmYes.addEventListener('click', executeCancelTransaction);
 
   DOM.btnRefreshHistory.addEventListener('click', fetchTransactions);
+  if (DOM.historyGroupSelect) {
+    DOM.historyGroupSelect.addEventListener('change', () => {
+      renderHistoryTable();
+    });
+  }
 
   DOM.btnGenerateReport.addEventListener('click', generateDailyReport);
   DOM.btnPrintReport.addEventListener('click', () => window.print());
@@ -1371,43 +1380,226 @@ function showItemDetailPopup(item) {
   DOM.modalItemDetail.style.display = 'flex';
 }
 
-// 取引履歴描画
+// 取引履歴の動作確認用ダミーモックデータ
+function getMockTransactions() {
+  return [
+    {
+      transactionId: "TX-1784429186572-98",
+      timestamp: "2026/07/19 14:46:20",
+      items: [{ name: "家内安全御札", price: 1500, quantity: 1 }, { name: "交通安全お守り", price: 800, quantity: 2 }],
+      total: 3100,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1784427328487-552",
+      timestamp: "2026/07/19 13:08:40",
+      items: [
+        { name: "授与用通常御朱印", price: 500, quantity: 2 },
+        { name: "交通安全お守り", price: 800, quantity: 4 }
+      ],
+      total: 4200,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1784370966572-884",
+      timestamp: "2026/07/19 10:08:10",
+      items: [{ name: "吉祥干支置物", price: 1200, quantity: 1 }],
+      total: 1200,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-178432321589-58",
+      timestamp: "2026/07/18 10:18:41",
+      items: [{ name: "厄除けお守り", price: 800, quantity: 5 }],
+      total: 4000,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1784310595200-468",
+      timestamp: "2026/07/18 09:59:52",
+      items: [{ name: "破魔矢", price: 1500, quantity: 1 }],
+      total: 1500,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1784270966500-111",
+      timestamp: "2026/07/15 15:32:00",
+      items: [
+        { name: "家内安全御札", price: 1500, quantity: 2 },
+        { name: "吉祥干支置物", price: 1200, quantity: 1 }
+      ],
+      total: 4200,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1783980966500-222",
+      timestamp: "2026/07/08 14:15:00",
+      items: [{ name: "限定金字御朱印", price: 1000, quantity: 5 }],
+      total: 5000,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1783680966500-333",
+      timestamp: "2026/07/02 11:20:00",
+      items: [
+        { name: "交通安全お守り", price: 800, quantity: 10 },
+        { name: "祈願絵馬", price: 700, quantity: 5 }
+      ],
+      total: 11500,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1783080966500-444",
+      timestamp: "2026/06/25 16:45:00",
+      items: [{ name: "破魔矢", price: 1500, quantity: 2 }],
+      total: 3000,
+      status: "有効"
+    },
+    {
+      transactionId: "TX-1782080966500-555",
+      timestamp: "2026/06/10 10:30:00",
+      items: [{ name: "御朱印帳 (和柄)", price: 2000, quantity: 3 }],
+      total: 6000,
+      status: "有効"
+    }
+  ];
+}
+
+// タイムスタンプから指定の分類キーと表示名を返す
+function getTransactionGroupInfo(timestampStr, groupType) {
+  const normalized = timestampStr.replace(/\//g, '-');
+  const d = new Date(normalized);
+  if (isNaN(d.getTime())) {
+    return { key: 'unknown', label: 'その他分類不能' };
+  }
+  
+  const yyyy = d.getFullYear();
+  const mm = d.getMonth() + 1;
+  const dd = d.getDate();
+  
+  if (groupType === 'daily') {
+    const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+    const dayStr = dayLabels[d.getDay()];
+    const key = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+    const label = `${yyyy}年${mm}月${dd}日 (${dayStr})`;
+    return { key, label };
+  }
+  
+  if (groupType === 'biweekly') {
+    const startOfYear = new Date(yyyy, 0, 1);
+    const msInDay = 24 * 60 * 60 * 1000;
+    const daysDiff = Math.floor((d - startOfYear) / msInDay);
+    
+    const weekNum = Math.floor(daysDiff / 7);
+    const biweekIndex = Math.floor(weekNum / 2);
+    
+    const biweekStart = new Date(startOfYear.getTime() + biweekIndex * 2 * 7 * msInDay);
+    const biweekEnd = new Date(biweekStart.getTime() + (14 * msInDay) - 1);
+    
+    const key = `${yyyy}-bw-${biweekIndex}`;
+    const label = `${biweekStart.getFullYear()}年 ${biweekStart.getMonth()+1}月${biweekStart.getDate()}日 〜 ${biweekEnd.getMonth()+1}月${biweekEnd.getDate()}日 (隔週分類)`;
+    return { key, label };
+  }
+  
+  if (groupType === 'bimonthly') {
+    const bimonthStart = mm % 2 === 0 ? mm - 1 : mm;
+    const bimonthEnd = bimonthStart + 1;
+    const key = `${yyyy}-bm-${bimonthStart}`;
+    const label = `${yyyy}年 ${bimonthStart}月 〜 ${bimonthEnd}月 (隔月分類)`;
+    return { key, label };
+  }
+  
+  return { key: 'unknown', label: 'その他分類' };
+}
+
+// 取引履歴描画 (日別・隔週別・隔月別 グループ分類対応)
 function renderHistoryTable() {
   DOM.historyTableBody.innerHTML = '';
 
   if (state.transactions.length === 0) {
     DOM.historyTableBody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center">本日の取引履歴はありません。</td>
+        <td colspan="6" class="text-center">取引履歴はありません。</td>
       </tr>
     `;
     return;
   }
 
-  state.transactions.forEach(tx => {
-    const row = document.createElement('tr');
-    let detailsHtml = '<ul class="history-details-list" style="list-style:none; padding:0;">';
-    tx.items.forEach(item => {
-      detailsHtml += `<li class="history-details-item" style="margin-bottom:0.25rem;">${item.name} (${item.price.toLocaleString()}円) × ${item.quantity}</li>`;
-    });
-    detailsHtml += '</ul>';
+  const groupType = DOM.historyGroupSelect ? DOM.historyGroupSelect.value : 'daily';
 
-    const isCancelled = tx.status === '取消';
-    const statusClass = isCancelled ? 'cancelled' : 'active';
+  // 取引データをグループ化する
+  const groups = {};
+  const groupOrder = [];
+
+  state.transactions.forEach(tx => {
+    const { key, label } = getTransactionGroupInfo(tx.timestamp, groupType);
+    if (!groups[key]) {
+      groups[key] = {
+        label: label,
+        txs: [],
+        activeCount: 0,
+        totalSales: 0
+      };
+      groupOrder.push(key);
+    }
+    groups[key].txs.push(tx);
+    if (tx.status === '有効') {
+      groups[key].activeCount++;
+      groups[key].totalSales += tx.total;
+    }
+  });
+
+  // グループ順序をソート (最新取引日付の降順)
+  groupOrder.sort((a, b) => {
+    const timeA = new Date(groups[a].txs[0].timestamp.replace(/\//g, '-')).getTime();
+    const timeB = new Date(groups[b].txs[0].timestamp.replace(/\//g, '-')).getTime();
+    return timeB - timeA;
+  });
+
+  groupOrder.forEach(key => {
+    const grp = groups[key];
     
-    row.innerHTML = `
-      <td>${tx.timestamp}</td>
-      <td style="font-family: monospace; font-size: 0.85rem;">${tx.transactionId}</td>
-      <td>${detailsHtml}</td>
-      <td style="font-family: var(--font-serif); font-weight:600; color:var(--color-vermilion);">${tx.total.toLocaleString()} 円</td>
-      <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
-      <td>
-        <button class="btn-cancel-tx" ${isCancelled ? 'disabled' : ''} onclick="confirmCancelTransaction('${tx.transactionId}')">
-          <i class="fa-solid fa-trash-can"></i> 取消
-        </button>
+    // 和風のグループヘッダー行を生成
+    const headerRow = document.createElement('tr');
+    headerRow.className = 'history-group-header';
+    headerRow.innerHTML = `
+      <td colspan="6">
+        <i class="fa-solid fa-calendar-check" style="margin-right: 0.5rem; color: var(--color-gold);"></i>
+        <strong>${grp.label}</strong> 
+        <span style="margin-left: 1.5rem; font-weight: normal; font-size: 0.88rem; color: var(--color-text-muted);">
+          有効取引: <strong>${grp.activeCount}</strong> 件 | 
+          合計初穂料: <strong style="color: var(--color-vermilion); font-family: var(--font-serif);">${grp.totalSales.toLocaleString()} 円</strong>
+        </span>
       </td>
     `;
-    DOM.historyTableBody.appendChild(row);
+    DOM.historyTableBody.appendChild(headerRow);
+
+    // グループ内の各取引を描画
+    grp.txs.forEach(tx => {
+      const row = document.createElement('tr');
+      let detailsHtml = '<ul class="history-details-list" style="list-style:none; padding:0; margin:0;">';
+      tx.items.forEach(item => {
+        detailsHtml += `<li class="history-details-item" style="margin-bottom:0.25rem;">${item.name} (${item.price.toLocaleString()}円) × ${item.quantity}</li>`;
+      });
+      detailsHtml += '</ul>';
+
+      const isCancelled = tx.status === '取消';
+      const statusClass = isCancelled ? 'cancelled' : 'active';
+      
+      row.innerHTML = `
+        <td>${tx.timestamp}</td>
+        <td style="font-family: monospace; font-size: 0.85rem;">${tx.transactionId}</td>
+        <td>${detailsHtml}</td>
+        <td style="font-family: var(--font-serif); font-weight:600; color:var(--color-vermilion);">${tx.total.toLocaleString()} 円</td>
+        <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
+        <td>
+          <button class="btn-cancel-tx" ${isCancelled ? 'disabled' : ''} onclick="confirmCancelTransaction('${tx.transactionId}')">
+            <i class="fa-solid fa-trash-can"></i> 取消
+          </button>
+        </td>
+      `;
+      DOM.historyTableBody.appendChild(row);
+    });
   });
 }
 

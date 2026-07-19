@@ -1914,3 +1914,18 @@ rt {
     print-color-adjust: exact !important;
   }
 }
+
+/* 取引履歴の期間分類区切りヘッダー */
+.history-table tr.history-group-header {
+  background-color: #FAF8F0;
+  border-bottom: 2.5px solid var(--color-gold);
+  font-weight: 700;
+  color: #6e5f3c;
+}
+
+.history-table tr.history-group-header td {
+  padding: 0.8rem 1rem !important;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
