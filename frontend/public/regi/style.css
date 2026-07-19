@@ -948,7 +948,8 @@ rt {
   bottom: 0;
   left: 0;
   width: 100%;
-  max-height: 85%;
+  height: 85vh; /* 高さを85vhに固定 */
+  max-height: 85vh;
   background-color: var(--color-surface);
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
@@ -958,6 +959,7 @@ rt {
   box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden; /* 子要素のはみ出しを防止 */
 }
 
 .mobile-cart-sheet.open .mobile-cart-sheet-content {
@@ -970,6 +972,7 @@ rt {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0; /* 縮小を禁止してヘッダー高さを固定 */
 }
 
 .mobile-cart-sheet-header h3 {
@@ -987,13 +990,45 @@ rt {
 .mobile-cart-sheet-body {
   padding: 1rem 1.5rem;
   overflow-y: auto;
-  flex: 1;
+  flex: 1; /* 残りの高さをすべて埋め、ここだけスクロールさせる */
 }
 
 .mobile-cart-sheet-footer {
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.5rem;
   background-color: #FAF9F6;
   border-top: 1px solid var(--color-border);
+  flex-shrink: 0; /* 縮小を禁止してお釣り・決済ボタン高さを固定 */
+}
+
+/* モバイルカート用の金種キーパッド省スペース化 ＆ 横スクロール */
+.change-presets-container-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.change-presets-container-mobile .preset-group {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 3px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* スクロールバーを非表示にする（プレミアムデザイン） */
+.change-presets-container-mobile .preset-group::-webkit-scrollbar {
+  display: none;
+}
+
+.change-presets-container-mobile .preset-btn {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  flex: 1 0 auto;
+  min-width: 55px;
+  height: 28px;
+  line-height: 1;
 }
 
 /* 職員共有連絡メモ帳 (画面右端追従型スライドドロワー) */
