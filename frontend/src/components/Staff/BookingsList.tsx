@@ -45,6 +45,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<'created_at' | 'booking_datetime' | 'kana' | 'prayer'>('booking_datetime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [includePast, setIncludePast] = useState(false);
 
   // Payment update modal states
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -56,10 +57,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
   // Filter logic
   const filteredBookings = bookings.filter(b => {
-    // Hide bookings before today (JST)
+    // Hide bookings before today (JST) unless includePast is checked OR search text is entered
     const jstDateStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }))
       .toLocaleDateString('sv-SE');
-    if (b.booking_date < jstDateStr) return false;
+    if (!includePast && !searchText && b.booking_date < jstDateStr) return false;
 
     if (filterDate && b.booking_date !== filterDate) return false;
     if (filterType && b.booking_type !== filterType) return false;
@@ -71,7 +72,9 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         : b.company_name?.toLowerCase().includes(searchLower) || b.company_kana?.toLowerCase().includes(searchLower);
       const matchNum = b.receipt_number?.toLowerCase().includes(searchLower);
       const matchPhone = b.phone?.includes(searchText) || b.staff_phone?.includes(searchText);
-      return matchName || matchNum || matchPhone;
+      const matchPrayer = b.prayer1?.toLowerCase().includes(searchLower) || b.prayer2?.toLowerCase().includes(searchLower);
+      const matchDate = b.booking_date?.includes(searchText);
+      return matchName || matchNum || matchPhone || matchPrayer || matchDate;
     }
     return true;
   });
@@ -264,6 +267,30 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 {sortOrder === 'asc' ? '▲ 昇順' : '▼ 降順'}
               </button>
             </div>
+
+            {/* Past bookings option */}
+            <label style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.35rem', 
+              fontSize: '0.8rem', 
+              color: 'var(--color-urushi)', 
+              cursor: 'pointer', 
+              whiteSpace: 'nowrap', 
+              userSelect: 'none', 
+              marginLeft: '0.5rem',
+              borderLeft: '1px solid var(--color-border)',
+              paddingLeft: '0.75rem',
+              height: '32px'
+            }}>
+              <input 
+                type="checkbox" 
+                checked={includePast} 
+                onChange={(e) => setIncludePast(e.target.checked)}
+                style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--color-urushi)' }}
+              />
+              <span>過去の予約を含める</span>
+            </label>
           </div>
 
           <button 
