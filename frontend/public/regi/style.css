@@ -1921,6 +1921,13 @@ rt {
   border-bottom: 2.5px solid var(--color-gold);
   font-weight: 700;
   color: #6e5f3c;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.history-table tr.history-group-header:hover {
+  background-color: #FAF4E0 !important;
 }
 
 .history-table tr.history-group-header td {
@@ -1928,6 +1935,17 @@ rt {
   font-size: 0.95rem;
   letter-spacing: 0.05em;
   text-align: left;
+}
+
+.group-toggle-icon {
+  transition: transform 0.2s ease, color 0.2s ease;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-right: 0.5rem;
+}
+
+.history-table tr.history-group-header:hover .group-toggle-icon {
+  color: var(--color-gold);
 }
 
 /* 取引履歴アコーディオン内訳明細 */

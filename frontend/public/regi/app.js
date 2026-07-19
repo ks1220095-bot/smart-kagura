@@ -1512,7 +1512,7 @@ function getTransactionGroupInfo(timestampStr, groupType) {
   return { key: 'unknown', label: 'その他分類' };
 }
 
-// 取引履歴描画 (日別・隔週別・隔月別 グループ分類対応 ＆ 内訳アコーディオン明細対応)
+// 取引履歴描画 (日別・隔週別・隔月別 グループ分類対応 ＆ 内訳アコーディオン明細対応 ＆ グループ自体の開閉対応)
 function renderHistoryTable() {
   DOM.historyTableBody.innerHTML = '';
 
@@ -1556,15 +1556,19 @@ function renderHistoryTable() {
     return timeB - timeA;
   });
 
-  groupOrder.forEach(key => {
+  groupOrder.forEach((key, idx) => {
     const grp = groups[key];
+    
+    // 初期状態の開閉設定：最新（0番目）グループのみ展開し、過去グループは折りたたむ
+    const isInitiallyOpen = idx === 0;
     
     // 和風のグループヘッダー行を生成
     const headerRow = document.createElement('tr');
     headerRow.className = 'history-group-header';
+    headerRow.id = `group-header-${key}`;
     headerRow.innerHTML = `
       <td colspan="6">
-        <i class="fa-solid fa-calendar-check" style="margin-right: 0.5rem; color: var(--color-gold);"></i>
+        <i class="fa-solid ${isInitiallyOpen ? 'fa-chevron-down' : 'fa-chevron-right'} group-toggle-icon" id="group-icon-${key}"></i>
         <strong>${grp.label}</strong> 
         <span style="margin-left: 1.5rem; font-weight: normal; font-size: 0.88rem; color: var(--color-text-muted);">
           有効取引: <strong>${grp.activeCount}</strong> 件 | 
@@ -1572,14 +1576,17 @@ function renderHistoryTable() {
         </span>
       </td>
     `;
+    
+    headerRow.addEventListener('click', () => toggleHistoryGroup(key));
     DOM.historyTableBody.appendChild(headerRow);
 
     // グループ内の各取引を描画
     grp.txs.forEach(tx => {
       // 通常取引行 (アコーディオン開閉トグル用クラス tx-row)
       const row = document.createElement('tr');
-      row.className = 'tx-row';
+      row.className = `tx-row group-row-${key}`;
       row.id = `tx-row-${tx.transactionId}`;
+      row.style.display = isInitiallyOpen ? 'table-row' : 'none'; // グループの開閉状態を初期反映
       
       const totalItemsCount = tx.items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -1613,7 +1620,7 @@ function renderHistoryTable() {
 
       // 詳細アコーディオン明細行 (初期非表示)
       const detailRow = document.createElement('tr');
-      detailRow.className = 'tx-detail-row';
+      detailRow.className = `tx-detail-row group-row-${key}`;
       detailRow.id = `detail-${tx.transactionId}`;
       detailRow.style.display = 'none';
 
@@ -1657,6 +1664,32 @@ function renderHistoryTable() {
   });
 }
 
+// 履歴グループのアコーディオン開閉
+function toggleHistoryGroup(groupKey) {
+  const iconEl = document.getElementById(`group-icon-${groupKey}`);
+  const rows = DOM.historyTableBody.querySelectorAll(`.group-row-${groupKey}`);
+  if (!rows.length) return;
+
+  // 現在グループが開いているかを判断する (通常の取引行 tx-row のいずれかが none でないか)
+  const isCurrentlyOpen = [...rows].some(row => row.classList.contains('tx-row') && row.style.display !== 'none');
+
+  rows.forEach(row => {
+    if (isCurrentlyOpen) {
+      row.style.display = 'none'; // 閉じる時は取引行も内訳詳細もすべて非表示
+    } else {
+      // 開く時は通常の取引行 (tx-row) のみ表示する (個別内訳は閉じたまま)
+      if (row.classList.contains('tx-row')) {
+        row.style.display = 'table-row';
+      }
+    }
+  });
+
+  if (iconEl) {
+    iconEl.classList.toggle('fa-chevron-down', !isCurrentlyOpen);
+    iconEl.classList.toggle('fa-chevron-right', isCurrentlyOpen);
+  }
+}
+
 // 個別アコーディオンの開閉トグル
 function toggleTxDetails(txId) {
   const detailEl = document.getElementById(`detail-${txId}`);
@@ -1673,8 +1706,9 @@ function toggleTxDetails(txId) {
   }
 }
 
-// 一括アコーディオン開閉
+// 一括アコーディオン開閉 (グループ＆個別詳細の両方を完全連動トグル)
 function toggleAllTxDetails(open) {
+  // 1. 個別取引内訳の一括開閉
   const detailRows = DOM.historyTableBody.querySelectorAll('.tx-detail-row');
   const icons = DOM.historyTableBody.querySelectorAll('.toggle-icon');
   
@@ -1685,9 +1719,33 @@ function toggleAllTxDetails(open) {
   icons.forEach(icon => {
     icon.classList.toggle('open', open);
   });
+
+  // 2. 期間グループの一括開閉
+  const groupHeaders = DOM.historyTableBody.querySelectorAll('.history-group-header');
+  groupHeaders.forEach(header => {
+    const key = header.id.replace('group-header-', '');
+    const rows = DOM.historyTableBody.querySelectorAll(`.group-row-${key}`);
+    const groupIcon = document.getElementById(`group-icon-${key}`);
+    
+    rows.forEach(row => {
+      if (open) {
+        if (row.classList.contains('tx-row')) {
+          row.style.display = 'table-row';
+        }
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    if (groupIcon) {
+      groupIcon.classList.toggle('fa-chevron-down', open);
+      groupIcon.classList.toggle('fa-chevron-right', !open);
+    }
+  });
 }
 
 // グローバル関数への露出
+window.toggleHistoryGroup = toggleHistoryGroup;
 window.toggleTxDetails = toggleTxDetails;
 window.toggleAllTxDetails = toggleAllTxDetails;
 
