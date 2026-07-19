@@ -9,6 +9,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [showReportPrintPreview, setShowReportPrintPreview] = useState(false);
+  const [showMonthlyPrintPreview, setShowMonthlyPrintPreview] = useState(false);
 
   const getTodayString = () => {
     const today = new Date();
@@ -18,6 +19,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
 
   const today = getTodayString();
   const [reportDate, setReportDate] = useState(today);
+
+  const getCurrentMonthString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  };
+  const [reportMonth, setReportMonth] = useState(getCurrentMonthString());
   
   // Sort bookings for today by time ascending
   const todayBookings = bookings
@@ -60,6 +69,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
     prayerDetails[prayer].count++;
     prayerDetails[prayer].fee += fee;
   });
+
+  // Target month bookings for report
+  const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth));
+  const monthlyTotalPrayers = monthlyBookings.length;
+  const monthlyIndividualPrayers = monthlyBookings.filter(b => b.booking_type === 'individual').length;
+  const monthlyOrganizationPrayers = monthlyBookings.filter(b => b.booking_type === 'organization').length;
+  const monthlyTotalRevenue = monthlyBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+
+  // Monthly Prayer breakdown
+  const monthlyPrayerDetails: { [key: string]: { count: number; fee: number } } = {};
+  monthlyBookings.forEach(b => {
+    const prayer = b.prayer1 ? b.prayer1.trim() : 'その他';
+    const fee = b.hatsuhoryo || 0;
+    if (!monthlyPrayerDetails[prayer]) {
+      monthlyPrayerDetails[prayer] = { count: 0, fee: 0 };
+    }
+    monthlyPrayerDetails[prayer].count++;
+    monthlyPrayerDetails[prayer].fee += fee;
+  });
+
+  const getWarekiMonthString = (monthStr: string) => {
+    if (!monthStr) return '';
+    const parts = monthStr.split('-');
+    if (parts.length < 2) return monthStr;
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    
+    const reiwaYear = year - 2018;
+    const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
+    return `令和${eraStr}年${month}月度`;
+  };
+
 
   const getWarekiDateString = (dateStr: string) => {
     if (!dateStr) return '';
@@ -362,6 +403,154 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
     );
   }
 
+  if (showMonthlyPrintPreview) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: 2000,
+        overflowY: 'auto'
+      }}>
+        {/* Print controls bar */}
+        <div className="no-print" style={{
+          backgroundColor: 'var(--color-urushi)',
+          padding: '0.75rem 1.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'white',
+          borderBottom: '2px solid var(--color-gold)'
+        }}>
+          <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Printer size={18} />
+            月次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズで作成)
+          </h4>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button 
+              onClick={() => window.print()} 
+              className="btn btn-primary" 
+              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}
+            >
+              印刷する
+            </button>
+            <button 
+              onClick={() => setShowMonthlyPrintPreview(false)} 
+              className="btn btn-secondary" 
+              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <ArrowLeft size={14} />
+              元の画面に戻る
+            </button>
+          </div>
+        </div>
+
+        {/* Print layout sheet */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+          <div 
+            className="report-print-sheet"
+            style={{
+              backgroundColor: '#faf7f0', // Washi-like color
+              width: '182mm', // B5 width
+              minHeight: '257mm', // B5 height
+              padding: '20mm 15mm',
+              color: 'var(--color-urushi)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              fontFamily: 'var(--font-serif)',
+              border: '2px solid #800000',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '5px' }}>
+              <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#800000', margin: 0, padding: '10px 0', letterSpacing: '2px', borderBottom: '1px solid #800000' }}>
+                清瀧神社  月次ご祈祷料集計報告書
+              </h1>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#555', marginTop: '5px', marginBottom: '25px' }}>
+              集計対象月: {getWarekiMonthString(reportMonth)}
+            </div>
+
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', backgroundColor: '#faf7f0', padding: '8px 12px', borderLeft: '5px solid #800000', marginBottom: '12px' }}>
+              【 ご祈祷（初穂料）の部 】
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
+              <thead>
+                <tr>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>ご祈祷総数</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>個人祈祷数</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>団体祈祷数</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>初穂料総額</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>内訳備考</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyTotalPrayers} 件</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyIndividualPrayers} 件</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyOrganizationPrayers} 件</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyTotalRevenue.toLocaleString()} 円</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#555', marginTop: '15px', marginBottom: '8px' }}>
+              ＜願意別の内訳＞
+            </div>
+
+            <table style={{ width: '70%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
+              <thead>
+                <tr>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '50%' }}>願意名</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>祈祷件数</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>初穂料小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(monthlyPrayerDetails).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center', color: '#777' }}>
+                      （該当月のご祈祷はありません）
+                    </td>
+                  </tr>
+                ) : (
+                  Object.keys(monthlyPrayerDetails).map(pName => (
+                    <tr key={pName}>
+                      <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}>{pName}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyPrayerDetails[pName].count} 件</td>
+                      <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'right' }}>{monthlyPrayerDetails[pName].fee.toLocaleString()} 円</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+
+            <div style={{
+              backgroundColor: '#faf7f0',
+              border: '3px double #800000',
+              padding: '15px',
+              textAlign: 'center',
+              marginTop: '40px'
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', marginBottom: '8px' }}>【 当月の総社入金 】</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#800000', marginBottom: '6px' }}>金  {monthlyTotalRevenue.toLocaleString()}  円 整</div>
+              <div style={{ fontSize: '11px', color: '#555' }}>（内訳  ご祈祷: {monthlyTotalRevenue.toLocaleString()} 円）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Stat Panels */}
@@ -574,6 +763,85 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Monthly Aggregation Section */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <h4 style={{ fontSize: '0.95rem', margin: 0, fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            📊 月次ご祈祷料集計報告 ({getWarekiMonthString(reportMonth)})
+          </h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              集計月:
+              <input 
+                type="month" 
+                value={reportMonth} 
+                onChange={(e) => setReportMonth(e.target.value)}
+                className="form-control"
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', width: '140px', display: 'inline-block' }}
+              />
+            </label>
+            <button 
+              onClick={() => setShowMonthlyPrintPreview(true)}
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
+            >
+              <Printer size={12} />
+              月次報告書 印刷
+            </button>
+          </div>
+        </div>
+
+        {monthlyBookings.length === 0 ? (
+          <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.85rem', textAlign: 'center', margin: '2rem 0' }}>
+            選択された月のご祈祷データはありません。
+          </p>
+        ) : (
+          <div>
+            {/* Overview Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.25rem', backgroundColor: 'var(--color-washi)', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>ご祈祷総数</span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-urushi)' }}>{monthlyTotalPrayers} 件</span>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>個人祈祷数</span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-urushi)' }}>{monthlyIndividualPrayers} 件</span>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>団体祈祷数</span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-urushi)' }}>{monthlyOrganizationPrayers} 件</span>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>初穂料総額</span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-mizuiro)' }}>{monthlyTotalRevenue.toLocaleString()} 円</span>
+              </div>
+            </div>
+
+            {/* Breakdown Table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--color-washi-dark)', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>願意名</th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'center', width: '25%' }}>祈祷件数</th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'right', width: '30%' }}>初穂料小計</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(monthlyPrayerDetails).map(pName => (
+                    <tr key={pName} style={{ borderBottom: '1px dashed var(--color-border)' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{pName}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{monthlyPrayerDetails[pName].count} 件</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 'bold' }}>{monthlyPrayerDetails[pName].fee.toLocaleString()} 円</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
