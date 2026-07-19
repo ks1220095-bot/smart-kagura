@@ -1859,6 +1859,7 @@ export const VisitorPortal: React.FC = () => {
                             value={prayerName}
                             onChange={(e) => setPrayerName(e.target.value)}
                             required
+                            autoComplete="off"
                           />
                           {prayer1 !== '安産祈願' && prayer1 !== '初宮詣（お宮参り）' && (
                             <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
@@ -1875,6 +1876,7 @@ export const VisitorPortal: React.FC = () => {
                             value={prayerKana}
                             onChange={(e) => setPrayerKana(e.target.value)}
                             required
+                            autoComplete="off"
                           />
                         </div>
                       </div>
@@ -2308,6 +2310,7 @@ export const VisitorPortal: React.FC = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                       <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.4' }}>
                         ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
@@ -2322,6 +2325,7 @@ export const VisitorPortal: React.FC = () => {
                         value={kana}
                         onChange={(e) => setKana(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -2336,6 +2340,7 @@ export const VisitorPortal: React.FC = () => {
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
@@ -2347,6 +2352,7 @@ export const VisitorPortal: React.FC = () => {
                         value={addressKana}
                         onChange={(e) => setAddressKana(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -2361,6 +2367,7 @@ export const VisitorPortal: React.FC = () => {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                     <div className="form-group">
@@ -2372,6 +2379,7 @@ export const VisitorPortal: React.FC = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -2437,6 +2445,7 @@ export const VisitorPortal: React.FC = () => {
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                     <div className="form-group">
@@ -2448,6 +2457,7 @@ export const VisitorPortal: React.FC = () => {
                         value={companyKana}
                         onChange={(e) => setCompanyKana(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -2464,6 +2474,7 @@ export const VisitorPortal: React.FC = () => {
                       value={talismanName}
                       onChange={(e) => setTalismanName(e.target.value)}
                       required
+                      autoComplete="off"
                     />
                   </div>
 
@@ -2477,6 +2488,7 @@ export const VisitorPortal: React.FC = () => {
                         value={companyAddress}
                         onChange={(e) => setCompanyAddress(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
@@ -2488,6 +2500,7 @@ export const VisitorPortal: React.FC = () => {
                         value={companyAddressKana}
                         onChange={(e) => setCompanyAddressKana(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -2502,6 +2515,7 @@ export const VisitorPortal: React.FC = () => {
                         value={representativeTitleName}
                         onChange={(e) => setRepresentativeTitleName(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                     <div className="form-group">
@@ -2513,6 +2527,7 @@ export const VisitorPortal: React.FC = () => {
                         value={staffDeptTitleName}
                         onChange={(e) => setStaffDeptTitleName(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -2527,6 +2542,7 @@ export const VisitorPortal: React.FC = () => {
                         value={staffPhone}
                         onChange={(e) => setStaffPhone(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                     <div className="form-group">
@@ -2538,6 +2554,7 @@ export const VisitorPortal: React.FC = () => {
                         value={staffEmail}
                         onChange={(e) => setStaffEmail(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
