@@ -562,7 +562,7 @@ function openMobileCart() {
       <span style="color:var(--color-vermilion); font-family:var(--font-serif); font-weight:700;">${getCartTotal().toLocaleString()} 円</span>
     </div>
     <div class="cash-input-group" style="margin-bottom:0.75rem;">
-      <label for="cash-received-mobile">お預かり金</label>
+      <label for="cash-received-mobile">お釣り計算機能</label>
       <div class="input-with-unit">
         <input type="number" id="cash-received-mobile" class="mobile-cash-input" value="${DOM.cashReceived.value}" placeholder="0">
         <span class="unit">円</span>
