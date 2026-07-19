@@ -158,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadGridColsSetting();
   loadMasterData();
   initMemoControl();
+  restoreCartState(); // ページ読み込み時にカート状態とお預かり金額を復元
 });
 
 function setupDateTime() {
@@ -209,6 +210,39 @@ function generateQtyOptions(stock) {
   }
   
   return options;
+}
+
+// ==========================================
+// カート状態のローカルストレージ永続化
+// ==========================================
+function saveCartState() {
+  localStorage.setItem('regi_cart', JSON.stringify(state.cart));
+}
+
+function saveCashState() {
+  localStorage.setItem('regi_cash_received', DOM.cashReceived.value);
+}
+
+function clearCartState() {
+  localStorage.removeItem('regi_cart');
+  localStorage.removeItem('regi_cash_received');
+}
+
+function restoreCartState() {
+  const savedCart = localStorage.getItem('regi_cart');
+  if (savedCart) {
+    try {
+      state.cart = JSON.parse(savedCart);
+      updateCartUI();
+    } catch (e) {
+      console.error('Failed to parse restored cart:', e);
+    }
+  }
+  const savedCash = localStorage.getItem('regi_cash_received');
+  if (savedCash) {
+    DOM.cashReceived.value = savedCash;
+    calculateChange();
+  }
 }
 
 // ==========================================
@@ -827,6 +861,7 @@ async function processCheckout() {
       status: '有効'
     });
     
+    clearCartState(); // カート永続化データをリセット
     closeMobileCart();
     showCheckoutSuccess(change);
     renderItems();
@@ -850,6 +885,7 @@ async function processCheckout() {
         const match = state.items.find(item => item.id === cartItem.id);
         if (match) match.stock = Math.max(0, match.stock - cartItem.quantity);
       });
+      clearCartState(); // カート永続化データをリセット
       closeMobileCart();
       showCheckoutSuccess(change);
       renderItems();
@@ -1160,6 +1196,7 @@ function addToCart(item, quantity = 1) {
   }
   
   updateCartUI();
+  saveCartState(); // 状態を永続化
   showToast(`${item.name}をカートに追加しました。`, 'success');
 }
 
@@ -1169,6 +1206,7 @@ window.removeFromCart = function(itemId) {
   if (match) {
     state.cart = state.cart.filter(item => item.id !== itemId);
     updateCartUI();
+    saveCartState(); // 状態を永続化
     showToast(`${match.name}をカートから削除しました。`, 'info');
     
     if (DOM.mobileCartSheet.classList.contains('open')) {
@@ -1192,6 +1230,7 @@ window.updateQuantity = function(itemId, change) {
     }
     cartItem.quantity = newQty;
     updateCartUI();
+    saveCartState(); // 状態を永続化
     
     if (DOM.mobileCartSheet.classList.contains('open')) {
       DOM.mobileCartItemsListContainer.innerHTML = DOM.cartItemsList.innerHTML;
@@ -1269,12 +1308,14 @@ function calculateChange() {
     DOM.cartChangeAmount.textContent = `${change.toLocaleString()} 円`;
     DOM.cartChangeAmount.style.color = 'var(--color-green)';
   }
+  saveCashState(); // お預かり金の入力状態を永続化
 }
 
 function clearCart() {
   state.cart = [];
   DOM.cashReceived.value = '';
   updateCartUI();
+  clearCartState(); // 永続化データを消去
 }
 
 // 確認ダイアログ
