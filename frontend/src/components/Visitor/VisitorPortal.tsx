@@ -146,34 +146,44 @@ interface PrayerItem {
 }
 
 export const VisitorPortal: React.FC = () => {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [bookingType, setBookingType] = useState<'individual' | 'organization'>('individual');
+  // Load draft from localStorage if available
+  const savedDraft = (() => {
+    try {
+      const raw = localStorage.getItem('kagura_booking_form_state');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(savedDraft?.step ?? 1);
+  const [bookingType, setBookingType] = useState<'individual' | 'organization'>(savedDraft?.bookingType ?? 'individual');
   
   // General Booking states
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [prayer1, setPrayer1] = useState('');
-  const [prayer2, setPrayer2] = useState('');
-  const [hatsuhoryo, setHatsuhoryo] = useState(5000);
-  const [attendingCount, setAttendingCount] = useState<number | ''>(1);
-  const [prayerItems, setPrayerItems] = useState<PrayerItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState(savedDraft?.selectedDate ?? '');
+  const [selectedTime, setSelectedTime] = useState(savedDraft?.selectedTime ?? '');
+  const [prayer1, setPrayer1] = useState(savedDraft?.prayer1 ?? '');
+  const [prayer2, setPrayer2] = useState(savedDraft?.prayer2 ?? '');
+  const [hatsuhoryo, setHatsuhoryo] = useState(savedDraft?.hatsuhoryo ?? 5000);
+  const [attendingCount, setAttendingCount] = useState<number | ''>(savedDraft?.attendingCount ?? 1);
+  const [prayerItems, setPrayerItems] = useState<PrayerItem[]>(savedDraft?.prayerItems ?? []);
 
   // Calligraphy warnings, past prayer logs, twin baby forms and FAQ states
-  const [hasPastPrayer, setHasPastPrayer] = useState<number>(0);
-  const [isTwin, setIsTwin] = useState(false);
-  const [childName2, setChildName2] = useState('');
-  const [childKana2, setChildKana2] = useState('');
-  const [childBirthday2, setChildBirthday2] = useState('');
-  const [notes, setNotes] = useState('');
+  const [hasPastPrayer, setHasPastPrayer] = useState<number>(savedDraft?.hasPastPrayer ?? 0);
+  const [isTwin, setIsTwin] = useState(savedDraft?.isTwin ?? false);
+  const [childName2, setChildName2] = useState(savedDraft?.childName2 ?? '');
+  const [childKana2, setChildKana2] = useState(savedDraft?.childKana2 ?? '');
+  const [childBirthday2, setChildBirthday2] = useState(savedDraft?.childBirthday2 ?? '');
+  const [notes, setNotes] = useState(savedDraft?.notes ?? '');
 
   // Child birthday dropdown segments
-  const [birthYear, setBirthYear] = useState('');
-  const [birthMonth, setBirthMonth] = useState('');
-  const [birthDay, setBirthDay] = useState('');
+  const [birthYear, setBirthYear] = useState(savedDraft?.birthYear ?? '');
+  const [birthMonth, setBirthMonth] = useState(savedDraft?.birthMonth ?? '');
+  const [birthDay, setBirthDay] = useState(savedDraft?.birthDay ?? '');
 
-  const [birthYear2, setBirthYear2] = useState('');
-  const [birthMonth2, setBirthMonth2] = useState('');
-  const [birthDay2, setBirthDay2] = useState('');
+  const [birthYear2, setBirthYear2] = useState(savedDraft?.birthYear2 ?? '');
+  const [birthMonth2, setBirthMonth2] = useState(savedDraft?.birthMonth2 ?? '');
+  const [birthDay2, setBirthDay2] = useState(savedDraft?.birthDay2 ?? '');
 
   // Talisman viewer modal states (scraping)
   const [talismansList, setTalismansList] = useState<any[]>([]);
@@ -206,58 +216,58 @@ export const VisitorPortal: React.FC = () => {
   }, [prayer1, isTwin]);
 
   // Individual Form fields
-  const [name, setName] = useState('');
-  const [kana, setKana] = useState('');
-  const [prayerName, setPrayerName] = useState('');
-  const [prayerKana, setPrayerKana] = useState('');
-  const [address, setAddress] = useState('');
-  const [addressKana, setAddressKana] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(savedDraft?.name ?? '');
+  const [kana, setKana] = useState(savedDraft?.kana ?? '');
+  const [prayerName, setPrayerName] = useState(savedDraft?.prayerName ?? '');
+  const [prayerKana, setPrayerKana] = useState(savedDraft?.prayerKana ?? '');
+  const [address, setAddress] = useState(savedDraft?.address ?? '');
+  const [addressKana, setAddressKana] = useState(savedDraft?.addressKana ?? '');
+  const [phone, setPhone] = useState(savedDraft?.phone ?? '');
+  const [email, setEmail] = useState(savedDraft?.email ?? '');
 
   // Individual Dynamic fields
-  const [yakudoshiType, setYakudoshiType] = useState<'maeyaku' | 'honyaku' | 'atoyaku' | ''>('');
-  const [fatherName, setFatherName] = useState('');
-  const [fatherKana, setFatherKana] = useState('');
-  const [motherName, setMotherName] = useState('');
-  const [motherKana, setMotherKana] = useState('');
-  const [childName, setChildName] = useState('');
-  const [childKana, setChildKana] = useState('');
-  const [childBirthday, setChildBirthday] = useState('');
-  const [kotobukiType, setKotobukiType] = useState('');
-  const [kotobukiOtherText, setKotobukiOtherText] = useState('');
+  const [yakudoshiType, setYakudoshiType] = useState<'maeyaku' | 'honyaku' | 'atoyaku' | ''>(savedDraft?.yakudoshiType ?? '');
+  const [fatherName, setFatherName] = useState(savedDraft?.fatherName ?? '');
+  const [fatherKana, setFatherKana] = useState(savedDraft?.fatherKana ?? '');
+  const [motherName, setMotherName] = useState(savedDraft?.motherName ?? '');
+  const [motherKana, setMotherKana] = useState(savedDraft?.motherKana ?? '');
+  const [childName, setChildName] = useState(savedDraft?.childName ?? '');
+  const [childKana, setChildKana] = useState(savedDraft?.childKana ?? '');
+  const [childBirthday, setChildBirthday] = useState(savedDraft?.childBirthday ?? '');
+  const [kotobukiType, setKotobukiType] = useState(savedDraft?.kotobukiType ?? '');
+  const [kotobukiOtherText, setKotobukiOtherText] = useState(savedDraft?.kotobukiOtherText ?? '');
 
   // Organization Form fields
-  const [companyName, setCompanyName] = useState('');
-  const [companyKana, setCompanyKana] = useState('');
-  const [companyAddress, setCompanyAddress] = useState('');
-  const [companyAddressKana, setCompanyAddressKana] = useState('');
-  const [representativeTitleName, setRepresentativeTitleName] = useState('');
-  const [staffDeptTitleName, setStaffDeptTitleName] = useState('');
-  const [staffPhone, setStaffPhone] = useState('');
-  const [staffEmail, setStaffEmail] = useState('');
+  const [companyName, setCompanyName] = useState(savedDraft?.companyName ?? '');
+  const [companyKana, setCompanyKana] = useState(savedDraft?.companyKana ?? '');
+  const [companyAddress, setCompanyAddress] = useState(savedDraft?.companyAddress ?? '');
+  const [companyAddressKana, setCompanyAddressKana] = useState(savedDraft?.companyAddressKana ?? '');
+  const [representativeTitleName, setRepresentativeTitleName] = useState(savedDraft?.representativeTitleName ?? '');
+  const [staffDeptTitleName, setStaffDeptTitleName] = useState(savedDraft?.staffDeptTitleName ?? '');
+  const [staffPhone, setStaffPhone] = useState(savedDraft?.staffPhone ?? '');
+  const [staffEmail, setStaffEmail] = useState(savedDraft?.staffEmail ?? '');
   
   // Organization Talisman
-  const [talismanName, setTalismanName] = useState('');
-  const [additionalTalismans, setAdditionalTalismans] = useState('');
+  const [talismanName, setTalismanName] = useState(savedDraft?.talismanName ?? '');
+  const [additionalTalismans, setAdditionalTalismans] = useState(savedDraft?.additionalTalismans ?? '');
 
   // Organization Receipt
-  const [wantsReceipt, setWantsReceipt] = useState(false);
-  const [receiptName, setReceiptName] = useState('');
-  const [receiptAmount, setReceiptAmount] = useState(20000);
+  const [wantsReceipt, setWantsReceipt] = useState(savedDraft?.wantsReceipt ?? false);
+  const [receiptName, setReceiptName] = useState(savedDraft?.receiptName ?? '');
+  const [receiptAmount, setReceiptAmount] = useState(savedDraft?.receiptAmount ?? 20000);
 
   // Organization Dynamic fields
-  const [orgCustomPrayer1, setOrgCustomPrayer1] = useState('');
-  const [orgCustomPrayer2, setOrgCustomPrayer2] = useState('');
-  const [tournamentName, setTournamentName] = useState('');
-  const [tournamentSchedule, setTournamentSchedule] = useState('');
-  const [constructionName, setConstructionName] = useState('');
-  const [constructionDesigner, setConstructionDesigner] = useState('');
-  const [constructionBuilder, setConstructionBuilder] = useState('');
-  const [constructionPeriod, setConstructionPeriod] = useState('');
+  const [orgCustomPrayer1, setOrgCustomPrayer1] = useState(savedDraft?.orgCustomPrayer1 ?? '');
+  const [orgCustomPrayer2, setOrgCustomPrayer2] = useState(savedDraft?.orgCustomPrayer2 ?? '');
+  const [tournamentName, setTournamentName] = useState(savedDraft?.tournamentName ?? '');
+  const [tournamentSchedule, setTournamentSchedule] = useState(savedDraft?.tournamentSchedule ?? '');
+  const [constructionName, setConstructionName] = useState(savedDraft?.constructionName ?? '');
+  const [constructionDesigner, setConstructionDesigner] = useState(savedDraft?.constructionDesigner ?? '');
+  const [constructionBuilder, setConstructionBuilder] = useState(savedDraft?.constructionBuilder ?? '');
+  const [constructionPeriod, setConstructionPeriod] = useState(savedDraft?.constructionPeriod ?? '');
 
-  const [skipVictoryDetails, setSkipVictoryDetails] = useState(false);
-  const [skipConstructionDetails, setSkipConstructionDetails] = useState(false);
+  const [skipVictoryDetails, setSkipVictoryDetails] = useState(savedDraft?.skipVictoryDetails ?? false);
+  const [skipConstructionDetails, setSkipConstructionDetails] = useState(savedDraft?.skipConstructionDetails ?? false);
 
   // Submission Status
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
@@ -274,20 +284,20 @@ export const VisitorPortal: React.FC = () => {
 
 
   const [isBookingActive, setIsBookingActive] = useState(true);
-  const [userBirthYear, setUserBirthYear] = useState('');
-  const [userBirthMonth, setUserBirthMonth] = useState('');
-  const [userBirthDay, setUserBirthDay] = useState('');
+  const [userBirthYear, setUserBirthYear] = useState(savedDraft?.userBirthYear ?? '');
+  const [userBirthMonth, setUserBirthMonth] = useState(savedDraft?.userBirthMonth ?? '');
+  const [userBirthDay, setUserBirthDay] = useState(savedDraft?.userBirthDay ?? '');
   const [activeMainTab, setActiveMainTab] = useState<'form' | 'faq'>('form');
-  const [carMaker, setCarMaker] = useState('');
-  const [carModel, setCarModel] = useState('');
-  const [carNumber, setCarNumber] = useState('');
+  const [carMaker, setCarMaker] = useState(savedDraft?.carMaker ?? '');
+  const [carModel, setCarModel] = useState(savedDraft?.carModel ?? '');
+  const [carNumber, setCarNumber] = useState(savedDraft?.carNumber ?? '');
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
-  const [anzanHusbandName, setAnzanHusbandName] = useState('');
-  const [anzanHusbandKana, setAnzanHusbandKana] = useState('');
-  const [anzanSkipHusband, setAnzanSkipHusband] = useState(false);
-  const [anzanWifeName, setAnzanWifeName] = useState('');
-  const [anzanWifeKana, setAnzanWifeKana] = useState('');
-  const [anzanSkipWife, setAnzanSkipWife] = useState(false);
+  const [anzanHusbandName, setAnzanHusbandName] = useState(savedDraft?.anzanHusbandName ?? '');
+  const [anzanHusbandKana, setAnzanHusbandKana] = useState(savedDraft?.anzanHusbandKana ?? '');
+  const [anzanSkipHusband, setAnzanSkipHusband] = useState(savedDraft?.anzanSkipHusband ?? false);
+  const [anzanWifeName, setAnzanWifeName] = useState(savedDraft?.anzanWifeName ?? '');
+  const [anzanWifeKana, setAnzanWifeKana] = useState(savedDraft?.anzanWifeKana ?? '');
+  const [anzanSkipWife, setAnzanSkipWife] = useState(savedDraft?.anzanSkipWife ?? false);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
   useEffect(() => {
@@ -312,6 +322,188 @@ export const VisitorPortal: React.FC = () => {
   // Form editing mode states (For full reschedule updates)
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBookingId, setEditBookingId] = useState<number | null>(null);
+
+  // Save form draft to localStorage whenever relevant fields change
+  useEffect(() => {
+    // If booking is completed, we don't save the draft
+    if (createdBooking) {
+      return;
+    }
+    const draftData = {
+      step,
+      bookingType,
+      selectedDate,
+      selectedTime,
+      prayer1,
+      prayer2,
+      hatsuhoryo,
+      attendingCount,
+      prayerItems,
+      hasPastPrayer,
+      isTwin,
+      childName2,
+      childKana2,
+      childBirthday2,
+      notes,
+      birthYear,
+      birthMonth,
+      birthDay,
+      birthYear2,
+      birthMonth2,
+      birthDay2,
+      name,
+      kana,
+      prayerName,
+      prayerKana,
+      address,
+      addressKana,
+      phone,
+      email,
+      yakudoshiType,
+      fatherName,
+      fatherKana,
+      motherName,
+      motherKana,
+      childName,
+      childKana,
+      childBirthday,
+      kotobukiType,
+      kotobukiOtherText,
+      companyName,
+      companyKana,
+      companyAddress,
+      companyAddressKana,
+      representativeTitleName,
+      staffDeptTitleName,
+      staffPhone,
+      staffEmail,
+      talismanName,
+      additionalTalismans,
+      wantsReceipt,
+      receiptName,
+      receiptAmount,
+      orgCustomPrayer1,
+      orgCustomPrayer2,
+      tournamentName,
+      tournamentSchedule,
+      constructionName,
+      constructionDesigner,
+      constructionBuilder,
+      constructionPeriod,
+      skipVictoryDetails,
+      skipConstructionDetails,
+      userBirthYear,
+      userBirthMonth,
+      userBirthDay,
+      carMaker,
+      carModel,
+      carNumber,
+      anzanHusbandName,
+      anzanHusbandKana,
+      anzanSkipHusband,
+      anzanWifeName,
+      anzanWifeKana,
+      anzanSkipWife
+    };
+    try {
+      localStorage.setItem('kagura_booking_form_state', JSON.stringify(draftData));
+    } catch (e) {
+      console.error('Failed to save booking draft:', e);
+    }
+  }, [
+    step,
+    bookingType,
+    selectedDate,
+    selectedTime,
+    prayer1,
+    prayer2,
+    hatsuhoryo,
+    attendingCount,
+    prayerItems,
+    hasPastPrayer,
+    isTwin,
+    childName2,
+    childKana2,
+    childBirthday2,
+    notes,
+    birthYear,
+    birthMonth,
+    birthDay,
+    birthYear2,
+    birthMonth2,
+    birthDay2,
+    name,
+    kana,
+    prayerName,
+    prayerKana,
+    address,
+    addressKana,
+    phone,
+    email,
+    yakudoshiType,
+    fatherName,
+    fatherKana,
+    motherName,
+    motherKana,
+    childName,
+    childKana,
+    childBirthday,
+    kotobukiType,
+    kotobukiOtherText,
+    companyName,
+    companyKana,
+    companyAddress,
+    companyAddressKana,
+    representativeTitleName,
+    staffDeptTitleName,
+    staffPhone,
+    staffEmail,
+    talismanName,
+    additionalTalismans,
+    wantsReceipt,
+    receiptName,
+    receiptAmount,
+    orgCustomPrayer1,
+    orgCustomPrayer2,
+    tournamentName,
+    tournamentSchedule,
+    constructionName,
+    constructionDesigner,
+    constructionBuilder,
+    constructionPeriod,
+    skipVictoryDetails,
+    skipConstructionDetails,
+    userBirthYear,
+    userBirthMonth,
+    userBirthDay,
+    carMaker,
+    carModel,
+    carNumber,
+    anzanHusbandName,
+    anzanHusbandKana,
+    anzanSkipHusband,
+    anzanWifeName,
+    anzanWifeKana,
+    anzanSkipWife,
+    createdBooking
+  ]);
+
+  // Block accidental page navigation/reload during booking
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Don't warn if booking completed or editMode is on or form is entirely blank
+      const isBlank = step === 1 && !name && !companyName && !selectedDate && !prayer1;
+      if (createdBooking || isEditMode || isBlank) {
+        return;
+      }
+      e.preventDefault();
+      e.returnValue = 'ご入力中の予約情報は失われます。本当にページを離れますか？';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [step, name, companyName, selectedDate, prayer1, createdBooking, isEditMode]);
 
   const loadBookingIntoForm = (b: Booking) => {
     setBookingType(b.booking_type);
