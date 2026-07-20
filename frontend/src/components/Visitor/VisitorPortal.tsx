@@ -862,6 +862,42 @@ export const VisitorPortal: React.FC = () => {
     return '';
   };
 
+  const handleCopyFromPrayerItem = () => {
+    if (prayerItems.length === 0) return;
+    const firstItem = prayerItems[0];
+    
+    // Resolve name and kana to copy
+    let nameToCopy = '';
+    let kanaToCopy = '';
+
+    if (firstItem.prayer1 === '安産祈願') {
+      // For pregnancy, try wife name first, then husband name
+      if (firstItem.mother_name) {
+        nameToCopy = firstItem.mother_name;
+        kanaToCopy = firstItem.mother_kana || '';
+      } else if (firstItem.father_name) {
+        nameToCopy = firstItem.father_name;
+        kanaToCopy = firstItem.father_kana || '';
+      }
+    } else if (firstItem.prayer1 === '初宮詣（お宮参り）' || firstItem.prayer1 === '七五三詣') {
+      // For baby/children, copy father or mother name
+      if (firstItem.father_name) {
+        nameToCopy = firstItem.father_name;
+        kanaToCopy = firstItem.father_kana || '';
+      } else if (firstItem.mother_name) {
+        nameToCopy = firstItem.mother_name;
+        kanaToCopy = firstItem.mother_kana || '';
+      }
+    } else {
+      // For normal prayers, copy the target person's name
+      nameToCopy = firstItem.name || '';
+      kanaToCopy = firstItem.kana || '';
+    }
+
+    if (nameToCopy) setName(nameToCopy);
+    if (kanaToCopy) setKana(kanaToCopy);
+  };
+
   const handleAddPrayerItem = () => {
     if (!prayer1) {
       alert('願意を選択してください。');
@@ -974,8 +1010,32 @@ export const VisitorPortal: React.FC = () => {
 
     // Auto-fill representative name if empty
     if (prayerItems.length === 0) {
-      if (!name) setName(resolvedName);
-      if (!kana) setKana(resolvedKana);
+      let nameToCopy = '';
+      let kanaToCopy = '';
+
+      if (prayer1 === '安産祈願') {
+        if (anzanWifeName) {
+          nameToCopy = anzanWifeName;
+          kanaToCopy = anzanWifeKana;
+        } else if (anzanHusbandName) {
+          nameToCopy = anzanHusbandName;
+          kanaToCopy = anzanHusbandKana;
+        }
+      } else if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') {
+        if (fatherName) {
+          nameToCopy = fatherName;
+          kanaToCopy = fatherKana;
+        } else if (motherName) {
+          nameToCopy = motherName;
+          kanaToCopy = motherKana;
+        }
+      } else {
+        nameToCopy = resolvedName;
+        kanaToCopy = resolvedKana;
+      }
+
+      if (!name && nameToCopy) setName(nameToCopy);
+      if (!kana && kanaToCopy) setKana(kanaToCopy);
     }
 
     // Reset current prayer fields
@@ -2303,7 +2363,30 @@ export const VisitorPortal: React.FC = () => {
                 <>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>ご本人の氏名 <span className="required">*</span></label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <label style={{ margin: 0 }}>ご本人の氏名 <span className="required">*</span></label>
+                        {prayerItems.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleCopyFromPrayerItem}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--color-mizuiro)',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              padding: 0,
+                              textDecoration: 'underline',
+                              fontWeight: 500,
+                              transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-urushi)'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-mizuiro)'}
+                          >
+                            ご祈祷を受ける方のお名前をコピー
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="text"
                         className="form-control"
