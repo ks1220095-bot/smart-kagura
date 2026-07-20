@@ -3,6 +3,7 @@ import { getDb } from '../db';
 import { Booking } from '../types';
 import { sendMail, sendAdminNotification } from '../services/email';
 import { sendWebPushNotification } from '../services/webpush';
+import { syncAllBookingsToSpreadsheet } from '../services/sheetSync';
 
 const router = Router();
 
@@ -678,6 +679,9 @@ router.patch('/:id/payment', async (req, res) => {
 
     await db.query(query, params);
     
+    // スプレッドシート（GAS）へ変更内容を即時同期します
+    await syncAllBookingsToSpreadsheet().catch(err => console.error('Failed to trigger spreadsheet sync on payment update:', err));
+    
     const result = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
     res.json(result.rows[0]);
   } catch (error) {
@@ -842,7 +846,10 @@ https://seiryu-gokitou.vercel.app/?changeId=${req.params.id}
     }
 
     sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending change Web Push notification:', err));
-
+ 
+    // スプレッドシート（GAS）へ変更内容を即時同期します
+    await syncAllBookingsToSpreadsheet().catch(err => console.error('Failed to trigger spreadsheet sync on booking update:', err));
+ 
     res.json(updatedBooking);
   } catch (error) {
     console.error('Booking PUT update error:', error);
@@ -896,7 +903,10 @@ router.delete('/:id', async (req, res) => {
                      (hardDelete ? `※データベースから物理削除されました。` : `※オンラインでキャンセル（取消）されました。`);
 
     sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending cancel Web Push notification:', err));
-
+ 
+    // スプレッドシート（GAS）へ変更内容を即時同期します
+    await syncAllBookingsToSpreadsheet().catch(err => console.error('Failed to trigger spreadsheet sync on booking delete:', err));
+ 
     res.json({ message: hardDelete ? '予約が完全に削除されました。' : '予約が正常にキャンセルされました。', deletedId: req.params.id, hard: hardDelete });
   } catch (error) {
     console.error('Booking cancellation error:', error);
@@ -964,7 +974,10 @@ router.patch('/:id/reschedule', async (req, res) => {
                    `(元の予約日時：${existing.booking_date} ${existing.booking_time}から変更)`;
 
     sendWebPushNotification(pushTitle, pushBody).catch(err => console.error('Error sending reschedule Web Push:', err));
-
+ 
+    // スプレッドシート（GAS）へ変更内容を即時同期します
+    await syncAllBookingsToSpreadsheet().catch(err => console.error('Failed to trigger spreadsheet sync on booking reschedule:', err));
+ 
     res.json({ success: true, booking_date, booking_time });
   } catch (error) {
     console.error('Booking reschedule error:', error);
