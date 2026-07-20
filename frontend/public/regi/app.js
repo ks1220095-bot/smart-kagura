@@ -28,6 +28,10 @@ const MOCK_PRAYERS = {
     { type: '個人祈祷 (家内安全)', count: 3, amount: 15000 },
     { type: '個人祈祷 (厄除け)', count: 2, amount: 10000 },
     { type: '会社・団体祈祷', count: 1, amount: 30000 }
+  ],
+  '2026-07-20': [
+    { type: '個人祈祷 (家内安全)', count: 2, amount: 10000 },
+    { type: '個人祈祷 (初宮詣)', count: 1, amount: 10000 }
   ]
 };
 
@@ -1766,7 +1770,33 @@ async function generateDailyReport() {
   if (state.isUsingMock) {
     setTimeout(() => {
       const reportDate = state.selectedDate;
-      const prayers = MOCK_PRAYERS[reportDate] || [];
+      
+      // MOCK_PRAYERSに該当日のデータがなければ動的自動生成する（日付変更テストでも二度と0件・0円にならないようにする）
+      let prayers = MOCK_PRAYERS[reportDate];
+      if (!prayers) {
+        const dateObj = new Date(reportDate);
+        const day = dateObj.getDate() || 1;
+        const dayOfWeek = dateObj.getDay();
+        
+        let countSafety = 1;
+        let countBaby = 0;
+        let countCompany = 0;
+        
+        if (dayOfWeek === 0 || dayOfWeek === 6) { // 土日は多め
+          countSafety = (day % 3) + 2; 
+          countBaby = (day % 2) + 1;   
+          if (day % 3 === 0) countCompany = 1;
+        } else { // 平日
+          countSafety = (day % 2) + 1; 
+          countBaby = day % 2;         
+        }
+        
+        prayers = [];
+        if (countSafety > 0) prayers.push({ type: '個人祈祷 (家内安全)', count: countSafety, amount: countSafety * 5000 });
+        if (countBaby > 0) prayers.push({ type: '個人祈祷 (初宮詣)', count: countBaby, amount: countBaby * 10000 });
+        if (countCompany > 0) prayers.push({ type: '会社・団体祈祷', count: countCompany, amount: countCompany * 20000 });
+      }
+      
       const prayerSalesTotal = prayers.reduce((sum, p) => sum + p.amount, 0);
       const prayerCount = prayers.reduce((sum, p) => sum + p.count, 0);
       
