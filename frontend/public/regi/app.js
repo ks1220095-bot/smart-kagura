@@ -858,7 +858,14 @@ async function processCheckout() {
 
   const now = new Date();
   const transactionId = "TX-" + now.getTime() + "-" + Math.floor(Math.random() * 1000);
-  const timestamp = now.toLocaleDateString('ja-JP') + ' ' + now.toTimeString().split(' ')[0];
+  
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const timestamp = `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}`;
 
   if (state.isUsingMock) {
     state.cart.forEach(cartItem => {
@@ -1471,7 +1478,8 @@ function getMockTransactions() {
 
 // タイムスタンプから指定の分類キーと表示名を返す
 function getTransactionGroupInfo(timestampStr, groupType) {
-  const normalized = timestampStr.replace(/\//g, '-');
+  // Safariや様々なブラウザエンジンとの互換性を確保するため、ハイフン区切りではなくスラッシュ区切りに統一してパースします
+  const normalized = timestampStr.replace(/-/g, '/');
   const d = new Date(normalized);
   if (isNaN(d.getTime())) {
     return { key: 'unknown', label: 'その他分類不能' };
@@ -1774,7 +1782,7 @@ async function generateDailyReport() {
       // MOCK_PRAYERSに該当日のデータがなければ動的自動生成する（日付変更テストでも二度と0件・0円にならないようにする）
       let prayers = MOCK_PRAYERS[reportDate];
       if (!prayers) {
-        const dateObj = new Date(reportDate);
+        const dateObj = new Date(reportDate.replace(/-/g, '/'));
         const day = dateObj.getDate() || 1;
         const dayOfWeek = dateObj.getDay();
         
