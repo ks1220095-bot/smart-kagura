@@ -881,9 +881,13 @@ async function processCheckout() {
       status: '有効'
     });
     
-    clearCartState(); // カート永続化データをリセット
     closeMobileCart();
-    showCheckoutSuccess(change);
+    clearCart();
+    if (change > 0) {
+      showToast(`会計が完了しました。（お釣り：${change.toLocaleString()} 円）`, 'success');
+    } else {
+      showToast('会計が完了しました。', 'success');
+    }
     renderItems();
     renderMasterGrid();
     return;
@@ -905,9 +909,13 @@ async function processCheckout() {
         const match = state.items.find(item => item.id === cartItem.id);
         if (match) match.stock = Math.max(0, match.stock - cartItem.quantity);
       });
-      clearCartState(); // カート永続化データをリセット
       closeMobileCart();
-      showCheckoutSuccess(change);
+      clearCart();
+      if (change > 0) {
+        showToast(`会計が完了しました。（お釣り：${change.toLocaleString()} 円）`, 'success');
+      } else {
+        showToast('会計が完了しました。', 'success');
+      }
       renderItems();
       renderMasterGrid();
     } else {
