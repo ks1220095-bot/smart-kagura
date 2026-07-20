@@ -493,7 +493,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
               {(() => {
                 const todayBookings = bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1);
                 const stats = getUniqueGroupStats(todayBookings);
-                const totalHatsuhoryo = todayBookings.reduce((sum, b) => sum + b.hatsuhoryo, 0);
+                const totalHatsuhoryo = todayBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
                 return (
                   <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap' }}>
                     <div>総件数: <strong style={{ color: 'var(--color-urushi)' }}>{todayBookings.length} 件</strong></div>
@@ -550,8 +550,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
                         {grouped[slot].map(b => {
                           const isIndiv = b.booking_type === 'individual';
                           const nameLabel = isIndiv ? '個人' : '団体';
-                          const displayName = isIndiv ? b.name : b.company_name;
-                          const displayKana = isIndiv ? b.kana : b.company_kana;
+                          const displayName = isIndiv ? (b.name || '') : (b.company_name || '');
+                          const displayKana = isIndiv ? (b.kana || '') : (b.company_kana || '');
                           
                           return (
                             <div key={b.id} style={{ 
@@ -624,11 +624,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
                                 <div>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                                     <span>参列予定人数:</span> 
-                                    <strong>{b.attending_count} 名</strong>
+                                    <strong>{(b.attending_count || 1)} 名</strong>
                                   </div>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '0.2rem' }}>
                                     <span>お初穂料金額:</span>
-                                    <strong style={{ color: 'var(--color-mizuiro)' }}>{b.hatsuhoryo.toLocaleString()} 円</strong>
+                                    <strong style={{ color: 'var(--color-mizuiro)' }}>{(b.hatsuhoryo || 0).toLocaleString()} 円</strong>
                                   </div>
                                   {(b.phone || b.staff_phone) && (
                                     <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>

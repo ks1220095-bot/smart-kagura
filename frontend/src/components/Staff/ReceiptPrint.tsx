@@ -13,7 +13,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
     return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
   };
 
-  const amount = booking.receipt_amount || booking.hatsuhoryo;
+  const amount = booking.receipt_amount || booking.hatsuhoryo || 0;
   const address = booking.receipt_name || booking.company_name || '';
 
   return (

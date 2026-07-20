@@ -217,6 +217,7 @@ export const VisitorPortal: React.FC = () => {
   }, [prayer1, isTwin]);
 
   // Individual Form fields
+  const [isRestored, setIsRestored] = useState(false);
   const [name, setName] = useState(savedDraft?.name ?? '');
   const [kana, setKana] = useState(savedDraft?.kana ?? '');
   const [prayerName, setPrayerName] = useState(savedDraft?.prayerName ?? '');
@@ -326,6 +327,8 @@ export const VisitorPortal: React.FC = () => {
 
   // Save form draft to localStorage whenever relevant fields change
   useEffect(() => {
+    // Redundant save effect disabled to prevent duplicate writes
+    return;
     // If booking is completed, we don't save the draft
     if (createdBooking) {
       return;
@@ -601,7 +604,7 @@ export const VisitorPortal: React.FC = () => {
   // Save fields on changes (skip complete screen)
   const isCompleted = sessionStorage.getItem('booking_completed') === 'true';
   useEffect(() => {
-    if (isCompleted || step === 4) return;
+    if (!isRestored || isCompleted || step === 4) return;
 
     const stateToSave = {
       step, bookingType, selectedDate, selectedTime,
@@ -617,11 +620,18 @@ export const VisitorPortal: React.FC = () => {
       activeMainTab, childName, childKana, childBirthday,
       yakudoshiType, fatherName, fatherKana, motherName, motherKana,
       kotobukiType, kotobukiOtherText,
-      carMaker, carModel, carNumber
+      carMaker, carModel, carNumber,
+      prayerName, prayerKana,
+      anzanHusbandName, anzanHusbandKana, anzanSkipHusband,
+      anzanWifeName, anzanWifeKana, anzanSkipWife
     };
-    localStorage.setItem('kagura_booking_form_state', JSON.stringify(stateToSave));
+    try {
+      localStorage.setItem('kagura_booking_form_state', JSON.stringify(stateToSave));
+    } catch (e) {
+      console.error('Failed to save booking draft:', e);
+    }
   }, [
-    step, bookingType, selectedDate, selectedTime,
+    isRestored, step, bookingType, selectedDate, selectedTime,
     prayer1, prayer2, hatsuhoryo, attendingCount, prayerItems,
     name, kana, address, addressKana, phone, email,
     companyName, companyKana, companyAddress, companyAddressKana,
@@ -634,7 +644,10 @@ export const VisitorPortal: React.FC = () => {
     activeMainTab, childName, childKana, childBirthday,
     yakudoshiType, fatherName, fatherKana, motherName, motherKana,
     kotobukiType, kotobukiOtherText,
-    carMaker, carModel, carNumber
+    carMaker, carModel, carNumber,
+    prayerName, prayerKana,
+    anzanHusbandName, anzanHusbandKana, anzanSkipHusband,
+    anzanWifeName, anzanWifeKana, anzanSkipWife
   ]);
 
   // Restore fields on mount
@@ -707,9 +720,22 @@ export const VisitorPortal: React.FC = () => {
         if (state.carMaker) setCarMaker(state.carMaker);
         if (state.carModel) setCarModel(state.carModel);
         if (state.carNumber) setCarNumber(state.carNumber);
+
+        if (state.prayerName) setPrayerName(state.prayerName);
+        if (state.prayerKana) setPrayerKana(state.prayerKana);
+        if (state.anzanHusbandName) setAnzanHusbandName(state.anzanHusbandName);
+        if (state.anzanHusbandKana) setAnzanHusbandKana(state.anzanHusbandKana);
+        if (state.anzanSkipHusband !== undefined) setAnzanSkipHusband(state.anzanSkipHusband);
+        if (state.anzanWifeName) setAnzanWifeName(state.anzanWifeName);
+        if (state.anzanWifeKana) setAnzanWifeKana(state.anzanWifeKana);
+        if (state.anzanSkipWife !== undefined) setAnzanSkipWife(state.anzanSkipWife);
       } catch (e) {
         console.error('Failed to restore form state:', e);
+      } finally {
+        setIsRestored(true);
       }
+    } else {
+      setIsRestored(true);
     }
   }, []);
 

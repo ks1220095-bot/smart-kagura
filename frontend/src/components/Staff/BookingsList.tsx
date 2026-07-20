@@ -68,12 +68,12 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     if (searchText) {
       const searchLower = searchText.toLowerCase();
       const matchName = b.booking_type === 'individual' 
-        ? b.name?.toLowerCase().includes(searchLower) || b.kana?.toLowerCase().includes(searchLower)
-        : b.company_name?.toLowerCase().includes(searchLower) || b.company_kana?.toLowerCase().includes(searchLower);
-      const matchNum = b.receipt_number?.toLowerCase().includes(searchLower);
-      const matchPhone = b.phone?.includes(searchText) || b.staff_phone?.includes(searchText);
-      const matchPrayer = b.prayer1?.toLowerCase().includes(searchLower) || b.prayer2?.toLowerCase().includes(searchLower);
-      const matchDate = b.booking_date?.includes(searchText);
+        ? (b.name || '').toLowerCase().includes(searchLower) || (b.kana || '').toLowerCase().includes(searchLower)
+        : (b.company_name || '').toLowerCase().includes(searchLower) || (b.company_kana || '').toLowerCase().includes(searchLower);
+      const matchNum = (b.receipt_number || '').toLowerCase().includes(searchLower);
+      const matchPhone = (b.phone || '').includes(searchText) || (b.staff_phone || '').includes(searchText);
+      const matchPrayer = (b.prayer1 || '').toLowerCase().includes(searchLower) || (b.prayer2 || '').toLowerCase().includes(searchLower);
+      const matchDate = (b.booking_date || '').includes(searchText);
       return matchName || matchNum || matchPhone || matchPrayer || matchDate;
     }
     return true;
@@ -119,8 +119,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   // Toggle paid status
   const handleOpenPaymentModal = (booking: Booking) => {
     setSelectedBooking(booking);
-    setCustomHatsuhoryo(booking.hatsuhoryo);
-    setCustomReceiptAmount(booking.receipt_amount || booking.hatsuhoryo);
+    setCustomHatsuhoryo(booking.hatsuhoryo || 0);
+    setCustomReceiptAmount(booking.receipt_amount || booking.hatsuhoryo || 0);
     setCustomNotes(booking.notes || '');
   };
 
