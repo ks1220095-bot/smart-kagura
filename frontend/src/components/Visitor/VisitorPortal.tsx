@@ -1869,7 +1869,6 @@ export const VisitorPortal: React.FC = () => {
                                 value={anzanHusbandName}
                                 onChange={(e) => setAnzanHusbandName(e.target.value)}
                                 disabled={anzanSkipHusband}
-                                required={!anzanSkipHusband}
                               />
                             </div>
                             <div className="form-group" style={{ margin: 0 }}>
@@ -1881,7 +1880,6 @@ export const VisitorPortal: React.FC = () => {
                                 value={anzanHusbandKana}
                                 onChange={(e) => setAnzanHusbandKana(e.target.value)}
                                 disabled={anzanSkipHusband}
-                                required={!anzanSkipHusband}
                               />
                             </div>
                           </div>
@@ -1917,7 +1915,6 @@ export const VisitorPortal: React.FC = () => {
                                 value={anzanWifeName}
                                 onChange={(e) => setAnzanWifeName(e.target.value)}
                                 disabled={anzanSkipWife}
-                                required={!anzanSkipWife}
                               />
                             </div>
                             <div className="form-group" style={{ margin: 0 }}>
@@ -1929,7 +1926,6 @@ export const VisitorPortal: React.FC = () => {
                                 value={anzanWifeKana}
                                 onChange={(e) => setAnzanWifeKana(e.target.value)}
                                 disabled={anzanSkipWife}
-                                required={!anzanSkipWife}
                               />
                             </div>
                           </div>
@@ -1945,7 +1941,6 @@ export const VisitorPortal: React.FC = () => {
                             placeholder="例：清瀧 太郎"
                             value={prayerName}
                             onChange={(e) => setPrayerName(e.target.value)}
-                            required
                             autoComplete="off"
                           />
                           {prayer1 !== '安産祈願' && prayer1 !== '初宮詣（お宮参り）' && (
@@ -1962,7 +1957,6 @@ export const VisitorPortal: React.FC = () => {
                             placeholder="例：セイリュウ タロウ"
                             value={prayerKana}
                             onChange={(e) => setPrayerKana(e.target.value)}
-                            required
                             autoComplete="off"
                           />
                         </div>
@@ -2239,7 +2233,6 @@ export const VisitorPortal: React.FC = () => {
                         placeholder="例：トヨタ、ホンダなど"
                         value={carMaker}
                         onChange={(e) => setCarMaker(e.target.value)}
-                        required
                       />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
@@ -2250,7 +2243,6 @@ export const VisitorPortal: React.FC = () => {
                         placeholder="例：プリウス、フィットなど"
                         value={carModel}
                         onChange={(e) => setCarModel(e.target.value)}
-                        required
                       />
                     </div>
                   </div>
@@ -2262,7 +2254,6 @@ export const VisitorPortal: React.FC = () => {
                       placeholder="例：習志野330 さ 12-34"
                       value={carNumber}
                       onChange={(e) => setCarNumber(e.target.value)}
-                      required
                     />
                   </div>
                 </div>
