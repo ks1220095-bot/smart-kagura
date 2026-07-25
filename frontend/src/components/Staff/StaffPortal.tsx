@@ -359,6 +359,34 @@ export const StaffPortal: React.FC = () => {
     }
   }, [manualPrayer1, manualIsTwin, manualType]);
 
+  const [manualEvents, setManualEvents] = useState<any[]>([]);
+
+  const timeToMinutes = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':').map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  };
+
+  useEffect(() => {
+    if (!manualDate) {
+      setManualEvents([]);
+      return;
+    }
+    const fetchManualDateEvents = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/events?date=${manualDate}`);
+        if (res.ok) {
+          const data = await res.json();
+          setManualEvents(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch events for manual date:', err);
+      }
+    };
+    fetchManualDateEvents();
+  }, [manualDate]);
+
   const fetchBookings = async () => {
     setLoading(true);
     setError('');
@@ -925,7 +953,17 @@ export const StaffPortal: React.FC = () => {
                     }}>
                       {['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'].map(t => {
                         const count = bookings.filter(b => b.booking_date === manualDate && b.booking_time === t && Number(b.is_cancelled) === 0).length;
-                        const isFull = count >= 8;
+                        
+                        // Check if slot falls inside any closed event period
+                        const isClosedEvent = manualEvents.some((event: any) => {
+                          if (Number(event.is_closed_slot) !== 1) return false;
+                          const slotMin = timeToMinutes(t);
+                          const startMin = timeToMinutes(event.start_time);
+                          const endMin = timeToMinutes(event.end_time);
+                          return slotMin >= startMin && slotMin < endMin;
+                        });
+
+                        const isFull = count >= 8 || isClosedEvent;
                         const isSelected = manualTime === t;
                         
                         let btnBg = '#ffffff';
@@ -936,6 +974,10 @@ export const StaffPortal: React.FC = () => {
                           btnBg = 'var(--color-mizuiro)';
                           btnColor = '#ffffff';
                           btnBorder = '1px solid var(--color-mizuiro)';
+                        } else if (isClosedEvent) {
+                          btnBg = 'rgba(50, 136, 163, 0.08)';
+                          btnColor = 'var(--color-mizuiro)';
+                          btnBorder = '1px solid rgba(50, 136, 163, 0.3)';
                         } else if (isFull) {
                           btnBg = '#fff1f0';
                           btnColor = '#f5222d';
@@ -964,7 +1006,7 @@ export const StaffPortal: React.FC = () => {
                           >
                             <span>{t}</span>
                             <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>
-                              {isFull ? '満席' : `${count}件/8`}
+                              {isClosedEvent ? '🔒ロック' : isFull ? '満席' : `${count}件/8`}
                             </span>
                           </button>
                         );

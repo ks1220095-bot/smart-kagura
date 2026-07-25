@@ -18,6 +18,14 @@ function generateReceiptNumber(): string {
   return `SRY-${dateStr}-${rand}`;
 }
 
+function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':').map(Number);
+  const hour = parts[0] || 0;
+  const minute = parts[1] || 0;
+  return hour * 60 + minute;
+}
+
 // Helper: Validate booking dates for New Year (January) restrictions
 async function validateNewYearBookingLimit(bookingDate: string, db: any): Promise<string | null> {
   try {
@@ -105,7 +113,10 @@ router.get('/slots-availability', async (req, res) => {
     const result = TIME_SLOTS.map(slot => {
       // Check if slot falls inside any closed event period
       const isClosed = closedEvents.rows.some((event: any) => {
-        return slot >= event.start_time && slot < event.end_time;
+        const slotMin = timeToMinutes(slot);
+        const startMin = timeToMinutes(event.start_time);
+        const endMin = timeToMinutes(event.end_time);
+        return slotMin >= startMin && slotMin < endMin;
       });
 
       if (isClosed) {
@@ -234,11 +245,18 @@ router.post('/', async (req, res) => {
     }
 
     // 3. Check if slot is closed by shrine events
-    const isClosedEvent = await db.query(
-      `SELECT COUNT(*) as count FROM events WHERE event_date = $1 AND is_closed_slot = 1 AND $2 >= start_time AND $3 < end_time`,
-      [first.booking_date, first.booking_time, first.booking_time]
+    const closedEventsResult = await db.query(
+      `SELECT start_time, end_time FROM events WHERE event_date = $1 AND is_closed_slot = 1`,
+      [first.booking_date]
     );
-    if (isClosedEvent.rows.length > 0 && parseInt(isClosedEvent.rows[0].count || '0') > 0) {
+    const bookingMin = timeToMinutes(first.booking_time);
+    const isClosedEvent = closedEventsResult.rows.some((event: any) => {
+      const startMin = timeToMinutes(event.start_time);
+      const endMin = timeToMinutes(event.end_time);
+      return bookingMin >= startMin && bookingMin < endMin;
+    });
+
+    if (isClosedEvent) {
       return res.status(400).json({ error: 'ご指定の時間帯は祭典・行事等により受付停止中です。' });
     }
 
