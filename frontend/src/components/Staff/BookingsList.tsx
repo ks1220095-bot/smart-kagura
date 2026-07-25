@@ -55,6 +55,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [savingPayment, setSavingPayment] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
 
+  // Inline hatsuhoryo edit states
+  const [editingHatsuhoryoId, setEditingHatsuhoryoId] = useState<number | null>(null);
+  const [editingHatsuhoryoVal, setEditingHatsuhoryoVal] = useState<number>(0);
+
   // Filter logic
   const filteredBookings = bookings.filter(b => {
     // Hide bookings before today (JST) unless includePast is checked OR search text is entered
@@ -149,6 +153,26 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       alert(error);
     } finally {
       setSavingPayment(false);
+    }
+  };
+
+  const handleSaveHatsuhoryo = async (bookingId: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${bookingId}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hatsuhoryo: editingHatsuhoryoVal
+        })
+      });
+
+      if (!res.ok) throw new Error('初穂料の更新に失敗しました。');
+      
+      setEditingHatsuhoryoId(null);
+      onRefresh();
+    } catch (error: any) {
+      alert(error.message || '更新に失敗しました。');
     }
   };
 
@@ -491,7 +515,46 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       {b.prayer2 && <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', paddingLeft: '0.25rem' }}>+{b.prayer2}</div>}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600 }}>
-                      {b.hatsuhoryo.toLocaleString()} 円
+                      {editingHatsuhoryoId === b.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={editingHatsuhoryoVal}
+                            onChange={(e) => setEditingHatsuhoryoVal(Number(e.target.value))}
+                            style={{ width: '80px', padding: '0.2rem 0.4rem', fontSize: '0.85rem', textAlign: 'right', margin: 0, border: '1px solid var(--color-gold)' }}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveHatsuhoryo(b.id!)}
+                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', backgroundColor: 'var(--color-accent-green)', color: '#ffffff', border: 'none', borderRadius: '2px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 'bold' }}
+                          >
+                            保存
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingHatsuhoryoId(null)}
+                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', backgroundColor: 'var(--color-accent-gray)', color: '#ffffff', border: 'none', borderRadius: '2px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 'bold' }}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', justifyContent: 'flex-end', cursor: isCancelled ? 'not-allowed' : 'pointer' }}
+                          onClick={() => {
+                            if (!isCancelled) {
+                              setEditingHatsuhoryoId(b.id!);
+                              setEditingHatsuhoryoVal(b.hatsuhoryo);
+                            }
+                          }}
+                          title="クリックして初穂料を編集"
+                        >
+                          <span>{b.hatsuhoryo.toLocaleString()} 円</span>
+                          {!isCancelled && <Edit3 size={11} style={{ color: 'var(--color-accent-gray)', opacity: 0.6 }} />}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
