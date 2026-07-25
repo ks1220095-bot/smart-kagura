@@ -65,6 +65,128 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
   const [description, setDescription] = useState('');
   const [isClosedSlot, setIsClosedSlot] = useState(false);
 
+  // Batch slots selection states
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [loadingBatch, setLoadingBatch] = useState(false);
+
+  // Clear selection on date change
+  useEffect(() => {
+    setSelectedSlots([]);
+  }, [focusedDate]);
+
+  const handleSlotClick = (slot: string) => {
+    if (selectedSlots.includes(slot)) {
+      setSelectedSlots(selectedSlots.filter(s => s !== slot));
+    } else {
+      setSelectedSlots([...selectedSlots, slot]);
+    }
+  };
+
+  const handleSelectAllSlots = () => {
+    setSelectedSlots([...TIME_SLOTS]);
+  };
+
+  const handleClearSlotSelection = () => {
+    setSelectedSlots([]);
+  };
+
+  const handleBatchLock = async () => {
+    if (selectedSlots.length === 0) return;
+    
+    const slotsToLock = selectedSlots.filter(slot => {
+      const isAlreadyLocked = events.some(e => 
+        e.event_date === focusedDate && 
+        e.is_closed_slot === 1 && 
+        slot >= e.start_time && 
+        slot < e.end_time
+      );
+      return !isAlreadyLocked;
+    });
+
+    if (slotsToLock.length === 0) {
+      alert('選択された時間枠はすでにすべて受付不可（ロック）になっています。');
+      return;
+    }
+
+    setLoadingBatch(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      const promises = slotsToLock.map(slotTime => {
+        const [h, m] = slotTime.split(':').map(Number);
+        const endMin = m + 30;
+        const endHour = h + (endMin >= 60 ? 1 : 0);
+        const endMinStr = String(endMin % 60).padStart(2, '0');
+        const endHourStr = String(endHour).padStart(2, '0');
+        const nextTime = `${endHourStr}:${endMinStr}`;
+
+        return fetch(`${apiUrl}/api/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: '臨時受付停止',
+            event_date: focusedDate,
+            start_time: slotTime,
+            end_time: nextTime,
+            description: '管理画面からの個別クローズ',
+            is_closed_slot: 1
+          })
+        });
+      });
+
+      await Promise.all(promises);
+      setSelectedSlots([]);
+      fetchEvents();
+      onRefreshBookings();
+    } catch (error) {
+      alert('一括ロック処理中にエラーが発生しました。');
+      console.error(error);
+    } finally {
+      setLoadingBatch(false);
+    }
+  };
+
+  const handleBatchUnlock = async () => {
+    if (selectedSlots.length === 0) return;
+
+    const eventsToDelete: number[] = [];
+    selectedSlots.forEach(slot => {
+      const matchedLockEvent = events.find(e => 
+        e.event_date === focusedDate && 
+        e.is_closed_slot === 1 && 
+        slot >= e.start_time && 
+        slot < e.end_time
+      );
+      if (matchedLockEvent && matchedLockEvent.id && !eventsToDelete.includes(matchedLockEvent.id)) {
+        eventsToDelete.push(matchedLockEvent.id);
+      }
+    });
+
+    if (eventsToDelete.length === 0) {
+      alert('選択された時間枠には解除できるロック情報がありません。');
+      return;
+    }
+
+    setLoadingBatch(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      const promises = eventsToDelete.map(id => 
+        fetch(`${apiUrl}/api/events/${id}`, { method: 'DELETE' })
+      );
+
+      await Promise.all(promises);
+      setSelectedSlots([]);
+      fetchEvents();
+      onRefreshBookings();
+    } catch (error) {
+      alert('一括解除処理中にエラーが発生しました。');
+      console.error(error);
+    } finally {
+      setLoadingBatch(false);
+    }
+  };
+
   const fetchEvents = async () => {
     try {
       const year = currentDate.getFullYear();
@@ -144,56 +266,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
     }
   };
 
-  const handleDeleteEvent = async (id: number) => {
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/events/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('削除に失敗しました。');
-      fetchEvents();
-      onRefreshBookings();
-    } catch (error) {
-      alert(error);
-    }
-  };
 
-  // Toggle single time slot lock status (Staff utility)
-  const handleToggleSlotLock = async (slotTime: string, currentlyLocked: boolean, eventId?: number) => {
-    if (currentlyLocked && eventId) {
-      // Unlock (Delete event)
-      await handleDeleteEvent(eventId);
-    } else {
-      // Lock (Create closed slot event)
-      try {
-        // We set end time to slotTime + 30 mins
-        const [h, m] = slotTime.split(':').map(Number);
-        const endMin = m + 30;
-        const endHour = h + (endMin >= 60 ? 1 : 0);
-        const endMinStr = String(endMin % 60).padStart(2, '0');
-        const endHourStr = String(endHour).padStart(2, '0');
-        const nextTime = `${endHourStr}:${endMinStr}`;
 
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const res = await fetch(`${apiUrl}/api/events`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: '臨時受付停止',
-            event_date: focusedDate,
-            start_time: slotTime,
-            end_time: nextTime,
-            description: '管理画面からの個別クローズ',
-            is_closed_slot: 1
-          })
-        });
 
-        if (!res.ok) throw new Error('スロットのロックに失敗しました。');
-        fetchEvents();
-        onRefreshBookings();
-      } catch (error) {
-        alert(error);
-      }
-    }
-  };
 
   const renderCells = () => {
     const cells = [];
@@ -426,8 +501,70 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
             時間枠ごとの受付可否（ロック）設定　【 対象日: {focusedDate} 】
           </h4>
           <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginBottom: '1.25rem' }}>
-            ※各時間枠をクリックすることで、該当する時間の予約受付を「可」と「不可」で個別にトグルでロック/解除できます。
+            ※各時間枠をクリックして複数選択し、下の一括操作ボタンでまとめて「受付不可（ロック）」または「受付可能（解除）」に一括更新できます。
           </p>
+
+          {/* 一括操作ツールバー */}
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', backgroundColor: 'var(--color-washi-dark)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+            <button
+              type="button"
+              onClick={handleSelectAllSlots}
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+            >
+              全て選択
+            </button>
+            <button
+              type="button"
+              onClick={handleClearSlotSelection}
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+              disabled={selectedSlots.length === 0}
+            >
+              選択クリア ({selectedSlots.length})
+            </button>
+
+            <div style={{ borderLeft: '1px solid var(--color-border)', height: '18px', margin: '0 0.25rem' }} />
+
+            <button
+              type="button"
+              onClick={handleBatchLock}
+              className="btn btn-primary"
+              style={{
+                padding: '0.4rem 0.9rem',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                backgroundColor: 'var(--color-urushi)',
+                borderColor: 'var(--color-urushi)',
+                color: '#ffffff'
+              }}
+              disabled={selectedSlots.length === 0 || loadingBatch}
+            >
+              🔒 選択枠をまとめて「受付不可」にする
+            </button>
+            <button
+              type="button"
+              onClick={handleBatchUnlock}
+              className="btn btn-primary"
+              style={{
+                padding: '0.4rem 0.9rem',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                backgroundColor: 'var(--color-accent-green)',
+                borderColor: 'var(--color-accent-green)',
+                color: '#ffffff'
+              }}
+              disabled={selectedSlots.length === 0 || loadingBatch}
+            >
+              🔓 選択枠をまとめて「受付可能」にする
+            </button>
+
+            {loadingBatch && <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>一括処理中...</span>}
+          </div>
 
           <div style={{ 
             display: 'grid', 
@@ -444,12 +581,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
                 slot < e.end_time
               );
               const isLocked = !!matchedLockEvent;
+              const isSelected = selectedSlots.includes(slot);
 
               return (
                 <button
                   key={slot}
                   type="button"
-                  onClick={() => handleToggleSlotLock(slot, isLocked, matchedLockEvent?.id)}
+                  onClick={() => handleSlotClick(slot)}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -457,13 +595,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
                     justifyContent: 'center',
                     padding: '0.75rem 0.5rem',
                     borderRadius: '2px',
-                    border: isLocked ? '1px solid var(--color-mizuiro)' : '1px solid var(--color-border)',
-                    backgroundColor: isLocked ? 'var(--color-mizuiro-light)' : '#ffffff',
+                    border: isSelected
+                      ? '2.5px solid var(--color-gold)'
+                      : isLocked 
+                        ? '1px solid var(--color-mizuiro)' 
+                        : '1px solid var(--color-border)',
+                    backgroundColor: isSelected
+                      ? '#fff9e6'
+                      : isLocked 
+                        ? 'var(--color-mizuiro-light)' 
+                        : '#ffffff',
                     color: isLocked ? 'var(--color-mizuiro)' : 'var(--color-urushi)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     fontWeight: 'bold',
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    transform: isSelected ? 'scale(1.03)' : 'none',
+                    boxShadow: isSelected ? '0 2px 8px rgba(197, 160, 89, 0.2)' : 'none'
                   }}
                 >
                   <span style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{slot}</span>
