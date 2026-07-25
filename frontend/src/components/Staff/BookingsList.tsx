@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Download, Trash2, Printer, Edit3 } from 'lucide-react';
+import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Booking } from '../../types';
 
 interface BookingsListProps {
@@ -54,6 +54,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [customNotes, setCustomNotes] = useState<string>('');
   const [savingPayment, setSavingPayment] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
+
+  // Accordion state for expanded details
+  const [expandedBookingIds, setExpandedBookingIds] = useState<number[]>([]);
+
+  const toggleAccordion = (id: number) => {
+    setExpandedBookingIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
 
   // Inline hatsuhoryo edit states
   const [editingHatsuhoryoId, setEditingHatsuhoryoId] = useState<number | null>(null);
@@ -439,60 +448,117 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         {isIndiv ? b.phone : `${b.staff_dept_title_name} (${b.staff_phone})`}
                       </div>
 
-                      {/* Display child details including twins */}
-                      {isIndiv && (b.prayer1 === '初宮詣（お宮参り）' || b.prayer1 === '七五三詣') && b.child_name && (
-                        <div style={{
-                          fontSize: '0.75rem',
-                          backgroundColor: '#faf7f0',
-                          border: '1px solid rgba(197, 160, 89, 0.3)',
-                          padding: '0.35rem 0.5rem',
-                          borderRadius: '3px',
-                          marginTop: '0.35rem',
-                          maxWidth: '280px'
-                        }}>
-                          <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                            👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana})
-                          </div>
-                          {b.child_birthday && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
-                              生年月日: {b.child_birthday}
-                            </div>
-                          )}
-                          
-                          {/* Second child for twins */}
-                          {b.is_twin === 1 && b.child_name2 && (
-                            <div style={{ borderTop: '1px dashed rgba(197,160,89,0.2)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
-                              <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                👶 第2子: {b.child_name2} ({b.child_kana2})
-                              </div>
-                              {b.child_birthday2 && (
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
-                                  生年月日: {b.child_birthday2}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {/* Display child details and notes inside an accordion */}
+                      {(() => {
+                        const hasChild = isIndiv && (b.prayer1 === '初宮詣（お宮参り）' || b.prayer1 === '七五三詣') && b.child_name;
+                        const hasDetails = !!hasChild || !!b.notes;
+                        const isExpanded = expandedBookingIds.includes(b.id!);
 
-                      {b.notes && (
-                        <div style={{ 
-                          fontSize: '0.75rem', 
-                          backgroundColor: '#f5f5f5', 
-                          padding: '0.2rem 0.4rem', 
-                          borderRadius: '2px', 
-                          marginTop: '0.25rem', 
-                          color: '#555',
-                          borderLeft: '2px solid var(--color-gold)',
-                          display: 'inline-block',
-                          maxWidth: '220px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }} title={b.notes}>
-                          📝 {b.notes}
-                        </div>
-                      )}
+                        if (!hasDetails) return null;
+
+                        return (
+                          <>
+                            <div style={{ marginTop: '0.4rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => toggleAccordion(b.id!)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.2rem',
+                                  border: 'none',
+                                  background: 'none',
+                                  color: 'var(--color-mizuiro-hover)',
+                                  cursor: 'pointer',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 'bold',
+                                  padding: 0,
+                                  outline: 'none'
+                                }}
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUp size={11} />
+                                    詳細を閉じる
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown size={11} />
+                                    詳細を表示 (
+                                    {(() => {
+                                      const parts = [];
+                                      if (hasChild) parts.push('子息情報');
+                                      if (b.notes) parts.push('備考');
+                                      return parts.join('・');
+                                    })()}
+                                    )
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {isExpanded && (
+                              <div style={{
+                                marginTop: '0.4rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.35rem'
+                              }}>
+                                {/* Display child details including twins */}
+                                {hasChild && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#faf7f0',
+                                    border: '1px solid rgba(197, 160, 89, 0.3)',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '3px',
+                                    maxWidth: '280px'
+                                  }}>
+                                    <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
+                                      👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana})
+                                    </div>
+                                    {b.child_birthday && (
+                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
+                                        生年月日: {b.child_birthday}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Second child for twins */}
+                                    {b.is_twin === 1 && b.child_name2 && (
+                                      <div style={{ borderTop: '1px dashed rgba(197,160,89,0.2)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
+                                        <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
+                                          👶 第2子: {b.child_name2} ({b.child_kana2})
+                                        </div>
+                                        {b.child_birthday2 && (
+                                          <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
+                                            生年月日: {b.child_birthday2}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {b.notes && (
+                                  <div style={{ 
+                                    fontSize: '0.75rem', 
+                                    backgroundColor: '#f5f5f5', 
+                                    padding: '0.25rem 0.5rem', 
+                                    borderRadius: '2px', 
+                                    color: '#555',
+                                    borderLeft: '2px solid var(--color-gold)',
+                                    maxWidth: '280px',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-all'
+                                  }} title={b.notes}>
+                                    📝 {b.notes}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       {(() => {
