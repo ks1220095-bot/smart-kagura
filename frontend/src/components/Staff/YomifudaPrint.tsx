@@ -196,10 +196,18 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             )}
 
             {/* Contacts & Notes */}
-            <div style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: '#555' }}>
-              <div><strong>連絡先:</strong> {booking.phone || booking.staff_phone}</div>
-              <div><strong>人数:</strong> {booking.attending_count}名</div>
-            </div>
+            {(() => {
+              const contactName = isIndiv 
+                ? booking.name 
+                : (booking.staff_dept_title_name || booking.name || booking.representative_title_name);
+              return (
+                <div style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: '#555' }}>
+                  <div><strong>連絡先:</strong> {booking.phone || booking.staff_phone}</div>
+                  {contactName && <div><strong>担当者:</strong> {contactName}</div>}
+                  <div><strong>人数:</strong> {booking.attending_count}名</div>
+                </div>
+              );
+            })()}
             {booking.notes && (
               <div style={{ color: '#666', fontSize: '0.7rem', backgroundColor: '#fdfdfd', border: '1px solid #f0f0f0', padding: '0.2rem', marginTop: '0.1rem', borderRadius: '2px' }}>
                 <strong>備考:</strong> {booking.notes}
