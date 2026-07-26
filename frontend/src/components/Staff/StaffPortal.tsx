@@ -694,7 +694,7 @@ export const StaffPortal: React.FC = () => {
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/bookings`, {
+      const res = await fetch(`${apiUrl}/api/bookings?is_staff=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(batchPayloads)

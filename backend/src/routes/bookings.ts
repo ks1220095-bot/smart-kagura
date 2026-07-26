@@ -86,6 +86,18 @@ router.get('/slots-availability', async (req, res) => {
     const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
     const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
 
+    // 来年度・新年予約受付制限のチェックを追加（競合した場合でも優先適用）
+    const limitSettingNewYear = await db.query(`SELECT value FROM settings WHERE key = $1`, ['limit_new_year_booking']);
+    const limitNewYear = limitSettingNewYear.rows[0]?.value !== 'false';
+    
+    let forceClosed = false;
+    if (limitNewYear) {
+      const newYearError = await validateNewYearBookingLimit(date, db);
+      if (newYearError) {
+        forceClosed = true;
+      }
+    }
+
     // Get current booking counts and type details per slot (to handle organization cap limits)
     const bookedCounts = await db.query(
       `SELECT booking_time, COUNT(*) as count, 
@@ -112,7 +124,7 @@ router.get('/slots-availability', async (req, res) => {
 
     const result = TIME_SLOTS.map(slot => {
       // Check if slot falls inside any closed event period
-      const isClosed = closedEvents.rows.some((event: any) => {
+      const isClosed = forceClosed || closedEvents.rows.some((event: any) => {
         const slotMin = timeToMinutes(slot);
         const startMin = timeToMinutes(event.start_time);
         const endMin = timeToMinutes(event.end_time);
@@ -183,24 +195,28 @@ router.post('/', async (req, res) => {
   try {
     const db = getDb();
 
-    // Check dynamic booking period range limits
-    const periodSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['booking_period_months']);
-    const periodMonths = parseInt(periodSetting.rows[0]?.value || '2');
-    
-    const today = new Date();
-    // Maximum allowed booking date (today + months limit + 1 day buffer)
-    const maxDate = new Date(today.getFullYear(), today.getMonth() + periodMonths, today.getDate() + 1);
-    const maxDateStr = maxDate.toISOString().split('T')[0];
+    const isStaff = req.query.is_staff === 'true';
 
-    if (first.booking_date > maxDateStr) {
-      return res.status(400).json({ 
-        error: `ご指定の日付（${first.booking_date}）は、オンライン予約の受付期間外です（本日より ${periodMonths}ヶ月先まで受付しております）。` 
-      });
-    }
+    if (!isStaff) {
+      // Check dynamic booking period range limits
+      const periodSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['booking_period_months']);
+      const periodMonths = parseInt(periodSetting.rows[0]?.value || '2');
+      
+      const today = new Date();
+      // Maximum allowed booking date (today + months limit + 1 day buffer)
+      const maxDate = new Date(today.getFullYear(), today.getMonth() + periodMonths, today.getDate() + 1);
+      const maxDateStr = maxDate.toISOString().split('T')[0];
 
-    const newYearError = await validateNewYearBookingLimit(first.booking_date, db);
-    if (newYearError) {
-      return res.status(400).json({ error: newYearError });
+      if (first.booking_date > maxDateStr) {
+        return res.status(400).json({ 
+          error: `ご指定の日付（${first.booking_date}）は、オンライン予約の受付期間外です（本日より ${periodMonths}ヶ月先まで受付しております）。` 
+        });
+      }
+
+      const newYearError = await validateNewYearBookingLimit(first.booking_date, db);
+      if (newYearError) {
+        return res.status(400).json({ error: newYearError });
+      }
     }
     
     // 1. Check max slot capacity
