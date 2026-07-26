@@ -182,7 +182,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
               }}>
                 {booking.talisman_name && (
                   <div style={{ borderBottom: booking.representative_title_name ? '1px dashed rgba(197, 160, 89, 0.15)' : 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>神札染筆名（お札墨書き正式名）</span>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
                     <strong style={{ fontSize: '1.15rem', color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
                   </div>
                 )}
