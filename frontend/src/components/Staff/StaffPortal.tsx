@@ -359,6 +359,62 @@ export const StaffPortal: React.FC = () => {
     }
   }, [manualPrayer1, manualIsTwin, manualType]);
 
+  const resetManualForm = (targetType?: 'individual' | 'organization') => {
+    const type = targetType || manualType;
+    setManualPrayer1(type === 'individual' ? '家内安全' : '社運隆昌');
+    setManualPrayer2('');
+    setManualHatsuhoryo(type === 'individual' ? 5000 : 10000);
+    setManualAttendingCount(1);
+    setManualName('');
+    setManualKana('');
+    setManualAddress('');
+    setManualPhone('');
+    setManualEmail('');
+    setManualNotes('');
+    setManualHasPastPrayer(0);
+    setManualPrayerItems([]);
+
+    // Child fields
+    setManualIsTwin(false);
+    setManualChildName('');
+    setManualChildKana('');
+    setManualBirthYear('');
+    setManualBirthMonth('');
+    setManualBirthDay('');
+    setManualChildName2('');
+    setManualChildKana2('');
+    setManualBirthYear2('');
+    setManualBirthMonth2('');
+    setManualBirthDay2('');
+
+    // Family / Zodiac / Family / Car fields
+    setManualUserBirthYear('');
+    setManualUserBirthMonth('');
+    setManualUserBirthDay('');
+    setManualYakudoshiType('');
+    setManualFatherName('');
+    setManualFatherKana('');
+    setManualMotherName('');
+    setManualMotherKana('');
+    setManualKotobukiType('還暦（61歳）');
+    setManualKotobukiOtherText('');
+    setManualCarMaker('');
+    setManualCarModel('');
+    setManualCarNumber('');
+    setManualAnzanSkipHusband(false);
+    setManualAnzanSkipWife(false);
+
+    // Org fields
+    setManualCompanyName('');
+    setManualCompanyKana('');
+    setManualCompanyAddress('');
+    setManualRepName('');
+    setManualStaffName('');
+    setManualStaffPhone('');
+    setManualStaffEmail('');
+    setManualOrgCustomPrayer1('');
+  };
+
   const [manualEvents, setManualEvents] = useState<any[]>([]);
 
   const timeToMinutes = (timeStr: string): number => {
@@ -649,42 +705,9 @@ export const StaffPortal: React.FC = () => {
         throw new Error(errData.error || '手動登録に失敗しました。');
       }
 
-      setShowAddForm(false);
+      resetManualForm();
       setManualDate('');
-      setManualName('');
-      setManualCompanyName('');
-      setManualRepName('');
-      setManualStaffName('');
-      setManualPhone('');
-      setManualHasPastPrayer(0);
-      setManualNotes('');
-      setManualYakudoshiType('');
-      setManualFatherName('');
-      setManualFatherKana('');
-      setManualMotherName('');
-      setManualMotherKana('');
-      setManualKotobukiType('還暦（61歳）');
-      setManualKotobukiOtherText('');
-      setManualOrgCustomPrayer1('');
-      setManualCarMaker('');
-      setManualCarModel('');
-      setManualCarNumber('');
-      setManualIsTwin(false);
-      setManualChildName('');
-      setManualChildKana('');
-      setManualBirthYear('');
-      setManualBirthMonth('');
-      setManualBirthDay('');
-      setManualChildName2('');
-      setManualChildKana2('');
-      setManualBirthYear2('');
-      setManualBirthMonth2('');
-      setManualBirthDay2('');
-      
-      setManualUserBirthYear('');
-      setManualUserBirthMonth('');
-      setManualUserBirthDay('');
-      setManualPrayerItems([]);
+      setShowAddForm(false);
       
       fetchBookings();
     } catch (error: any) {
@@ -845,7 +868,11 @@ export const StaffPortal: React.FC = () => {
           {/* Quick manual booking add button */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button 
-              onClick={() => setShowAddForm(true)} 
+              onClick={() => {
+                resetManualForm('individual');
+                setManualType('individual');
+                setShowAddForm(true);
+              }} 
               className="btn btn-primary" 
               style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
@@ -895,7 +922,7 @@ export const StaffPortal: React.FC = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
                 <h4 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-serif)' }}>電話受付の新規手動登録</h4>
-                <button type="button" onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button type="button" onClick={() => { resetManualForm(); setShowAddForm(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   <X size={18} />
                 </button>
               </div>
@@ -905,11 +932,25 @@ export const StaffPortal: React.FC = () => {
                   <label>祈祷区分</label>
                   <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.25rem' }}>
                     <label className="checkbox-label">
-                      <input type="radio" checked={manualType === 'individual'} onChange={() => setManualType('individual')} />
+                      <input 
+                        type="radio" 
+                        checked={manualType === 'individual'} 
+                        onChange={() => {
+                          setManualType('individual');
+                          resetManualForm('individual');
+                        }} 
+                      />
                       個人のご祈祷
                     </label>
                     <label className="checkbox-label">
-                      <input type="radio" checked={manualType === 'organization'} onChange={() => setManualType('organization')} />
+                      <input 
+                        type="radio" 
+                        checked={manualType === 'organization'} 
+                        onChange={() => {
+                          setManualType('organization');
+                          resetManualForm('organization');
+                        }} 
+                      />
                       団体（企業）のご祈祷
                     </label>
                   </div>
@@ -1578,7 +1619,7 @@ export const StaffPortal: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowAddForm(false)}>
+                  <button type="button" className="btn btn-secondary" onClick={() => { resetManualForm(); setShowAddForm(false); }}>
                     閉じる
                   </button>
                   <button type="submit" className="btn btn-primary">
