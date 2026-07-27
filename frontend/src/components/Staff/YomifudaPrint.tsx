@@ -10,6 +10,67 @@ interface YomifudaPrintProps {
 export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }) => {
   const isIndiv = booking.booking_type === 'individual';
 
+  // 満年齢の計算
+  const getFullAge = (birthdayStr: string, bookingDateStr: string): number => {
+    if (!birthdayStr || !bookingDateStr) return 0;
+    const birth = new Date(birthdayStr);
+    const bookingDate = new Date(bookingDateStr);
+    let age = bookingDate.getFullYear() - birth.getFullYear();
+    const m = bookingDate.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && bookingDate.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // 数え年の計算
+  const getKazoeAge = (birthdayStr: string, bookingDateStr: string): number => {
+    if (!birthdayStr || !bookingDateStr) return 1;
+    const birth = new Date(birthdayStr);
+    const bookingDate = new Date(bookingDateStr);
+    return bookingDate.getFullYear() - birth.getFullYear() + 1;
+  };
+
+  // 年齢表示テキストの生成
+  const formatAgeSuffix = (birthdayStr: string, bookingDateStr: string): string => {
+    try {
+      const full = getFullAge(birthdayStr, bookingDateStr);
+      const kazoe = getKazoeAge(birthdayStr, bookingDateStr);
+      return `（満${full}歳 / 数え${kazoe}歳）`;
+    } catch (e) {
+      return '';
+    }
+  };
+
+  // notes から生年月日や年齢を抽出するヘルパー
+  const parseNotesPersonalInfo = (notes: string) => {
+    if (!notes) return null;
+    const regex = /【生年月日】([^\s(]+)(?:\s*\(([^)]+)\))?/;
+    const match = notes.match(regex);
+    if (match) {
+      return {
+        birthday: match[1],
+        details: match[2]
+      };
+    }
+    return null;
+  };
+
+  // notes からお車情報を抽出するヘルパー
+  const parseNotesCarInfo = (notes: string) => {
+    if (!notes) return null;
+    const regex = /【お車】メーカー:\s*([^/]+?)\s*\/\s*車種:\s*([^/]+?)\s*\/\s*ナンバー:\s*(.+)$/;
+    const match = notes.match(regex);
+    if (match) {
+      return {
+        maker: match[1].trim(),
+        model: match[2].trim(),
+        number: match[3].trim()
+      };
+    }
+    return null;
+  };
+
   const formatImperialDate = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -143,14 +204,27 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 fontSize: '0.8rem', 
                 lineHeight: '1.35' 
               }}>
-                <div style={{ borderBottom: '1px dashed rgba(216, 1, 0, 0.1)', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
+                <div style={{ borderBottom: booking.child_name2 ? '1px dashed rgba(216, 1, 0, 0.1)' : 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
                   <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報</span>
                   <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana}</span>
                   <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name}</strong>
-                  <span style={{ fontSize: '0.7rem', color: '#777' }}>生年月日: {booking.child_birthday}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#777' }}>
+                    生年月日: {booking.child_birthday} {booking.child_birthday && formatAgeSuffix(booking.child_birthday, booking.booking_date)}
+                  </span>
                 </div>
+
+                {booking.child_name2 && (
+                  <div style={{ borderBottom: 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
+                    <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報（ご息女・第二子）</span>
+                    <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana2}</span>
+                    <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name2}</strong>
+                    <span style={{ fontSize: '0.7rem', color: '#777' }}>
+                      生年月日: {booking.child_birthday2} {booking.child_birthday2 && formatAgeSuffix(booking.child_birthday2, booking.booking_date)}
+                    </span>
+                  </div>
+                )}
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', borderTop: '1px dashed rgba(216, 1, 0, 0.1)', paddingTop: '0.3rem', marginTop: '0.2rem' }}>
                   {booking.father_name && (
                     <div>
                       <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>父親フリガナ</span>
@@ -168,6 +242,58 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 </div>
               </div>
             )}
+
+            {/* 厄年のお祓い個人用 metadata (ハイライト表示) */}
+            {isIndiv && booking.prayer1 === '厄年のお祓い' && (() => {
+              const personalInfo = parseNotesPersonalInfo(booking.notes || '');
+              if (!personalInfo) return null;
+              return (
+                <div style={{ 
+                  marginTop: '0.3rem', 
+                  padding: '0.45rem 0.55rem', 
+                  backgroundColor: 'rgba(216, 1, 0, 0.02)', 
+                  border: '1.5px solid rgba(216, 1, 0, 0.12)', 
+                  borderRadius: '4px',
+                  fontSize: '0.8rem', 
+                  lineHeight: '1.35' 
+                }}>
+                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>ご祈祷対象者 厄年情報</span>
+                  <strong style={{ fontSize: '1.05rem', display: 'block', margin: '0.1rem 0' }}>{booking.name}</strong>
+                  <span style={{ fontSize: '0.7rem', color: '#555', display: 'block' }}>
+                    生年月日: {personalInfo.birthday}
+                  </span>
+                  {personalInfo.details && (
+                    <span style={{ fontSize: '0.75rem', color: '#d80100', fontWeight: 'bold', display: 'block', marginTop: '0.15rem' }}>
+                      区分・年齢: {personalInfo.details}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 車祓（お車のお祓い）用 metadata (ハイライト表示) */}
+            {isIndiv && booking.prayer1 === '車祓（お車のお祓い）' && (() => {
+              const carInfo = parseNotesCarInfo(booking.notes || '');
+              if (!carInfo) return null;
+              return (
+                <div style={{ 
+                  marginTop: '0.3rem', 
+                  padding: '0.45rem 0.55rem', 
+                  backgroundColor: 'rgba(197, 160, 89, 0.03)', 
+                  border: '1.5px solid rgba(197, 160, 89, 0.25)', 
+                  borderRadius: '4px',
+                  fontSize: '0.8rem', 
+                  lineHeight: '1.35' 
+                }}>
+                  <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お祓い車両情報</span>
+                  <div style={{ marginTop: '0.2rem' }}>
+                    <strong>メーカー:</strong> {carInfo.maker}<br/>
+                    <strong>車種名:</strong> {carInfo.model}<br/>
+                    <strong>車両ナンバー:</strong> <strong style={{ fontSize: '1.1rem', color: '#d80100' }}>{carInfo.number}</strong>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Representative & Talisman Name Details (Gold highlight border block) */}
             {!isIndiv && (
