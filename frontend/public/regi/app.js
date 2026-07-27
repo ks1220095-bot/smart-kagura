@@ -1504,10 +1504,49 @@ function getMockTransactions() {
   ];
 }
 
+// 日時文字列（UTCや各種形式）を端末の現地時間形式 (yyyy/MM/dd HH:mm:ss) にフォーマットするヘルパー関数
+function formatLocalTimestamp(timestampStr) {
+  if (!timestampStr) return '';
+  
+  // もし既に yyyy/MM/dd HH:mm:ss 形式（Z無し・T無し）なら、そのまま返す
+  if (/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(timestampStr)) {
+    return timestampStr;
+  }
+
+  try {
+    let date;
+    if (typeof timestampStr === 'string' && timestampStr.includes('T')) {
+      date = new Date(timestampStr); // ISO 8601 形式 ("2026-07-27T21:39:32.000Z")
+    } else {
+      // ハイフンやスラッシュ形式の文字列をDateにパース
+      const normalized = timestampStr.replace(/\//g, '-');
+      date = new Date(normalized);
+    }
+
+    if (isNaN(date.getTime())) {
+      return timestampStr;
+    }
+
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    const ss = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}`;
+  } catch (e) {
+    console.error("日時フォーマットエラー:", e);
+    return timestampStr;
+  }
+}
+
 // タイムスタンプから指定の分類キーと表示名を返す
 function getTransactionGroupInfo(timestampStr, groupType) {
+  // まず現地時間の標準フォーマットに変換する
+  const localTimeStr = formatLocalTimestamp(timestampStr);
   // Safariや様々なブラウザエンジンとの互換性を確保するため、ハイフン区切りではなくスラッシュ区切りに統一してパースします
-  const normalized = timestampStr.replace(/-/g, '/');
+  const normalized = localTimeStr.replace(/-/g, '/');
   const d = new Date(normalized);
   if (isNaN(d.getTime())) {
     return { key: 'unknown', label: 'その他分類不能' };
@@ -1591,8 +1630,8 @@ function renderHistoryTable() {
 
   // グループ順序をソート (最新取引日付の降順)
   groupOrder.sort((a, b) => {
-    const timeA = new Date(groups[a].txs[0].timestamp.replace(/\//g, '-')).getTime();
-    const timeB = new Date(groups[b].txs[0].timestamp.replace(/\//g, '-')).getTime();
+    const timeA = new Date(formatLocalTimestamp(groups[a].txs[0].timestamp).replace(/\//g, '-')).getTime();
+    const timeB = new Date(formatLocalTimestamp(groups[b].txs[0].timestamp).replace(/\//g, '-')).getTime();
     return timeB - timeA;
   });
 
@@ -1642,7 +1681,7 @@ function renderHistoryTable() {
       const statusClass = isCancelled ? 'cancelled' : 'active';
       
       row.innerHTML = `
-        <td>${tx.timestamp}</td>
+        <td>${formatLocalTimestamp(tx.timestamp)}</td>
         <td style="font-family: monospace; font-size: 0.85rem;">${tx.transactionId}</td>
         <td class="toggle-trigger-cell">${toggleTriggerHtml}</td>
         <td style="font-family: var(--font-serif); font-weight:600; color:var(--color-vermilion);">${tx.total.toLocaleString()} 円</td>
