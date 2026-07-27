@@ -48,6 +48,7 @@ const state = {
   selectedDate: '',
   isUsingMock: false,
   cancelTargetTxId: null,
+  isCheckingOut: false, // 2重会計防止用ガードフラグ
   
   gridCols: 2,
   pinchCooldown: false,
@@ -830,6 +831,12 @@ async function saveOrderToGAS(orderIds) {
 
 // 会計確定
 async function processCheckout() {
+  // 2重会計防止ガード
+  if (state.isCheckingOut) {
+    console.warn("すでに会計処理が進行中のため、リクエストをガードしました。");
+    return;
+  }
+
   const total = getCartTotal();
   
   // お預かり金インプットの入力値を取得
@@ -868,6 +875,7 @@ async function processCheckout() {
   const timestamp = `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}`;
 
   if (state.isUsingMock) {
+    state.isCheckingOut = true;
     state.cart.forEach(cartItem => {
       const match = state.items.find(item => item.id === cartItem.id);
       if (match) match.stock = Math.max(0, match.stock - cartItem.quantity);
@@ -890,10 +898,18 @@ async function processCheckout() {
     }
     renderItems();
     renderMasterGrid();
+    state.isCheckingOut = false;
     return;
   }
 
   showLoader(true);
+  state.isCheckingOut = true;
+
+  // ボタン自体も物理的に無効化してクリック連打を完全に封じる
+  if (DOM.btnCheckout) DOM.btnCheckout.disabled = true;
+  const btnCheckoutMobile = document.getElementById('btn-checkout-mobile');
+  if (btnCheckoutMobile) btnCheckoutMobile.disabled = true;
+
   try {
     const res = await fetch(GAS_API_URL, {
       method: 'POST',
@@ -924,8 +940,12 @@ async function processCheckout() {
   } catch (err) {
     console.error(err);
     showToast(`売上登録エラー: ${err.message}`, 'error');
+    // エラー時はカート状態が残るため、ボタンを再活性化させる
+    if (DOM.btnCheckout) DOM.btnCheckout.disabled = false;
+    if (btnCheckoutMobile) btnCheckoutMobile.disabled = false;
   } finally {
     showLoader(false);
+    state.isCheckingOut = false;
   }
 }
 
@@ -2450,6 +2470,17 @@ window.confirmCancelTransaction = function(txId) {
 
 // 共通ユーティリティ
 function showLoader(show) {
+  const fullScreenLoader = document.getElementById('full-screen-loader');
+  if (fullScreenLoader) {
+    fullScreenLoader.style.display = show ? 'flex' : 'none';
+  }
+  
+  if (show) {
+    document.body.classList.add('loading-state');
+  } else {
+    document.body.classList.remove('loading-state');
+  }
+
   if (DOM.itemsGrid) {
     DOM.itemsGrid.style.opacity = show ? '0.5' : '1';
     DOM.itemsGrid.style.pointerEvents = show ? 'none' : 'auto';

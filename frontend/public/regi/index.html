@@ -457,6 +457,14 @@
   <!-- トースト通知 -->
   <div id="toast-container" class="toast-container"></div>
 
+  <!-- 全画面ローディングシールド（2重会計・操作防止） -->
+  <div id="full-screen-loader" class="full-screen-loader" style="display: none;">
+    <div class="loader-content">
+      <i class="fa-solid fa-circle-notch fa-spin spinner-icon"></i>
+      <p class="loader-text">会計登録を行っています。そのまま少々お待ちください...</p>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
