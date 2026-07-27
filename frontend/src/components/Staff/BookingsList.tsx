@@ -448,10 +448,17 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         {isIndiv ? b.phone : `${b.staff_dept_title_name} (${b.staff_phone})`}
                       </div>
 
-                      {/* Display child details and notes inside an accordion */}
+                       {/* Display child details and notes inside an accordion */}
                       {(() => {
-                        const hasChild = isIndiv && (b.prayer1 === '初宮詣（お宮参り）' || b.prayer1 === '七五三詣') && b.child_name;
-                        const hasDetails = !!hasChild || !!b.notes;
+                        const hasChild = isIndiv && !!b.child_name;
+                        const hasParents = isIndiv && (!!b.father_name || !!b.mother_name);
+                        const hasYakudoshi = isIndiv && !!b.yakudoshi_type;
+                        const hasKotobuki = isIndiv && !!b.kotobuki_type;
+                        
+                        const hasTournament = !isIndiv && !!b.tournament_name;
+                        const hasConstruction = !isIndiv && !!b.construction_name;
+                        
+                        const hasDetails = hasChild || hasParents || hasYakudoshi || hasKotobuki || hasTournament || hasConstruction || !!b.notes;
                         const isExpanded = expandedBookingIds.includes(b.id!);
 
                         if (!hasDetails) return null;
@@ -488,6 +495,9 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     {(() => {
                                       const parts = [];
                                       if (hasChild) parts.push('子息情報');
+                                      if (hasParents) parts.push('家族情報');
+                                      if (hasYakudoshi || hasKotobuki) parts.push('祈祷情報');
+                                      if (hasTournament || hasConstruction) parts.push('行事・工事情報');
                                       if (b.notes) parts.push('備考');
                                       return parts.join('・');
                                     })()}
@@ -502,17 +512,21 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                 marginTop: '0.4rem',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '0.35rem'
+                                gap: '0.35rem',
+                                padding: '0.4rem',
+                                backgroundColor: '#fafafa',
+                                border: '1px solid #e5e5e5',
+                                borderRadius: '4px',
+                                maxWidth: '280px'
                               }}>
-                                {/* Display child details including twins */}
+                                {/* A. お子様情報 */}
                                 {hasChild && (
                                   <div style={{
                                     fontSize: '0.75rem',
                                     backgroundColor: '#faf7f0',
                                     border: '1px solid rgba(197, 160, 89, 0.3)',
                                     padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px',
-                                    maxWidth: '280px'
+                                    borderRadius: '3px'
                                   }}>
                                     <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
                                       👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana})
@@ -523,7 +537,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                       </div>
                                     )}
                                     
-                                    {/* Second child for twins */}
+                                    {/* 双子（第二子） */}
                                     {b.is_twin === 1 && b.child_name2 && (
                                       <div style={{ borderTop: '1px dashed rgba(197,160,89,0.2)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
                                         <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
@@ -539,15 +553,110 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   </div>
                                 )}
 
+                                {/* B. 家族情報（父母の名前） */}
+                                {hasParents && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#f5f7fa',
+                                    border: '1px solid #dcdfe6',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '3px',
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '0.3rem'
+                                  }}>
+                                    {b.father_name && (
+                                      <div>
+                                        <div style={{ fontSize: '0.62rem', color: '#777' }}>父親 (フリガナ)</div>
+                                        <strong style={{ fontSize: '0.82rem' }}>{b.father_name}</strong>
+                                        <div style={{ fontSize: '0.65rem', color: '#666' }}>({b.father_kana || '不明'})</div>
+                                      </div>
+                                    )}
+                                    {b.mother_name && (
+                                      <div>
+                                        <div style={{ fontSize: '0.62rem', color: '#777' }}>母親 (フリガナ)</div>
+                                        <strong style={{ fontSize: '0.82rem' }}>{b.mother_name}</strong>
+                                        <div style={{ fontSize: '0.65rem', color: '#666' }}>({b.mother_kana || '不明'})</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* C. 厄年情報 */}
+                                {hasYakudoshi && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#faf1f1',
+                                    border: '1px solid #f5c2c2',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '3px'
+                                  }}>
+                                    <div style={{ color: '#d3381c', fontWeight: 'bold' }}>
+                                      👹 厄年区分: {b.yakudoshi_type === 'maeyaku' ? '前厄' : b.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* D. 寿祝い情報 */}
+                                {hasKotobuki && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#faf5f0',
+                                    border: '1px solid #f5dab1',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '3px'
+                                  }}>
+                                    <div style={{ color: '#e6a23c', fontWeight: 'bold' }}>
+                                      🎉 寿祝い: {b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* E. 団体大会情報 */}
+                                {hasTournament && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#fdf6ec',
+                                    border: '1px solid #f5dab1',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '3px'
+                                  }}>
+                                    <div style={{ fontWeight: 'bold', color: '#e6a23c' }}>🏆 必勝祈願 大会情報</div>
+                                    <div><strong>大会名:</strong> {b.tournament_name}</div>
+                                    {b.tournament_schedule && <div><strong>日程:</strong> {b.tournament_schedule}</div>}
+                                  </div>
+                                )}
+
+                                {/* F. 団体工事安全情報 */}
+                                {hasConstruction && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#f0f9eb',
+                                    border: '1px solid #c2e7b0',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '3px',
+                                    lineHeight: '1.3'
+                                  }}>
+                                    <div style={{ fontWeight: 'bold', color: '#67c23a' }}>🚧 工事安全祈願 情報</div>
+                                    <div><strong>工事名:</strong> {b.construction_name}</div>
+                                    {b.construction_builder && <div><strong>施工:</strong> {b.construction_builder}</div>}
+                                    {b.construction_designer && <div><strong>設計:</strong> {b.construction_designer}</div>}
+                                    {b.construction_period && <div><strong>工期:</strong> {b.construction_period}</div>}
+                                  </div>
+                                )}
+
+                                {/* G. 備考（メモ） */}
                                 {b.notes && (
                                   <div style={{ 
-                                    fontSize: '0.75rem', 
-                                    backgroundColor: '#f5f5f5', 
-                                    padding: '0.25rem 0.5rem', 
+                                    fontSize: '0.73rem', 
+                                    backgroundColor: '#ffffff', 
+                                    padding: '0.3rem 0.45rem', 
                                     borderRadius: '2px', 
                                     color: '#555',
-                                    borderLeft: '2px solid var(--color-gold)',
-                                    maxWidth: '280px',
+                                    borderLeft: '3px solid var(--color-gold)',
+                                    borderTop: '1px solid #f0f0f0',
+                                    borderRight: '1px solid #f0f0f0',
+                                    borderBottom: '1px solid #f0f0f0',
                                     whiteSpace: 'pre-wrap',
                                     wordBreak: 'break-all'
                                   }} title={b.notes}>
