@@ -646,8 +646,50 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{b.booking_date} {b.booking_time}</div>
                       {b.created_at && (
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }} title="予約受付日時">
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-accent-gray)', marginTop: '0.15rem' }} title="予約受付日時">
                           受付: {new Date(b.created_at).toLocaleString('ja-JP', { hour12: false }).slice(0, 16)}
+                        </div>
+                      )}
+                      
+                      {isCancelled && b.cancelled_at && (
+                        <div style={{
+                          fontSize: '0.68rem',
+                          color: 'var(--color-shu)',
+                          fontWeight: 'bold',
+                          marginTop: '0.2rem',
+                          backgroundColor: '#ffebee',
+                          padding: '0.1rem 0.35rem',
+                          borderRadius: '2px',
+                          display: 'inline-block'
+                        }}>
+                          ❌ 取消: {b.cancelled_at}
+                        </div>
+                      )}
+
+                      {!isCancelled && b.is_changed === 1 && b.changed_at && (
+                        <div style={{ marginTop: '0.2rem' }}>
+                          <div style={{
+                            fontSize: '0.68rem',
+                            color: 'var(--color-mizuiro-hover)',
+                            fontWeight: 'bold',
+                            backgroundColor: '#e0f7fa',
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '2px',
+                            display: 'inline-block'
+                          }}>
+                            ✏️ 変更: {b.changed_at}
+                          </div>
+                          {b.changed_history && (
+                            <div style={{
+                              fontSize: '0.62rem',
+                              color: '#666',
+                              marginTop: '0.1rem',
+                              fontStyle: 'italic',
+                              lineHeight: '1.2'
+                            }}>
+                              ({b.changed_history})
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>

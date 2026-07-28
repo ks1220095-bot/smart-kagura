@@ -978,7 +978,20 @@ router.delete('/:id', async (req, res) => {
       await db.query(`DELETE FROM bookings WHERE id = $1`, [req.params.id]);
     } else {
       // Logical delete (Cancel)
-      await db.query(`UPDATE bookings SET is_cancelled = 1 WHERE id = $1`, [req.params.id]);
+      const getJstDateTimeString = () => {
+        const now = new Date();
+        const jstOffset = 9 * 60;
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const jstTime = new Date(utc + (jstOffset * 60000));
+        const year = jstTime.getFullYear();
+        const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+        const date = String(jstTime.getDate()).padStart(2, '0');
+        const hours = String(jstTime.getHours()).padStart(2, '0');
+        const minutes = String(jstTime.getMinutes()).padStart(2, '0');
+        return `${year}/${month}/${date} ${hours}:${minutes}`;
+      };
+      const cancelledAt = getJstDateTimeString();
+      await db.query(`UPDATE bookings SET is_cancelled = 1, cancelled_at = $1 WHERE id = $2`, [cancelledAt, req.params.id]);
     }
 
     // Send Web Push Notification to all subscribed devices
@@ -1048,9 +1061,25 @@ router.patch('/:id/reschedule', async (req, res) => {
       return res.status(400).json({ error: '変更先の枠は祭典・行事等により受付停止中です。' });
     }
 
+    const getJstDateTimeString = () => {
+      const now = new Date();
+      const jstOffset = 9 * 60;
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const jstTime = new Date(utc + (jstOffset * 60000));
+      const year = jstTime.getFullYear();
+      const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+      const date = String(jstTime.getDate()).padStart(2, '0');
+      const hours = String(jstTime.getHours()).padStart(2, '0');
+      const minutes = String(jstTime.getMinutes()).padStart(2, '0');
+      return `${year}/${month}/${date} ${hours}:${minutes}`;
+    };
+
+    const changedAt = getJstDateTimeString();
+    const historyText = `元の予約日時: ${existing.booking_date} ${existing.booking_time}`;
+
     await db.query(
-      `UPDATE bookings SET booking_date = $1, booking_time = $2, is_changed = 1 WHERE id = $3`,
-      [booking_date, booking_time, req.params.id]
+      `UPDATE bookings SET booking_date = $1, booking_time = $2, is_changed = 1, changed_at = $3, changed_history = $4 WHERE id = $5`,
+      [booking_date, booking_time, changedAt, historyText, req.params.id]
     );
 
     // Send Web Push Notification to all subscribed devices
@@ -1132,6 +1161,23 @@ router.post('/bulk-update', async (req, res) => {
     if (fields.is_cancelled !== undefined) {
       updates.push(`is_cancelled = $${pIdx++}`);
       params.push(Number(fields.is_cancelled));
+
+      if (Number(fields.is_cancelled) === 1) {
+        const getJstDateTimeString = () => {
+          const now = new Date();
+          const jstOffset = 9 * 60;
+          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+          const jstTime = new Date(utc + (jstOffset * 60000));
+          const year = jstTime.getFullYear();
+          const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+          const date = String(jstTime.getDate()).padStart(2, '0');
+          const hours = String(jstTime.getHours()).padStart(2, '0');
+          const minutes = String(jstTime.getMinutes()).padStart(2, '0');
+          return `${year}/${month}/${date} ${hours}:${minutes}`;
+        };
+        updates.push(`cancelled_at = $${pIdx++}`);
+        params.push(getJstDateTimeString());
+      }
     }
 
     if (updates.length === 0) {
