@@ -69,6 +69,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [editingHatsuhoryoVal, setEditingHatsuhoryoVal] = useState<number>(0);
   const [editingProgressId, setEditingProgressId] = useState<number | null>(null);
   const [appendNoteText, setAppendNoteText] = useState<string>('');
+  const [selectedBookingIds, setSelectedBookingIds] = useState<number[]>([]);
+  const [isBulkUpdating, setIsBulkUpdating] = useState<boolean>(false);
 
   // Filter logic
   const filteredBookings = bookings.filter(b => {
@@ -224,6 +226,62 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     setAppendNoteText('');
   };
 
+  // Toggle selection for a single booking
+  const handleToggleSelectBooking = (id: number) => {
+    setSelectedBookingIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle selection for all visible bookings
+  const handleToggleSelectAll = (visibleBookings: Booking[]) => {
+    const visibleIds = visibleBookings.map(b => b.id!).filter(id => id !== undefined);
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedBookingIds.includes(id));
+    
+    if (allSelected) {
+      // Remove all visible from selection
+      setSelectedBookingIds(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      // Add all visible to selection
+      setSelectedBookingIds(prev => {
+        const next = [...prev];
+        visibleIds.forEach(id => {
+          if (!next.includes(id)) next.push(id);
+        });
+        return next;
+      });
+    }
+  };
+
+  // Perform bulk update API request
+  const handleBulkUpdate = async (fields: any) => {
+    if (selectedBookingIds.length === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/bulk-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedBookingIds,
+          fields
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || '一括更新に失敗しました。');
+      }
+      
+      setSelectedBookingIds([]);
+      onRefresh();
+    } catch (error: any) {
+      alert(error.message || '更新に失敗しました。');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   // Delete booking - open confirmation modal
   const handleDeleteBooking = (booking: Booking) => {
     setDeleteTarget(booking);
@@ -376,11 +434,159 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         </div>
       </div>
 
+      {selectedBookingIds.length > 0 && (
+        <div style={{
+          backgroundColor: '#faf7f0',
+          border: '1px solid var(--color-gold)',
+          borderRadius: '4px',
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{
+              backgroundColor: 'var(--color-urushi)',
+              color: '#ffffff',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              padding: '0.2rem 0.6rem',
+              borderRadius: '20px'
+            }}>
+              選択中: {selectedBookingIds.length} 件
+            </span>
+            <button
+              onClick={() => setSelectedBookingIds([])}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-accent-gray)',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                textDecoration: 'underline'
+              }}
+            >
+              選択を解除
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* 一括: 受付状況 */}
+            <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <button
+                onClick={() => handleBulkUpdate({ is_accepted: 1 })}
+                className="btn btn-outline-gold"
+                disabled={isBulkUpdating}
+                style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', backgroundColor: '#ffffff' }}
+              >
+                一括受付済
+              </button>
+              <button
+                onClick={() => handleBulkUpdate({ is_accepted: 0 })}
+                className="btn btn-outline-gold"
+                disabled={isBulkUpdating}
+                style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', backgroundColor: '#ffffff', color: 'var(--color-accent-gray)', borderColor: 'var(--color-border)' }}
+              >
+                一括受付解除
+              </button>
+            </div>
+
+            {/* 一括: 初穂料支払状況 */}
+            <div style={{ display: 'flex', gap: '0.35rem', borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+              <button
+                onClick={() => handleBulkUpdate({ payment_status: 'paid' })}
+                className="btn btn-outline-gold"
+                disabled={isBulkUpdating}
+                style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', backgroundColor: '#ffffff', color: 'var(--color-accent-green)', borderColor: 'var(--color-accent-green)' }}
+              >
+                一括支払済
+              </button>
+              <button
+                onClick={() => handleBulkUpdate({ payment_status: 'unpaid' })}
+                className="btn btn-outline-gold"
+                disabled={isBulkUpdating}
+                style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', backgroundColor: '#ffffff', color: 'var(--color-shu)', borderColor: 'var(--color-shu)' }}
+              >
+                一括未払い
+              </button>
+            </div>
+
+            {/* 一括: 進捗ステータス */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+              <span style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>一括進捗変更:</span>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkUpdate({ progress_status: e.target.value });
+                    e.target.value = ''; // Reset select
+                  }
+                }}
+                disabled={isBulkUpdating}
+                defaultValue=""
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid var(--color-gold)',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="" disabled>ステータスを選択...</option>
+                <option value="新規です♪">新規です♪</option>
+                <option value="チェック済み！">チェック済み！</option>
+                <option value="返信済み！">返信済み！</option>
+                <option value="遅刻中＞＜">遅刻中＞＜</option>
+              </select>
+            </div>
+            
+            {/* 一括: 取消処理 */}
+            <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  if (window.confirm(`選択された ${selectedBookingIds.length} 件の予約を一括でキャンセル（取消）しますか？`)) {
+                    handleBulkUpdate({ is_cancelled: 1 });
+                  }
+                }}
+                className="btn"
+                disabled={isBulkUpdating}
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '0.3rem 0.6rem',
+                  backgroundColor: 'rgba(211, 56, 28, 0.1)',
+                  color: 'var(--color-shu)',
+                  border: '1px solid var(--color-shu)',
+                  borderRadius: '3px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  margin: 0
+                }}
+              >
+                一括取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bookings table */}
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--color-urushi)', color: '#ffffff', borderBottom: '2px solid var(--color-gold)' }}>
+              <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}>
+                <input 
+                  type="checkbox" 
+                  checked={sortedBookings.length > 0 && sortedBookings.every(b => selectedBookingIds.includes(b.id!))} 
+                  onChange={() => handleToggleSelectAll(sortedBookings)}
+                  style={{ cursor: 'pointer', width: '15px', height: '15px' }} 
+                />
+              </th>
               <th style={{ padding: '0.75rem 1rem' }}>参拝日時</th>
               <th style={{ padding: '0.75rem 1rem' }}>区分</th>
               <th style={{ padding: '0.75rem 1rem' }}>氏名 / 会社名</th>
@@ -396,7 +602,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
           <tbody>
             {sortedBookings.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-accent-gray)' }}>
+                <td colSpan={11} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-accent-gray)' }}>
                   該当する予約情報が見つかりません。
                 </td>
               </tr>
@@ -429,7 +635,14 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
                 return (
                   <tr key={b.id} style={rowStyle} className={isCancelled ? "" : "hover-row"}>
-
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedBookingIds.includes(b.id!)} 
+                        onChange={() => handleToggleSelectBooking(b.id!)} 
+                        style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                      />
+                    </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{b.booking_date} {b.booking_time}</div>
                       {b.created_at && (

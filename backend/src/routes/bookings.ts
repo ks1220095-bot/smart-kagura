@@ -1074,5 +1074,87 @@ router.patch('/:id/reschedule', async (req, res) => {
     res.status(500).json({ error: '日程の変更に失敗しました。' });
   }
 });
+// 8. Bulk Update Bookings (Progress, Accepted, Payment Statuses)
+router.post('/bulk-update', async (req, res) => {
+  const { ids, fields } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: '更新対象のIDを配列で指定してください。' });
+  }
+  if (!fields || typeof fields !== 'object') {
+    return res.status(400).json({ error: '更新フィールドを指定してください。' });
+  }
+
+  try {
+    const db = getDb();
+    
+    // Valid updates
+    const updates: string[] = [];
+    const params: any[] = [];
+    let pIdx = 1;
+
+    if (fields.progress_status !== undefined) {
+      updates.push(`progress_status = $${pIdx++}`);
+      params.push(fields.progress_status);
+
+      // Also update progress_status_updated_at if updating progress_status
+      const getJstDateTimeString = () => {
+        const now = new Date();
+        const jstOffset = 9 * 60;
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const jstTime = new Date(utc + (jstOffset * 60000));
+        const year = jstTime.getFullYear();
+        const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+        const date = String(jstTime.getDate()).padStart(2, '0');
+        const hours = String(jstTime.getHours()).padStart(2, '0');
+        const minutes = String(jstTime.getMinutes()).padStart(2, '0');
+        return `${year}/${month}/${date} ${hours}:${minutes}`;
+      };
+      updates.push(`progress_status_updated_at = $${pIdx++}`);
+      params.push(getJstDateTimeString());
+    }
+
+    if (fields.is_accepted !== undefined) {
+      updates.push(`is_accepted = $${pIdx++}`);
+      params.push(Number(fields.is_accepted));
+    }
+
+    if (fields.payment_status !== undefined) {
+      updates.push(`payment_status = $${pIdx++}`);
+      params.push(fields.payment_status);
+    }
+
+    if (fields.is_receipt_issued !== undefined) {
+      updates.push(`is_receipt_issued = $${pIdx++}`);
+      params.push(Number(fields.is_receipt_issued));
+    }
+
+    if (fields.is_cancelled !== undefined) {
+      updates.push(`is_cancelled = $${pIdx++}`);
+      params.push(Number(fields.is_cancelled));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: '更新する項目がありません。' });
+    }
+
+    // Build SQLite/Postgres friendly IN query
+    const placeholders = ids.map(() => `$${pIdx++}`).join(', ');
+    params.push(...ids);
+
+    const query = `UPDATE bookings SET ${updates.join(', ')} WHERE id IN (${placeholders})`;
+    await db.query(query, params);
+
+    // スプレッドシートへ同期
+    await syncAllBookingsToSpreadsheet().catch(err => 
+      console.error('Failed to trigger spreadsheet sync on bulk update:', err)
+    );
+
+    res.json({ success: true, count: ids.length });
+  } catch (error) {
+    console.error('Bulk update error:', error);
+    res.status(500).json({ error: '一括更新に失敗しました。' });
+  }
+});
 
 export default router;
