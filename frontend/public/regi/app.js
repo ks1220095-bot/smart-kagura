@@ -1942,6 +1942,16 @@ async function generateDailyReport() {
       renderDailyReportView(data);
       DOM.btnPrintReport.disabled = false;
       showToast('日次データをスプレッドシートへ同期しました。', 'success');
+      
+      // ご祈祷集計デバッグ内訳を詳細にアラートで出力し、ユーザーが原因行を自己特定できるようにする
+      if (data.debugPrayers && data.debugPrayers.length > 0) {
+        console.log("ご祈祷集計デバッグ内訳:", data.debugPrayers);
+        const detailsText = data.debugPrayers.map(p => {
+          return `【行 ${p.rowNum}】 氏名: ${p.name}様 (${p.willing}) | 金額: ${p.amount.toLocaleString()}円 | 状態: ${p.status} ➡ ${p.isCounted ? '★集計に合算' : '❌除外'}`;
+        }).join('\n');
+        
+        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n※もし支払状況が「支払済」以外の行が「★集計に合算」になっている場合は、プログラムの上書き・再デプロイがまだ未完了です。`);
+      }
     } else {
       throw new Error(data.message);
     }
