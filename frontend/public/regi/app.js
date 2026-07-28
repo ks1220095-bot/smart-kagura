@@ -123,6 +123,11 @@ const DOM = {
   // マスタ画面
   masterGrid: document.getElementById('master-grid'),
   btnShowAddItem: document.getElementById('btn-show-add-item'),
+  masterViewModeToggle: document.getElementById('master-view-mode-toggle'),
+  btnViewCard: document.getElementById('btn-view-card'),
+  btnViewList: document.getElementById('btn-view-list'),
+  masterListContainer: document.getElementById('master-list-container'),
+  masterListBody: document.getElementById('master-list-body'),
   
   // 新規追加モーダル
   modalAddItem: document.getElementById('modal-add-item'),
@@ -366,12 +371,26 @@ function setupEventListeners() {
     });
   });
 
-  DOM.masterColsBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.gridCols = parseInt(btn.dataset.cols) || 2;
-      updateGridColsUI();
+  // マスタ表示形式切り替えイベントの登録
+  if (DOM.btnViewCard && DOM.btnViewList) {
+    // 初期表示設定
+    state.masterViewMode = localStorage.getItem('regi_master_view_mode') || 'card';
+    updateMasterViewModeUI();
+
+    DOM.btnViewCard.addEventListener('click', () => {
+      state.masterViewMode = 'card';
+      localStorage.setItem('regi_master_view_mode', 'card');
+      updateMasterViewModeUI();
+      renderMasterGrid();
     });
-  });
+
+    DOM.btnViewList.addEventListener('click', () => {
+      state.masterViewMode = 'list';
+      localStorage.setItem('regi_master_view_mode', 'list');
+      updateMasterViewModeUI();
+      renderMasterGrid();
+    });
+  }
 
   DOM.itemsGrid.addEventListener('touchstart', handleTouchStart, { passive: true });
   DOM.itemsGrid.addEventListener('touchmove', handleTouchMove, { passive: true });
@@ -2058,9 +2077,37 @@ function renderDailyReportView(data) {
 }
 
 // ==========================================
+// マスタ表示形式 (カード/リスト) UI切り替え制御
+// ==========================================
+function updateMasterViewModeUI() {
+  if (state.masterViewMode === 'list') {
+    if (DOM.btnViewCard) DOM.btnViewCard.classList.remove('active');
+    if (DOM.btnViewList) DOM.btnViewList.classList.add('active');
+    if (DOM.masterGrid) DOM.masterGrid.style.display = 'none';
+    if (DOM.masterListContainer) DOM.masterListContainer.style.display = 'block';
+    
+    const colsCtrl = document.getElementById('master-cols-controller');
+    if (colsCtrl) colsCtrl.style.display = 'none';
+  } else {
+    if (DOM.btnViewCard) DOM.btnViewCard.classList.add('active');
+    if (DOM.btnViewList) DOM.btnViewList.classList.remove('active');
+    if (DOM.masterGrid) DOM.masterGrid.style.display = 'grid';
+    if (DOM.masterListContainer) DOM.masterListContainer.style.display = 'none';
+    
+    const colsCtrl = document.getElementById('master-cols-controller');
+    if (colsCtrl) colsCtrl.style.display = 'flex';
+  }
+}
+
+// ==========================================
 // マスタ管理画面 (ドラッグ＆ドロップ並び替えソート対応)
 // ==========================================
 function renderMasterGrid() {
+  if (state.masterViewMode === 'list') {
+    renderMasterList();
+    return;
+  }
+
   DOM.masterGrid.innerHTML = '';
   
   state.items.forEach(item => {
@@ -2545,4 +2592,286 @@ function showToast(message, type = 'info') {
     toast.style.animation = 'fadeOut 0.3s forwards';
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
+
+// ==========================================
+// マスタ管理リスト形式の描画 (ドラッグ＆ドロップ ＆ インライン簡単編集)
+// ==========================================
+function renderMasterList() {
+  DOM.masterListBody.innerHTML = '';
+  
+  state.items.forEach(item => {
+    const row = document.createElement('tr');
+    row.className = 'master-list-row';
+    row.id = `master-list-row-${item.id}`;
+    row.setAttribute('draggable', 'false'); // 最初はドラッグ不可（グリップハンドルを掴んだときだけ有効）
+
+    const isHidden = item.display === false;
+    
+    // 画像
+    let imgHtml = `<div class="item-image-placeholder" style="width:40px; height:40px; font-size:1.2rem; border-radius:4px;"><i class="fa-solid fa-om"></i></div>`;
+    if (item.imageUrl) {
+      const stableUrl = formatGoogleDriveUrl(item.imageUrl);
+      imgHtml = `<img src="${stableUrl}" alt="${item.name}" class="list-item-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                 <div class="item-image-placeholder" style="width:40px; height:40px; font-size:1.2rem; border-radius:4px; display:none;"><i class="fa-solid fa-om"></i></div>`;
+    }
+
+    const rubyNameHtml = getRubyName(item.name, item.furigana);
+
+    row.innerHTML = `
+      <!-- ドラッグハンドル -->
+      <td style="text-align: center; vertical-align: middle;">
+        <div class="list-drag-handle" draggable="true" title="ドラッグして並び替え">
+          <i class="fa-solid fa-grip-vertical"></i>
+        </div>
+      </td>
+      <td style="text-align: center;">${imgHtml}</td>
+      <td style="font-family: monospace; font-weight: bold; color: var(--color-text-muted);">${item.id}</td>
+      <td id="list-name-cell-${item.id}">
+        <div style="font-weight: bold;">${rubyNameHtml}</div>
+      </td>
+      <td id="list-price-cell-${item.id}" style="font-family: var(--font-serif); font-weight: 700; color: var(--color-vermilion);">${item.price.toLocaleString()} 円</td>
+      <td id="list-stock-cell-${item.id}" style="font-weight: bold;">${item.stock} 体</td>
+      <td id="list-desc-cell-${item.id}" style="color: var(--color-text-muted); font-size: 0.8rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.description || '-'}</td>
+      <td id="list-remark-cell-${item.id}" style="color: var(--color-text-muted); font-size: 0.8rem;">${item.remark || '-'}</td>
+      <td id="list-category-cell-${item.id}">
+        <span class="status-badge" style="background-color: rgba(196,162,100,0.08); color: var(--color-gold); font-size:0.75rem;">
+          ${item.category === 'ofuda' ? 'お札' : item.category === 'omamori' ? 'お守り' : item.category === 'goshuin' ? '御朱印' : item.category === 'engimono' ? '縁起物' : 'その他'}
+        </span>
+      </td>
+      <td style="text-align: center;">
+        <button class="list-btn-icon ${!isHidden ? 'active' : ''}" id="btn-list-toggle-display-${item.id}" title="表示/非表示">
+          <i class="fa-solid ${!isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
+        </button>
+      </td>
+      <td style="text-align: center;">
+        <div class="list-action-btns">
+          <button class="list-btn-icon" id="btn-list-edit-${item.id}" title="編集"><i class="fa-solid fa-pencil"></i></button>
+        </div>
+      </td>
+    `;
+
+    // ドラッグ＆ドロップイベントの紐付け (カード型とロジック統一)
+    const dragHandle = row.querySelector('.list-drag-handle');
+    
+    dragHandle.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', item.id);
+      row.classList.add('dragging');
+      row.setAttribute('draggable', 'true');
+      e.stopPropagation();
+    });
+
+    dragHandle.addEventListener('dragend', (e) => {
+      row.classList.remove('dragging');
+      row.setAttribute('draggable', 'false');
+      const rows = DOM.masterListBody.querySelectorAll('.master-list-row');
+      rows.forEach(r => r.classList.remove('drag-over'));
+      e.stopPropagation();
+    });
+
+    // グリップハンドルを掴んだときだけ一時的にdraggable=trueにする (iOS等でのスクロール競合防止・滑らかなドラッグ用)
+    dragHandle.addEventListener('mousedown', () => {
+      row.setAttribute('draggable', 'true');
+    });
+    
+    dragHandle.addEventListener('mouseup', () => {
+      row.setAttribute('draggable', 'false');
+    });
+
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    row.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      const draggingRow = DOM.masterListBody.querySelector('.master-list-row.dragging');
+      if (draggingRow && draggingRow !== row) {
+        row.classList.add('drag-over');
+      }
+    });
+
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over');
+    });
+
+    row.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      
+      const dragSourceId = e.dataTransfer.getData('text/plain');
+      if (!dragSourceId || dragSourceId === item.id) return;
+
+      const srcIdx = state.items.findIndex(i => i.id === dragSourceId);
+      const destIdx = state.items.findIndex(i => i.id === item.id);
+      
+      if (srcIdx !== -1 && destIdx !== -1) {
+        const [movedItem] = state.items.splice(srcIdx, 1);
+        state.items.splice(destIdx, 0, movedItem);
+        
+        const orderIds = state.items.map(i => i.id);
+        localStorage.setItem('regi_items_order', JSON.stringify(orderIds));
+        
+        renderMasterGrid(); // リストモードが再描画される
+        renderItems();
+        
+        await saveOrderToGAS(orderIds);
+        showToast('授与品の並び順を保存・変更しました。', 'success');
+      }
+    });
+
+    // 表示トグル
+    row.querySelector(`#btn-list-toggle-display-${item.id}`).addEventListener('click', () => toggleItemDisplay(item));
+
+    // インラインリスト編集への遷移
+    row.querySelector(`#btn-list-edit-${item.id}`).addEventListener('click', () => enterListInlineEditMode(item));
+
+    DOM.masterListBody.appendChild(row);
+  });
+}
+
+// リスト表示用インライン行編集モード
+function enterListInlineEditMode(item) {
+  const row = document.getElementById(`master-list-row-${item.id}`);
+  row.classList.add('editing');
+  
+  // 各セルをインプット要素に書き換える
+  const nameCell = document.getElementById(`list-name-cell-${item.id}`);
+  const priceCell = document.getElementById(`list-price-cell-${item.id}`);
+  const stockCell = document.getElementById(`list-stock-cell-${item.id}`);
+  const descCell = document.getElementById(`list-desc-cell-${item.id}`);
+  const remarkCell = document.getElementById(`list-remark-cell-${item.id}`);
+  const categoryCell = document.getElementById(`list-category-cell-${item.id}`);
+  
+  nameCell.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:0.25rem;">
+      <input type="text" id="list-edit-name-${item.id}" class="list-edit-input" value="${item.name}" placeholder="商品名">
+      <input type="text" id="list-edit-furigana-${item.id}" class="list-edit-input" value="${item.furigana || ''}" placeholder="ルビ(ひらがな)">
+    </div>
+  `;
+  
+  priceCell.innerHTML = `
+    <input type="number" id="list-edit-price-${item.id}" class="list-edit-input" value="${item.price}" style="width: 80px;">
+  `;
+  
+  stockCell.innerHTML = `
+    <input type="number" id="list-edit-stock-${item.id}" class="list-edit-input" value="${item.stock}" style="width: 70px;">
+  `;
+  
+  descCell.innerHTML = `
+    <input type="text" id="list-edit-desc-${item.id}" class="list-edit-input" value="${item.description || ''}" placeholder="説明書き">
+  `;
+  
+  remarkCell.innerHTML = `
+    <input type="text" id="list-edit-remark-${item.id}" class="list-edit-input" value="${item.remark || ''}" placeholder="備考">
+  `;
+  
+  categoryCell.innerHTML = `
+    <select id="list-edit-category-${item.id}" class="list-edit-input" style="width: 100px; padding: 0.3rem;">
+      <option value="ofuda" ${item.category === 'ofuda' ? 'selected' : ''}>お札</option>
+      <option value="omamori" ${item.category === 'omamori' ? 'selected' : ''}>お守り</option>
+      <option value="goshuin" ${item.category === 'goshuin' ? 'selected' : ''}>御朱印</option>
+      <option value="engimono" ${item.category === 'engimono' ? 'selected' : ''}>縁起物</option>
+      <option value="other" ${item.category === 'other' ? 'selected' : ''}>その他</option>
+    </select>
+  `;
+
+  // 操作ボタンエリアを「保存 ＆ キャンセル」に置き換える
+  const actionTd = row.querySelector('td:last-child');
+  actionTd.innerHTML = `
+    <div class="list-action-btns">
+      <button class="list-btn-icon editing-active" id="btn-list-save-edit-${item.id}" title="保存" style="color:var(--color-green); border-color:var(--color-green);"><i class="fa-solid fa-floppy-disk"></i></button>
+      <button class="list-btn-icon" id="btn-list-cancel-edit-${item.id}" title="キャンセル" style="color:var(--color-vermilion); border-color:var(--color-vermilion);"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  `;
+
+  // キャンセルイベント
+  document.getElementById(`btn-list-cancel-edit-${item.id}`).addEventListener('click', () => {
+    row.classList.remove('editing');
+    renderMasterGrid(); // リストを再描画して元に戻す
+  });
+
+  // 保存イベント (Enterキーでも動作するようにインプット要素にkeyupハンドラを設定)
+  const saveAction = async () => {
+    const newName = document.getElementById(`list-edit-name-${item.id}`).value.trim();
+    const newFurigana = document.getElementById(`list-edit-furigana-${item.id}`).value.trim();
+    const newPrice = parseInt(document.getElementById(`list-edit-price-${item.id}`).value) || 0;
+    const newStock = parseInt(document.getElementById(`list-edit-stock-${item.id}`).value) || 0;
+    const newDesc = document.getElementById(`list-edit-desc-${item.id}`).value;
+    const newRemark = document.getElementById(`list-edit-remark-${item.id}`).value;
+    const newCategory = document.getElementById(`list-edit-category-${item.id}`).value;
+    
+    if (!newName) {
+      showToast('商品名を入力してください。', 'error');
+      return;
+    }
+
+    const updatedItem = {
+      ...item,
+      name: newName,
+      furigana: newFurigana,
+      price: newPrice,
+      stock: newStock,
+      description: newDesc,
+      remark: newRemark,
+      category: newCategory
+    };
+
+    showLoader(true);
+    
+    if (state.isUsingMock) {
+      const idx = state.items.findIndex(i => i.id === item.id);
+      if (idx !== -1) {
+        state.items[idx] = updatedItem;
+      }
+      showToast('授与品データを保存しました。', 'success');
+      row.classList.remove('editing');
+      renderMasterGrid();
+      renderItems();
+      showLoader(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'updateMasterItem',
+          item: updatedItem
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        const idx = state.items.findIndex(i => i.id === item.id);
+        if (idx !== -1) {
+          state.items[idx] = {
+            ...updatedItem,
+            imageUrl: data.item.imageUrl
+          };
+        }
+        showToast('授与品データを同期・保存しました。', 'success');
+        row.classList.remove('editing');
+        renderMasterGrid();
+        renderItems();
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(`保存に失敗しました: ${err.message}`, 'error');
+    } finally {
+      showLoader(false);
+    }
+  };
+
+  document.getElementById(`btn-list-save-edit-${item.id}`).addEventListener('click', saveAction);
+
+  // 全インプット欄で Enter キーを押した際に保存を実行するハンドラ
+  const inputs = row.querySelectorAll('.list-edit-input');
+  inputs.forEach(input => {
+    input.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        saveAction();
+      }
+    });
+  });
 }

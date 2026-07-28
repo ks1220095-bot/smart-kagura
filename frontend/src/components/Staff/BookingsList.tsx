@@ -67,6 +67,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   // Inline hatsuhoryo edit states
   const [editingHatsuhoryoId, setEditingHatsuhoryoId] = useState<number | null>(null);
   const [editingHatsuhoryoVal, setEditingHatsuhoryoVal] = useState<number>(0);
+  const [editingProgressId, setEditingProgressId] = useState<number | null>(null);
 
   // Filter logic
   const filteredBookings = bookings.filter(b => {
@@ -179,6 +180,26 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       if (!res.ok) throw new Error('初穂料の更新に失敗しました。');
       
       setEditingHatsuhoryoId(null);
+      onRefresh();
+    } catch (error: any) {
+      alert(error.message || '更新に失敗しました。');
+    }
+  };
+
+  const handleSaveProgress = async (bookingId: number, status: '新規です♪' | 'チェック済み！' | '返信済み！' | '遅刻中＞＜') => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${bookingId}/progress`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          progress_status: status
+        })
+      });
+
+      if (!res.ok) throw new Error('進捗状況の更新に失敗しました。');
+      
+      setEditingProgressId(null);
       onRefresh();
     } catch (error: any) {
       alert(error.message || '更新に失敗しました。');
@@ -347,6 +368,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               <th style={{ padding: '0.75rem 1rem' }}>氏名 / 会社名</th>
               <th style={{ padding: '0.75rem 1rem' }}>願意</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>初穂料</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>進捗</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>社務状態</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>備考</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>書面</th>
@@ -728,6 +750,78 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         >
                           <span>{b.hatsuhoryo.toLocaleString()} 円</span>
                           {!isCancelled && <Edit3 size={11} style={{ color: 'var(--color-accent-gray)', opacity: 0.6 }} />}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      {editingProgressId === b.id ? (
+                        <select
+                          value={b.progress_status || '新規です♪'}
+                          onChange={(e) => handleSaveProgress(b.id!, e.target.value as any)}
+                          onBlur={() => setEditingProgressId(null)}
+                          autoFocus
+                          style={{
+                            padding: '0.15rem 0.3rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '3px',
+                            border: '1px solid var(--color-gold)',
+                            backgroundColor: '#ffffff',
+                            color: '#333',
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="新規です♪">新規です♪</option>
+                          <option value="チェック済み！">チェック済み！</option>
+                          <option value="返信済み！">返信済み！</option>
+                          <option value="遅刻中＞＜">遅刻中＞＜</option>
+                        </select>
+                      ) : (
+                        <div
+                          onClick={() => {
+                            if (!isCancelled) {
+                              setEditingProgressId(b.id!);
+                            }
+                          }}
+                          style={(() => {
+                            const status = b.progress_status || '新規です♪';
+                            let bg = '#e0f7fa';
+                            let text = '#006064';
+                            let border = '#b2ebf2';
+                            
+                            if (status === 'チェック済み！') {
+                              bg = '#e8f5e9';
+                              text = '#1b5e20';
+                              border = '#c8e6c9';
+                            } else if (status === '返信済み！') {
+                              bg = '#f3e5f5';
+                              text = '#4a148c';
+                              border = '#e1bee7';
+                            } else if (status === '遅刻中＞＜') {
+                              bg = '#ffebee';
+                              text = '#b71c1c';
+                              border = '#ffcdd2';
+                            }
+                            
+                            return {
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '20px',
+                              fontSize: '0.72rem',
+                              fontWeight: 'bold',
+                              backgroundColor: bg,
+                              color: text,
+                              border: `1px solid ${border}`,
+                              cursor: isCancelled ? 'not-allowed' : 'pointer',
+                              userSelect: 'none'
+                            };
+                          })()}
+                          title="クリックして進捗ステータスを変更"
+                        >
+                          <span>{b.progress_status || '新規です♪'}</span>
+                          {!isCancelled && <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>▼</span>}
                         </div>
                       )}
                     </td>

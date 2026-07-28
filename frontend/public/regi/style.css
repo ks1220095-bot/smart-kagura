@@ -2063,3 +2063,168 @@ body.loading-state {
     transform: scale(1);
   }
 }
+
+/* 表示形式切り替えトグル */
+.view-mode-toggle {
+  display: flex;
+  background-color: var(--color-light-gray, #f0f0f0);
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.25rem;
+  border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.view-mode-btn {
+  background: none;
+  border: none;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: var(--transition-smooth, all 0.2s);
+  color: var(--color-text-muted, #666666);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.view-mode-btn.active {
+  background-color: var(--color-green, #3f5145);
+  color: var(--color-bg, #ffffff);
+}
+
+/* マスタリストテーブルのスタイリング */
+.master-list-container {
+  background-color: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: var(--radius-md, 8px);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.master-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.master-list-table th, .master-list-table td {
+  padding: 0.85rem 0.65rem;
+  border-bottom: 1px solid var(--color-light-gray, #f5f5f5);
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.master-list-table th {
+  background-color: rgba(196, 162, 100, 0.05); /* 薄金茶 */
+  font-weight: 700;
+  color: var(--color-text-muted, #666666);
+  border-bottom: 2px solid var(--color-gold, #c4a264);
+}
+
+/* 行ホバーと編集状態 */
+.master-list-row {
+  transition: background-color 0.2s;
+}
+
+.master-list-row:hover {
+  background-color: rgba(196, 162, 100, 0.03);
+}
+
+.master-list-row.dragging {
+  opacity: 0.4;
+  background-color: rgba(196, 162, 100, 0.1);
+}
+
+.master-list-row.drag-over {
+  border-top: 2px solid var(--color-gold);
+}
+
+/* リスト内ミニ画像 */
+.list-item-img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-dark);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.list-item-img:hover {
+  transform: scale(1.1);
+}
+
+/* ドラッグハンドル */
+.list-drag-handle {
+  cursor: grab;
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.list-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* リストインプット */
+.list-edit-input {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  background-color: var(--color-bg, #fafafa);
+  transition: border-color 0.2s;
+}
+
+.list-edit-input:focus {
+  outline: none;
+  border-color: var(--color-gold);
+  background-color: #ffffff;
+}
+
+/* リスト内のアクションボタン */
+.list-action-btns {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.list-btn-icon {
+  background: none;
+  border: 1px solid var(--color-border);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--color-text-muted);
+}
+
+.list-btn-icon:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.list-btn-icon.active {
+  color: var(--color-green);
+  border-color: var(--color-green);
+  background-color: rgba(63, 81, 69, 0.05);
+}
+
+.list-btn-icon.editing-active {
+  color: var(--color-green);
+  border-color: var(--color-green);
+  background-color: rgba(63, 81, 69, 0.05);
+}
+

@@ -724,6 +724,46 @@ router.patch('/:id/payment', async (req, res) => {
   }
 });
 
+// 6.2. Update a booking progress status
+router.patch('/:id/progress', async (req, res) => {
+  const { progress_status } = req.body;
+
+  if (!progress_status || typeof progress_status !== 'string') {
+    return res.status(400).json({ error: '進捗状況は文字列で指定してください。' });
+  }
+
+  const validStatuses = ['新規です♪', 'チェック済み！', '返信済み！', '遅刻中＞＜'];
+  if (!validStatuses.includes(progress_status)) {
+    return res.status(400).json({ error: '無効な進捗状況です。' });
+  }
+
+  try {
+    const db = getDb();
+    
+    // Check if booking exists
+    const checkResult = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '予約情報が見つかりません。' });
+    }
+
+    await db.query(
+      `UPDATE bookings SET progress_status = $1 WHERE id = $2`,
+      [progress_status, req.params.id]
+    );
+    
+    // スプレッドシート（GAS）へ同期
+    await syncAllBookingsToSpreadsheet().catch(err => 
+      console.error('Failed to trigger spreadsheet sync on progress update:', err)
+    );
+    
+    const result = await db.query(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Progress update error:', error);
+    res.status(500).json({ error: '進捗状況の更新に失敗しました。' });
+  }
+});
+
 // 6.5. Update a booking completely (Visitor self-service change)
 router.put('/:id', async (req, res) => {
   const booking: Booking = req.body;

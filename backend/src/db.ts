@@ -198,6 +198,7 @@ async function initSqlite() {
           car_model TEXT,
           car_number TEXT,
           notes TEXT,
+          progress_status TEXT DEFAULT '新規です♪',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -218,6 +219,7 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN car_maker TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN car_model TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN car_number TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN progress_status TEXT DEFAULT '新規です♪'`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -337,6 +339,7 @@ async function verifyPostgresSchema() {
         car_model VARCHAR(255),
         car_number VARCHAR(255),
         notes TEXT,
+        progress_status VARCHAR(50) DEFAULT '新規です♪',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -385,6 +388,9 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS car_number VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS progress_status VARCHAR(50) DEFAULT '新規です♪'
     `);
 
     await client.query(`
