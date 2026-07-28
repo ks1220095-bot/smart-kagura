@@ -74,10 +74,35 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
   const formatImperialDate = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const reiwaYear = year - 2018;
-    const reiwaStr = reiwaYear === 1 ? '元' : String(reiwaYear);
-    return `令和${reiwaStr}年 ${date.getMonth() + 1}月 ${date.getDate()}日`;
+    if (isNaN(date.getTime())) return dateStr;
+
+    const y = date.getFullYear();
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    const ymd = y * 10000 + m * 100 + d;
+
+    if (ymd >= 20190501) {
+      const wYear = y - 2019 + 1;
+      const yearStr = wYear === 1 ? '元' : String(wYear);
+      return `令和${yearStr}年${m}月${d}日`;
+    } else if (ymd >= 19890108) {
+      const wYear = y - 1989 + 1;
+      const yearStr = wYear === 1 ? '元' : String(wYear);
+      return `平成${yearStr}年${m}月${d}日`;
+    } else if (ymd >= 19261225) {
+      const wYear = y - 1926 + 1;
+      const yearStr = wYear === 1 ? '元' : String(wYear);
+      return `昭和${yearStr}年${m}月${d}日`;
+    } else if (ymd >= 19120730) {
+      const wYear = y - 1912 + 1;
+      const yearStr = wYear === 1 ? '元' : String(wYear);
+      return `大正${yearStr}年${m}月${d}日`;
+    } else if (ymd >= 18680125) {
+      const wYear = y - 1868 + 1;
+      const yearStr = wYear === 1 ? '元' : String(wYear);
+      return `明治${yearStr}年${m}月${d}日`;
+    }
+    return `${y}年${m}月${d}日`;
   };
 
   const getLongevityTitle = (b: Booking) => {
@@ -209,7 +234,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                   <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana}</span>
                   <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name}</strong>
                   <span style={{ fontSize: '0.7rem', color: '#777' }}>
-                    生年月日: {booking.child_birthday} {booking.child_birthday && formatAgeSuffix(booking.child_birthday, booking.booking_date)}
+                    生年月日: {booking.child_birthday ? formatImperialDate(booking.child_birthday) : ''} {booking.child_birthday && formatAgeSuffix(booking.child_birthday, booking.booking_date)}
                   </span>
                 </div>
 
@@ -219,7 +244,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                     <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana2}</span>
                     <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name2}</strong>
                     <span style={{ fontSize: '0.7rem', color: '#777' }}>
-                      生年月日: {booking.child_birthday2} {booking.child_birthday2 && formatAgeSuffix(booking.child_birthday2, booking.booking_date)}
+                      生年月日: {booking.child_birthday2 ? formatImperialDate(booking.child_birthday2) : ''} {booking.child_birthday2 && formatAgeSuffix(booking.child_birthday2, booking.booking_date)}
                     </span>
                   </div>
                 )}
@@ -243,10 +268,16 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
               </div>
             )}
 
-            {/* 厄年のお祓い個人用 metadata (ハイライト表示) */}
-            {isIndiv && booking.prayer1 === '厄年のお祓い' && (() => {
+            {/* 個人祈祷用（厄年、寿祝い、十三参り、成人祝等）の生年月日・年齢ハイライト表示 */}
+            {isIndiv && (booking.prayer1 === '厄年のお祓い' || booking.prayer1 === '寿祝い' || booking.prayer1 === '十三参り' || booking.prayer1 === '成人祝い' || booking.prayer1 === '十三詣り') && (() => {
               const personalInfo = parseNotesPersonalInfo(booking.notes || '');
               if (!personalInfo) return null;
+              
+              const warekiBirthday = formatImperialDate(personalInfo.birthday);
+              const fullAge = getFullAge(personalInfo.birthday, booking.booking_date);
+              const kazoeAge = getKazoeAge(personalInfo.birthday, booking.booking_date);
+              const ageText = `満${fullAge}歳 / 数え${kazoeAge}歳`;
+
               return (
                 <div style={{ 
                   marginTop: '0.3rem', 
@@ -257,15 +288,16 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                   fontSize: '0.8rem', 
                   lineHeight: '1.35' 
                 }}>
-                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>ご祈祷対象者 厄年情報</span>
+                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>御祈祷対象者 生年月日・年齢情報</span>
                   <strong style={{ fontSize: '1.05rem', display: 'block', margin: '0.1rem 0' }}>{booking.name}</strong>
-                  <span style={{ fontSize: '0.7rem', color: '#555', display: 'block' }}>
-                    生年月日: {personalInfo.birthday}
-                  </span>
+                  <div style={{ fontSize: '0.75rem', color: '#333' }}>
+                    <strong>生年月日 (和暦):</strong> {warekiBirthday}<br />
+                    <strong>年齢:</strong> <strong style={{ color: '#d80100' }}>{ageText}</strong>
+                  </div>
                   {personalInfo.details && (
-                    <span style={{ fontSize: '0.75rem', color: '#d80100', fontWeight: 'bold', display: 'block', marginTop: '0.15rem' }}>
-                      区分・年齢: {personalInfo.details}
-                    </span>
+                    <div style={{ fontSize: '0.72rem', color: '#777', marginTop: '0.15rem', borderTop: '1px dashed rgba(0,0,0,0.05)', paddingTop: '0.15rem' }}>
+                      ※登録区分: {personalInfo.details}
+                    </div>
                   )}
                 </div>
               );
