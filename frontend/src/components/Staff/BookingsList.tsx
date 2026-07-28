@@ -68,6 +68,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [editingHatsuhoryoId, setEditingHatsuhoryoId] = useState<number | null>(null);
   const [editingHatsuhoryoVal, setEditingHatsuhoryoVal] = useState<number>(0);
   const [editingProgressId, setEditingProgressId] = useState<number | null>(null);
+  const [appendNoteText, setAppendNoteText] = useState<string>('');
 
   // Filter logic
   const filteredBookings = bookings.filter(b => {
@@ -204,6 +205,23 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     } catch (error: any) {
       alert(error.message || '更新に失敗しました。');
     }
+  };
+
+  const handleAppendNote = () => {
+    if (!appendNoteText.trim()) return;
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const date = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const stamp = `[${month}/${date} ${hours}:${minutes}]`;
+    
+    const newNotes = customNotes.trim() 
+      ? `${customNotes.trim()}\n${stamp} ${appendNoteText.trim()}`
+      : `${stamp} ${appendNoteText.trim()}`;
+      
+    setCustomNotes(newNotes);
+    setAppendNoteText('');
   };
 
   // Delete booking - open confirmation modal
@@ -1012,8 +1030,48 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               </div>
             )}
 
+            <div className="form-group" style={{ marginTop: '0.75rem', padding: '0.6rem', backgroundColor: '#fafafa', border: '1px solid #e5e5e5', borderRadius: '4px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--color-urushi)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>✍️ 既存の備考・情報に新しいメモを追記する</label>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="追記したいメモを入力..."
+                  value={appendNoteText}
+                  onChange={(e) => setAppendNoteText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAppendNote();
+                    }
+                  }}
+                  style={{ flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.8rem', border: '1px solid var(--color-gold)', margin: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAppendNote}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    fontSize: '0.75rem',
+                    backgroundColor: 'var(--color-gold)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  末尾に追記
+                </button>
+              </div>
+              <span style={{ fontSize: '0.65rem', color: '#888', marginTop: '0.2rem', display: 'block', lineHeight: '1.25' }}>
+                ※「末尾に追記」を押すと、現在の日時スタンプ `[月/日 時:分]` 付きで、自動的に改行して備考欄の末尾に安全に追記されます。既存の情報（生年月日や車種など）は上部に保持されます。
+              </span>
+            </div>
+
             <div className="form-group" style={{ marginTop: '0.75rem' }}>
-              <label>管理者用備考（メモ・コメント）</label>
+              <label>管理者用備考（メモ・コメント全体）</label>
               <textarea
                 className="form-control"
                 value={customNotes}
