@@ -1089,7 +1089,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -1099,8 +1099,19 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               >
                 キャンセル
               </button>
+
+              {/* 備考・支払情報のみを現在の支払ステータス維持で保存するボタン */}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderColor: 'var(--color-gold)', color: 'var(--color-gold)' }}
+                onClick={() => handleUpdatePayment(selectedBooking.payment_status)}
+                disabled={savingPayment}
+              >
+                {savingPayment ? '保存中...' : `備考・初穂料のみ保存 (${selectedBooking.payment_status === 'paid' ? '支払済のまま' : '未払いのまま'})`}
+              </button>
               
-              {selectedBooking.payment_status === 'paid' && (
+              {selectedBooking.payment_status === 'paid' ? (
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -1108,19 +1119,19 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                   onClick={() => handleUpdatePayment('unpaid')}
                   disabled={savingPayment}
                 >
-                  未払いに戻す
+                  未払いに戻して保存
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  onClick={() => handleUpdatePayment('paid')}
+                  disabled={savingPayment}
+                >
+                  支払済にして保存
                 </button>
               )}
-
-              <button
-                type="button"
-                className="btn btn-primary"
-                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => handleUpdatePayment('paid')}
-                disabled={savingPayment}
-              >
-                {savingPayment ? '保存中...' : '支払済にする'}
-              </button>
             </div>
           </div>
         </div>
