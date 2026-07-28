@@ -746,9 +746,25 @@ router.patch('/:id/progress', async (req, res) => {
       return res.status(404).json({ error: '予約情報が見つかりません。' });
     }
 
+    const getJstDateTimeString = () => {
+      const now = new Date();
+      const jstOffset = 9 * 60; // JST is UTC+9
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const jstTime = new Date(utc + (jstOffset * 60000));
+      
+      const year = jstTime.getFullYear();
+      const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+      const date = String(jstTime.getDate()).padStart(2, '0');
+      const hours = String(jstTime.getHours()).padStart(2, '0');
+      const minutes = String(jstTime.getMinutes()).padStart(2, '0');
+      return `${year}/${month}/${date} ${hours}:${minutes}`;
+    };
+
+    const updatedTime = getJstDateTimeString();
+
     await db.query(
-      `UPDATE bookings SET progress_status = $1 WHERE id = $2`,
-      [progress_status, req.params.id]
+      `UPDATE bookings SET progress_status = $1, progress_status_updated_at = $2 WHERE id = $3`,
+      [progress_status, updatedTime, req.params.id]
     );
     
     // スプレッドシート（GAS）へ同期

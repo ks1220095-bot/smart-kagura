@@ -795,51 +795,58 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           <option value="遅刻中＞＜">遅刻中＞＜</option>
                         </select>
                       ) : (
-                        <div
-                          onClick={() => {
-                            if (!isCancelled) {
-                              setEditingProgressId(b.id!);
-                            }
-                          }}
-                          style={(() => {
-                            const status = b.progress_status || '新規です♪';
-                            let bg = '#e0f7fa';
-                            let text = '#006064';
-                            let border = '#b2ebf2';
-                            
-                            if (status === 'チェック済み！') {
-                              bg = '#e8f5e9';
-                              text = '#1b5e20';
-                              border = '#c8e6c9';
-                            } else if (status === '返信済み！') {
-                              bg = '#f3e5f5';
-                              text = '#4a148c';
-                              border = '#e1bee7';
-                            } else if (status === '遅刻中＞＜') {
-                              bg = '#ffebee';
-                              text = '#b71c1c';
-                              border = '#ffcdd2';
-                            }
-                            
-                            return {
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.2rem',
-                              padding: '0.2rem 0.5rem',
-                              borderRadius: '20px',
-                              fontSize: '0.72rem',
-                              fontWeight: 'bold',
-                              backgroundColor: bg,
-                              color: text,
-                              border: `1px solid ${border}`,
-                              cursor: isCancelled ? 'not-allowed' : 'pointer',
-                              userSelect: 'none'
-                            };
-                          })()}
-                          title="クリックして進捗ステータスを変更"
-                        >
-                          <span>{b.progress_status || '新規です♪'}</span>
-                          {!isCancelled && <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>▼</span>}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <div
+                            onClick={() => {
+                              if (!isCancelled) {
+                                setEditingProgressId(b.id!);
+                              }
+                            }}
+                            style={(() => {
+                              const status = b.progress_status || '新規です♪';
+                              let bg = '#e0f7fa';
+                              let text = '#006064';
+                              let border = '#b2ebf2';
+                              
+                              if (status === 'チェック済み！') {
+                                bg = '#e8f5e9';
+                                text = '#1b5e20';
+                                border = '#c8e6c9';
+                              } else if (status === '返信済み！') {
+                                bg = '#f3e5f5';
+                                text = '#4a148c';
+                                border = '#e1bee7';
+                              } else if (status === '遅刻中＞＜') {
+                                bg = '#ffebee';
+                                text = '#b71c1c';
+                                border = '#ffcdd2';
+                              }
+                              
+                              return {
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '20px',
+                                fontSize: '0.72rem',
+                                fontWeight: 'bold',
+                                backgroundColor: bg,
+                                color: text,
+                                border: `1px solid ${border}`,
+                                cursor: isCancelled ? 'not-allowed' : 'pointer',
+                                userSelect: 'none'
+                              };
+                            })()}
+                            title="クリックして進捗ステータスを変更"
+                          >
+                            <span>{b.progress_status || '新規です♪'}</span>
+                            {!isCancelled && <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>▼</span>}
+                          </div>
+                          {b.progress_status_updated_at && (
+                            <div style={{ fontSize: '0.62rem', color: '#888', whiteSpace: 'nowrap' }} title="進捗ステータスの最終更新日時">
+                              更新: {b.progress_status_updated_at}
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>
