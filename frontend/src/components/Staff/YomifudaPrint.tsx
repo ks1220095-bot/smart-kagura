@@ -406,9 +406,22 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             paddingTop: '0.3rem' 
           }}>
             <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em', color: '#333' }}>清瀧神社社務所</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span style={{ fontSize: '0.6rem', color: '#666' }}>受付者印</span>
-              <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.45rem' }}>
+              <div style={{ 
+                fontSize: '0.62rem', 
+                color: '#444', 
+                textAlign: 'right', 
+                lineHeight: '1.25', 
+                borderRight: '1px dashed #d80100', 
+                paddingRight: '0.45rem'
+              }}>
+                <div><strong>願意:</strong> {booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}</div>
+                <div><strong>番号:</strong> {booking.receipt_number}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                <span style={{ fontSize: '0.6rem', color: '#666' }}>受付印</span>
+                <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
+              </div>
             </div>
           </div>
           
