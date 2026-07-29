@@ -1950,7 +1950,10 @@ async function generateDailyReport() {
           return `【行 ${p.rowNum}】 氏名: ${p.name}様 (${p.willing}) | 金額: ${p.amount.toLocaleString()}円 | 状態: ${p.status} ➡ ${p.isCounted ? '★集計に合算' : '❌除外'}`;
         }).join('\n');
         
-        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n※もし支払状況が「支払済」以外の行が「★集計に合算」になっている場合は、プログラムの上書き・再デプロイがまだ未完了です。`);
+        // 実際のヘッダー列を取得して表示
+        const headersText = data.debugHeaders ? data.debugHeaders.join(', ') : '列なし';
+        
+        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n台帳の実際の列名（ヘッダー）一覧:\n[ ${headersText} ]\n\n※「列なし」と表示されている場合は、プログラムが探している列名（氏名/会社名、願意、社務状態）がスプレッドシートの列名と一致していません。`);
       }
     } else {
       throw new Error(data.message);
