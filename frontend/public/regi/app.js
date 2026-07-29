@@ -1943,16 +1943,17 @@ async function generateDailyReport() {
       DOM.btnPrintReport.disabled = false;
       showToast('日次データをスプレッドシートへ同期しました。', 'success');
       
-      // デバッグ内訳をポップアップで表示
+      // デバッグ内訳をポップアップで表示 (行全体のデータを出力)
       if (data.debugPrayers && data.debugPrayers.length > 0) {
         console.log("ご祈祷集計デバッグ内訳:", data.debugPrayers);
         const detailsText = data.debugPrayers.map(p => {
-          return `【行 ${p.rowNum}】 氏名: ${p.name}様 (${p.willing}) | 金額: ${p.amount.toLocaleString()}円 | 状態: ${p.status} ➡ ${p.isCounted ? '★集計に合算' : '❌除外'}`;
-        }).join('\n');
+          const rowDataStr = p.rowData ? p.rowData.map((val, idx) => `[${idx}]: "${val}"`).join(', ') : 'なし';
+          return `【行 ${p.rowNum}】 氏名: ${p.name}様 (${p.willing}) | 金額: ${p.amount.toLocaleString()}円 | 状態: ${p.status} ➡ ${p.isCounted ? '★合算' : '❌除外'}\n   全データ: ${rowDataStr}`;
+        }).join('\n\n');
         
-        const headersText = data.debugHeaders ? data.debugHeaders.join(', ') : '列なし';
+        const headersText = data.debugHeaders ? data.debugHeaders.map((h, idx) => `[${idx}]: ${h}`).join(', ') : '列なし';
         
-        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n台帳の実際の列名（ヘッダー）一覧:\n[ ${headersText} ]\n\n※このポップアップが出る場合、デバッグポップアップ付きの最新フロントエンドが動いています。`);
+        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n台帳の実際の列名（ヘッダー）一覧:\n${headersText}`);
       }
     } else {
       throw new Error(data.message);
