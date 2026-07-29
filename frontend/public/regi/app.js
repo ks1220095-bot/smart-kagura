@@ -5,7 +5,7 @@
 // ==========================================
 // 設定値
 // ==========================================
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbysVaVwtFM76eNVlU-mxAzy4-CMSCW1xK7w1cOx8wtk3Yqp34DNcmi50QkyXkCgml8y/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbynJ56-TXXNcCEavxyY4eC2M6IkQsfs174Q5YRH54FPp77uhg0R4_XUe87i5Nt9KOLH/exec';
 
 // ==========================================
 // ローカルモックデータ (ふりがな初期設定あり)
@@ -1943,18 +1943,6 @@ async function generateDailyReport() {
       DOM.btnPrintReport.disabled = false;
       showToast('日次データをスプレッドシートへ同期しました。', 'success');
       
-      // デバッグ内訳をポップアップで表示 (行全体のデータを出力)
-      if (data.debugPrayers && data.debugPrayers.length > 0) {
-        console.log("ご祈祷集計デバッグ内訳:", data.debugPrayers);
-        const detailsText = data.debugPrayers.map(p => {
-          const rowDataStr = p.rowData ? p.rowData.map((val, idx) => `[${idx}]: "${val}"`).join(', ') : 'なし';
-          return `【行 ${p.rowNum}】 氏名: ${p.name}様 (${p.willing}) | 金額: ${p.amount.toLocaleString()}円 | 状態: ${p.status} ➡ ${p.isCounted ? '★合算' : '❌除外'}\n   全データ: ${rowDataStr}`;
-        }).join('\n\n');
-        
-        const headersText = data.debugHeaders ? data.debugHeaders.map((h, idx) => `[${idx}]: ${h}`).join(', ') : '列なし';
-        
-        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n台帳の実際の列名（ヘッダー）一覧:\n${headersText}`);
-      }
     } else {
       throw new Error(data.message);
     }
