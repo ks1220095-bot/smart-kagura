@@ -1943,17 +1943,9 @@ async function generateDailyReport() {
       DOM.btnPrintReport.disabled = false;
       showToast('日次データをスプレッドシートへ同期しました。', 'success');
       
-      // ご祈祷集計デバッグ内訳を詳細にアラートで出力し、ユーザーが原因行を自己特定できるようにする
+      // デバッグ内訳をコンソールログのみに残す
       if (data.debugPrayers && data.debugPrayers.length > 0) {
         console.log("ご祈祷集計デバッグ内訳:", data.debugPrayers);
-        const detailsText = data.debugPrayers.map(p => {
-          return `【行 ${p.rowNum}】 氏名: ${p.name}様 (${p.willing}) | 金額: ${p.amount.toLocaleString()}円 | 状態: ${p.status} ➡ ${p.isCounted ? '★集計に合算' : '❌除外'}`;
-        }).join('\n');
-        
-        // 実際のヘッダー列を取得して表示
-        const headersText = data.debugHeaders ? data.debugHeaders.join(', ') : '列なし';
-        
-        alert(`本日（${state.selectedDate}）のご祈祷データ内訳（デバッグ用）:\n\n${detailsText}\n\n台帳の実際の列名（ヘッダー）一覧:\n[ ${headersText} ]\n\n※「列なし」と表示されている場合は、プログラムが探している列名（氏名/会社名、願意、社務状態）がスプレッドシートの列名と一致していません。`);
       }
     } else {
       throw new Error(data.message);
