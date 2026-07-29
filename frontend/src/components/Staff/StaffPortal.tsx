@@ -205,6 +205,8 @@ export const StaffPortal: React.FC = () => {
   const [manualBirthYear2, setManualBirthYear2] = useState('');
   const [manualBirthMonth2, setManualBirthMonth2] = useState('');
   const [manualBirthDay2, setManualBirthDay2] = useState('');
+  const [manualChildGender, setManualChildGender] = useState<'男' | '女' | ''>('');
+  const [manualChildGender2, setManualChildGender2] = useState<'男' | '女' | ''>('');
 
   const [manualUserBirthYear, setManualUserBirthYear] = useState('');
   const [manualUserBirthMonth, setManualUserBirthMonth] = useState('');
@@ -283,11 +285,13 @@ export const StaffPortal: React.FC = () => {
       child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
         ? `${manualBirthYear}-${manualBirthMonth.padStart(2, '0')}-${manualBirthDay.padStart(2, '0')}`
         : undefined,
+      child_gender: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣') ? manualChildGender || undefined : undefined,
       child_name2: manualType === 'individual' && manualIsTwin ? manualChildName2 || undefined : undefined,
       child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
       child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
         ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
         : undefined,
+      child_gender2: manualType === 'individual' && manualIsTwin ? manualChildGender2 || undefined : undefined,
       is_twin: manualIsTwin ? 1 : 0,
       yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
       father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
@@ -329,6 +333,8 @@ export const StaffPortal: React.FC = () => {
     setManualBirthYear2('');
     setManualBirthMonth2('');
     setManualBirthDay2('');
+    setManualChildGender('');
+    setManualChildGender2('');
     setManualCarMaker('');
     setManualCarModel('');
     setManualCarNumber('');
@@ -386,6 +392,8 @@ export const StaffPortal: React.FC = () => {
     setManualBirthYear2('');
     setManualBirthMonth2('');
     setManualBirthDay2('');
+    setManualChildGender('');
+    setManualChildGender2('');
 
     // Family / Zodiac / Family / Car fields
     setManualUserBirthYear('');
@@ -584,9 +592,11 @@ export const StaffPortal: React.FC = () => {
         child_name: item.child_name,
         child_kana: item.child_kana,
         child_birthday: item.child_birthday,
+        child_gender: item.child_gender,
         child_name2: item.child_name2,
         child_kana2: item.child_kana2,
         child_birthday2: item.child_birthday2,
+        child_gender2: item.child_gender2,
         yakudoshi_type: item.yakudoshi_type,
         father_name: item.father_name,
         father_kana: item.father_kana,
@@ -676,11 +686,13 @@ export const StaffPortal: React.FC = () => {
         child_birthday: manualType === 'individual' && manualBirthYear && manualBirthMonth && manualBirthDay
           ? `${manualBirthYear}-${manualBirthMonth.padStart(2, '0')}-${manualBirthDay.padStart(2, '0')}`
           : undefined,
+        child_gender: manualType === 'individual' ? manualChildGender || undefined : undefined,
         child_name2: manualType === 'individual' && manualIsTwin ? manualChildName2 || undefined : undefined,
         child_kana2: manualType === 'individual' && manualIsTwin ? manualChildKana2 || undefined : undefined,
         child_birthday2: manualType === 'individual' && manualIsTwin && manualBirthYear2 && manualBirthMonth2 && manualBirthDay2
           ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
           : undefined,
+        child_gender2: manualType === 'individual' && manualIsTwin ? manualChildGender2 || undefined : undefined,
         yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
         father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
         father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherKana || undefined : undefined,
@@ -1361,6 +1373,34 @@ export const StaffPortal: React.FC = () => {
                               </div>
                             </div>
 
+                            <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
+                              <label>お子様の性別 <span className="required">*</span></label>
+                              <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                                  <input 
+                                    type="radio" 
+                                    name="manual_child_gender" 
+                                    value="男" 
+                                    checked={manualChildGender === '男'} 
+                                    onChange={() => setManualChildGender('男')} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <span>男の子</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                                  <input 
+                                    type="radio" 
+                                    name="manual_child_gender" 
+                                    value="女" 
+                                    checked={manualChildGender === '女'} 
+                                    onChange={() => setManualChildGender('女')} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <span>女の子</span>
+                                </label>
+                              </div>
+                            </div>
+
                             <div className="form-group" style={{ margin: 0 }}>
                               <label>生年月日 <span className="required">*</span></label>
                               <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1399,6 +1439,34 @@ export const StaffPortal: React.FC = () => {
                                 <div className="form-group" style={{ margin: 0 }}>
                                   <label>お子様フリガナ <span className="required">*</span></label>
                                   <input type="text" className="form-control" placeholder="例：セイリュウ ジロウ" value={manualChildKana2} onChange={(e) => setManualChildKana2(e.target.value)} required />
+                                </div>
+                              </div>
+
+                              <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
+                                <label>お子様の性別（二人目） <span className="required">*</span></label>
+                                <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                                    <input 
+                                      type="radio" 
+                                      name="manual_child_gender2" 
+                                      value="男" 
+                                      checked={manualChildGender2 === '男'} 
+                                      onChange={() => setManualChildGender2('男')} 
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                    <span>男の子</span>
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                                    <input 
+                                      type="radio" 
+                                      name="manual_child_gender2" 
+                                      value="女" 
+                                      checked={manualChildGender2 === '女'} 
+                                      onChange={() => setManualChildGender2('女')} 
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                    <span>女の子</span>
+                                  </label>
                                 </div>
                               </div>
 

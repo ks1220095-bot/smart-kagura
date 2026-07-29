@@ -141,6 +141,8 @@ interface PrayerItem {
   child_name2?: string;
   child_kana2?: string;
   child_birthday2?: string;
+  child_gender?: '男' | '女';
+  child_gender2?: '男' | '女';
   car_maker?: string;
   car_model?: string;
   car_number?: string;
@@ -175,6 +177,7 @@ export const VisitorPortal: React.FC = () => {
   const [childName2, setChildName2] = useState(savedDraft?.childName2 ?? '');
   const [childKana2, setChildKana2] = useState(savedDraft?.childKana2 ?? '');
   const [childBirthday2, setChildBirthday2] = useState(savedDraft?.childBirthday2 ?? '');
+  const [childGender2, setChildGender2] = useState<'男' | '女' | ''>(savedDraft?.childGender2 ?? '');
   const [notes, setNotes] = useState(savedDraft?.notes ?? '');
 
   // Child birthday dropdown segments
@@ -203,6 +206,7 @@ export const VisitorPortal: React.FC = () => {
     setChildName('');
     setChildKana('');
     setChildBirthday('');
+    setChildGender('');
     setKotobukiType('');
     setKotobukiOtherText('');
     // Auto-fill typical price
@@ -236,6 +240,7 @@ export const VisitorPortal: React.FC = () => {
   const [childName, setChildName] = useState(savedDraft?.childName ?? '');
   const [childKana, setChildKana] = useState(savedDraft?.childKana ?? '');
   const [childBirthday, setChildBirthday] = useState(savedDraft?.childBirthday ?? '');
+  const [childGender, setChildGender] = useState<'男' | '女' | ''>(savedDraft?.childGender ?? '');
   const [kotobukiType, setKotobukiType] = useState(savedDraft?.kotobukiType ?? '');
   const [kotobukiOtherText, setKotobukiOtherText] = useState(savedDraft?.kotobukiOtherText ?? '');
 
@@ -348,6 +353,7 @@ export const VisitorPortal: React.FC = () => {
       childName2,
       childKana2,
       childBirthday2,
+      childGender2,
       notes,
       birthYear,
       birthMonth,
@@ -371,6 +377,7 @@ export const VisitorPortal: React.FC = () => {
       childName,
       childKana,
       childBirthday,
+      childGender,
       kotobukiType,
       kotobukiOtherText,
       companyName,
@@ -486,6 +493,8 @@ export const VisitorPortal: React.FC = () => {
     anzanHusbandName,
     anzanHusbandKana,
     anzanSkipHusband,
+    childGender,
+    childGender2,
     anzanWifeName,
     anzanWifeKana,
     anzanSkipWife,
@@ -617,7 +626,7 @@ export const VisitorPortal: React.FC = () => {
       birthYear, birthMonth, birthDay,
       birthYear2, birthMonth2, birthDay2,
       userBirthYear, userBirthMonth, userBirthDay,
-      activeMainTab, childName, childKana, childBirthday,
+      activeMainTab, childName, childKana, childBirthday, childGender, childGender2,
       yakudoshiType, fatherName, fatherKana, motherName, motherKana,
       kotobukiType, kotobukiOtherText,
       carMaker, carModel, carNumber,
@@ -726,6 +735,8 @@ export const VisitorPortal: React.FC = () => {
         if (state.anzanHusbandName) setAnzanHusbandName(state.anzanHusbandName);
         if (state.anzanHusbandKana) setAnzanHusbandKana(state.anzanHusbandKana);
         if (state.anzanSkipHusband !== undefined) setAnzanSkipHusband(state.anzanSkipHusband);
+        if (state.childGender) setChildGender(state.childGender);
+        if (state.childGender2) setChildGender2(state.childGender2);
         if (state.anzanWifeName) setAnzanWifeName(state.anzanWifeName);
         if (state.anzanWifeKana) setAnzanWifeKana(state.anzanWifeKana);
         if (state.anzanSkipWife !== undefined) setAnzanSkipWife(state.anzanSkipWife);
@@ -958,13 +969,13 @@ export const VisitorPortal: React.FC = () => {
     if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') {
       const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
       if (isCurrentTwin) {
-        if (!childName.trim() || !childKana.trim() || !childBirthday || !childName2.trim() || !childKana2.trim() || !childBirthday2) {
-          alert('双子のお子様お二人分のお名前、フリガナ、生年月日はすべて必須です。');
+        if (!childName.trim() || !childKana.trim() || !childBirthday || !childGender || !childName2.trim() || !childKana2.trim() || !childBirthday2 || !childGender2) {
+          alert('双子のお子様お二人分のお名前、フリガナ、性別、生年月日はすべて必須です。');
           return;
         }
       } else {
-        if (!childName.trim() || !childKana.trim() || !childBirthday) {
-          alert('お子様のお名前、フリガナ、生年月日は必須です。');
+        if (!childName.trim() || !childKana.trim() || !childBirthday || !childGender) {
+          alert('お子様のお名前、フリガナ、性別、生年月日は必須です。');
           return;
         }
       }
@@ -1017,6 +1028,7 @@ export const VisitorPortal: React.FC = () => {
       child_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childName : undefined,
       child_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childKana : undefined,
       child_birthday: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childBirthday : undefined,
+      child_gender: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? ((childGender === '男' || childGender === '女') ? childGender : undefined) : undefined,
       father_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
       father_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
       mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
@@ -1027,6 +1039,7 @@ export const VisitorPortal: React.FC = () => {
       child_name2: isCurrentTwin ? childName2 : undefined,
       child_kana2: isCurrentTwin ? childKana2 : undefined,
       child_birthday2: isCurrentTwin ? childBirthday2 : undefined,
+      child_gender2: isCurrentTwin ? ((childGender2 === '男' || childGender2 === '女') ? childGender2 : undefined) : undefined,
       car_maker: prayer1 === '車祓（お車のお祓い）' ? carMaker : undefined,
       car_model: prayer1 === '車祓（お車のお祓い）' ? carModel : undefined,
       car_number: prayer1 === '車祓（お車のお祓い）' ? carNumber : undefined
@@ -1157,6 +1170,10 @@ export const VisitorPortal: React.FC = () => {
       child_name: bookingType === 'individual' ? (prayerItems[0]?.child_name || childName) : undefined,
       child_kana: bookingType === 'individual' ? (prayerItems[0]?.child_kana || childKana) : undefined,
       child_birthday: bookingType === 'individual' ? (prayerItems[0]?.child_birthday || childBirthday) : undefined,
+      child_gender: bookingType === 'individual' ? (() => {
+        const val = prayerItems[0]?.child_gender || childGender;
+        return (val === '男' || val === '女') ? val : undefined;
+      })() : undefined,
 
       kotobuki_type: bookingType === 'individual' ? (prayerItems[0]?.kotobuki_type || kotobukiType) : undefined,
       kotobuki_other_text: bookingType === 'individual' ? (prayerItems[0]?.kotobuki_other_text || kotobukiOtherText) : undefined,
@@ -1174,6 +1191,7 @@ export const VisitorPortal: React.FC = () => {
       child_name2: bookingType === 'individual' && isTwin ? childName2 : undefined,
       child_kana2: bookingType === 'individual' && isTwin ? childKana2 : undefined,
       child_birthday2: bookingType === 'individual' && isTwin ? childBirthday2 : undefined,
+      child_gender2: bookingType === 'individual' && isTwin ? ((childGender2 === '男' || childGender2 === '女') ? childGender2 : undefined) : undefined,
       notes: (() => {
         const userBday = userBirthYear && userBirthMonth && userBirthDay
           ? `【生年月日】${getEraString(Number(userBirthYear)).split(' / ')[0]} (${userBirthYear}-${userBirthMonth.padStart(2, '0')}-${userBirthDay.padStart(2, '0')})`
@@ -1203,6 +1221,7 @@ export const VisitorPortal: React.FC = () => {
           child_name: item.child_name,
           child_kana: item.child_kana,
           child_birthday: item.child_birthday,
+          child_gender: item.child_gender,
           father_name: item.father_name,
           father_kana: item.father_kana,
           mother_name: item.mother_name,
@@ -1214,6 +1233,7 @@ export const VisitorPortal: React.FC = () => {
           child_name2: item.child_name2 || undefined,
           child_kana2: item.child_kana2 || undefined,
           child_birthday2: item.child_birthday2 || undefined,
+          child_gender2: item.child_gender2 || undefined,
           notes: notes ? `${notes} (代表: ${name})` : `申込代表者: ${name} (${kana})`
         }))
       : [singlePayload];
@@ -2093,6 +2113,34 @@ export const VisitorPortal: React.FC = () => {
                         </div>
                       </div>
 
+                      <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
+                        <label>お子様の性別 <span className="required">*</span></label>
+                        <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                            <input 
+                              type="radio" 
+                              name="child_gender" 
+                              value="男" 
+                              checked={childGender === '男'} 
+                              onChange={() => setChildGender('男')} 
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            <span>男の子</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                            <input 
+                              type="radio" 
+                              name="child_gender" 
+                              value="女" 
+                              checked={childGender === '女'} 
+                              onChange={() => setChildGender('女')} 
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            <span>女の子</span>
+                          </label>
+                        </div>
+                      </div>
+
                       <div className="form-group" style={{ margin: 0 }}>
                         <label>生年月日 <span className="required">*</span></label>
                         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2136,6 +2184,34 @@ export const VisitorPortal: React.FC = () => {
                           <div className="form-group" style={{ margin: 0 }}>
                             <label>お子様フリガナ <span className="required">*</span></label>
                             <input type="text" className="form-control" placeholder="例：セイリュウ ジロウ" value={childKana2} onChange={(e) => setChildKana2(e.target.value)} />
+                          </div>
+                        </div>
+
+                        <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
+                          <label>お子様の性別（二人目） <span className="required">*</span></label>
+                          <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                              <input 
+                                type="radio" 
+                                name="child_gender2" 
+                                value="男" 
+                                checked={childGender2 === '男'} 
+                                onChange={() => setChildGender2('男')} 
+                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                              />
+                              <span>男の子</span>
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                              <input 
+                                type="radio" 
+                                name="child_gender2" 
+                                value="女" 
+                                checked={childGender2 === '女'} 
+                                onChange={() => setChildGender2('女')} 
+                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                              />
+                              <span>女の子</span>
+                            </label>
                           </div>
                         </div>
 
@@ -2945,8 +3021,14 @@ export const VisitorPortal: React.FC = () => {
                         )}
                         {item.child_name && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--color-border)', fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
-                            <div>お子様名: {item.child_name} 様 ({item.child_kana})</div>
+                            <div>お子様名: {item.child_name} 様 ({item.child_kana}){item.child_gender ? ` [${item.child_gender}]` : ''}</div>
                             <div>生年月日: {item.child_birthday}</div>
+                            {item.child_name2 && (
+                              <>
+                                <div style={{ marginTop: '0.2rem', borderTop: '1px dashed #eee', paddingTop: '0.2rem' }}>お子様名（二人目）: {item.child_name2} 様 ({item.child_kana2}){item.child_gender2 ? ` [${item.child_gender2}]` : ''}</div>
+                                <div>生年月日（二人目）: {item.child_birthday2}</div>
+                              </>
+                            )}
                             {item.father_name && <div>父親: {item.father_name} ({item.father_kana})</div>}
                             {item.mother_name && <div>母親: {item.mother_name} ({item.mother_kana})</div>}
                           </div>

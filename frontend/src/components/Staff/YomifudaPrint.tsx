@@ -230,7 +230,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 lineHeight: '1.35' 
               }}>
                 <div style={{ borderBottom: booking.child_name2 ? '1px dashed rgba(216, 1, 0, 0.1)' : 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
-                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報</span>
+                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報 {booking.child_gender ? `[${booking.child_gender}]` : ''}</span>
                   <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana}</span>
                   <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name}</strong>
                   <span style={{ fontSize: '0.7rem', color: '#777' }}>
@@ -240,7 +240,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
 
                 {booking.child_name2 && (
                   <div style={{ borderBottom: 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報（ご息女・第二子）</span>
+                    <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報（ご息女・第二子） {booking.child_gender2 ? `[${booking.child_gender2}]` : ''}</span>
                     <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana2}</span>
                     <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name2}</strong>
                     <span style={{ fontSize: '0.7rem', color: '#777' }}>

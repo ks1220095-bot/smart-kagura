@@ -824,7 +824,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     borderRadius: '3px'
                                   }}>
                                     <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                      👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana})
+                                      👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana}){b.child_gender ? ` [${b.child_gender}]` : ''}
                                     </div>
                                     {b.child_birthday && (
                                       <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
@@ -836,7 +836,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     {b.is_twin === 1 && b.child_name2 && (
                                       <div style={{ borderTop: '1px dashed rgba(197,160,89,0.2)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
                                         <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                          👶 第2子: {b.child_name2} ({b.child_kana2})
+                                          👶 第2子: {b.child_name2} ({b.child_kana2}){b.child_gender2 ? ` [${b.child_gender2}]` : ''}
                                         </div>
                                         {b.child_birthday2 && (
                                           <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>

@@ -203,6 +203,8 @@ async function initSqlite() {
           changed_at TEXT,
           changed_history TEXT,
           cancelled_at TEXT,
+          child_gender TEXT,
+          child_gender2 TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -228,6 +230,8 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN changed_at TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN changed_history TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN cancelled_at TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN child_gender TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN child_gender2 TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -352,6 +356,8 @@ async function verifyPostgresSchema() {
         changed_at VARCHAR(50),
         changed_history TEXT,
         cancelled_at VARCHAR(50),
+        child_gender VARCHAR(10),
+        child_gender2 VARCHAR(10),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -415,6 +421,12 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancelled_at VARCHAR(50)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_gender VARCHAR(10)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_gender2 VARCHAR(10)
     `);
 
     await client.query(`

@@ -80,6 +80,8 @@ export interface Booking {
   child_name2?: string;
   child_kana2?: string;
   child_birthday2?: string;
+  child_gender?: '男' | '女';
+  child_gender2?: '男' | '女';
 }
 
 export interface CalendarEvent {
