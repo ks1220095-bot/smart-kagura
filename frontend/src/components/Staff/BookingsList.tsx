@@ -55,6 +55,39 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [savingPayment, setSavingPayment] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
 
+  const [editTargetBooking, setEditTargetBooking] = useState<Booking | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<Booking>>({});
+  const [savingDetail, setSavingDetail] = useState(false);
+
+  const handleOpenEditModal = (booking: Booking) => {
+    setEditTargetBooking(booking);
+    setEditFormData({ ...booking });
+  };
+
+  const handleUpdateBookingDetail = async () => {
+    if (!editTargetBooking || !editTargetBooking.id) return;
+    setSavingDetail(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${editTargetBooking.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '予約情報の更新に失敗しました。');
+      }
+      onRefresh(); // Refresh bookings list
+      setEditTargetBooking(null);
+      alert('予約情報を正常に更新・上書き保存しました。');
+    } catch (e: any) {
+      alert(e.message || '接続に失敗しました。');
+    } finally {
+      setSavingDetail(false);
+    }
+  };
+
   // Accordion state for expanded details
   const [expandedBookingIds, setExpandedBookingIds] = useState<number[]>([]);
 
@@ -958,6 +991,17 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     📝 {b.notes}
                                   </div>
                                 )}
+
+                                {/* 予約情報編集ボタン */}
+                                <div style={{ marginTop: '0.45rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                  <button
+                                    onClick={() => handleOpenEditModal(b)}
+                                    className="btn btn-outline-gold"
+                                    style={{ fontSize: '0.72rem', padding: '0.25rem 0.5rem', backgroundColor: '#ffffff', border: '1px solid var(--color-gold)', color: 'var(--color-gold)', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold' }}
+                                  >
+                                    ✏️ 予約情報を編集・書き換える
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </>
@@ -1422,20 +1466,20 @@ export const BookingsList: React.FC<BookingsListProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {deleteTarget.is_cancelled !== 1 && (
                 <button
-                  type="button"
-                  className="btn btn-outline-gold"
-                  onClick={async () => {
-                    try {
-                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                      const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}`, { method: 'DELETE' });
-                      if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
-                      setDeleteTarget(null);
-                      onRefresh();
-                    } catch (error) {
-                      alert(error);
-                    }
-                  }}
-                  style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', padding: '0.75rem', gap: '0.15rem', cursor: 'pointer', width: '100%' }}
+                   type="button"
+                   className="btn btn-outline-gold"
+                   onClick={async () => {
+                     try {
+                       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                       const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}`, { method: 'DELETE' });
+                       if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
+                       setDeleteTarget(null);
+                       onRefresh();
+                     } catch (error) {
+                       alert(error);
+                     }
+                   }}
+                   style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', padding: '0.75rem', gap: '0.15rem', cursor: 'pointer', width: '100%' }}
                 >
                   <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--color-gold)' }}>❌ 予約のキャンセル (取消扱いとして残す)</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
@@ -1476,6 +1520,534 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
               >
                 閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 予約情報編集モーダル */}
+      {editTargetBooking && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="card washi-bg" style={{ 
+            maxWidth: '650px', 
+            width: '100%', 
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            margin: 0, 
+            padding: '1.5rem', 
+            border: '2px solid var(--color-gold)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.15)'
+          }}>
+            <h4 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-serif)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-urushi)' }}>
+              ✏️ 予約詳細情報の編集・書き換え
+            </h4>
+
+            {/* 1. 基本情報セクション */}
+            <div style={{ marginBottom: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '1rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>■ 予約基本設定</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem' }}>参拝日 (YYYY-MM-DD) <span className="required">*</span></label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={editFormData.booking_date || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, booking_date: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem' }}>参拝時間 (HH:MM) <span className="required">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="例: 09:30"
+                    value={editFormData.booking_time || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, booking_time: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem' }}>初穂料 (円) <span className="required">*</span></label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={editFormData.hatsuhoryo || 0}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, hatsuhoryo: parseInt(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem' }}>参列人数 <span className="required">*</span></label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={editFormData.attending_count || 1}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, attending_count: parseInt(e.target.value) || 1 }))}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem' }}>主願意 <span className="required">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editFormData.prayer1 || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, prayer1: e.target.value }))}
+                  />
+                </div>
+                {editFormData.booking_type === 'organization' && (
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>副願意</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.prayer2 || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, prayer2: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. 個人祈祷用の申込者情報 */}
+            {editFormData.booking_type === 'individual' ? (
+              <div style={{ marginBottom: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '1rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>■ 参拝代表者（ご予約者様情報）</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>お名前 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>フリガナ <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.kana || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, kana: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem' }}>ご住所 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.address || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, address: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem' }}>住所フリガナ <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.address_kana || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, address_kana: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>電話番号 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.phone || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>メールアドレス <span className="required">*</span></label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      value={editFormData.email || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* 2-a. お子様情報セクション（七五三・初宮等） */}
+                <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>👶 お子様・ご両親情報 (七五三・初宮など用)</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>第一子 氏名</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.child_name || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>第一子 フリガナ</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.child_kana || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_kana: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>第一子 生年月日 (YYYY-MM-DD)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="例: 2018-05-05"
+                        value={editFormData.child_birthday || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_birthday: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>第一子 性別</label>
+                      <select
+                        className="form-control"
+                        value={editFormData.child_gender || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_gender: (e.target.value || undefined) as any }))}
+                      >
+                        <option value="">-- 未選択 --</option>
+                        <option value="男">男の子</option>
+                        <option value="女">女の子</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ margin: '0.5rem 0 0 0', gridColumn: 'span 2' }}>
+                      <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={editFormData.is_twin === 1}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, is_twin: e.target.checked ? 1 : 0 }))}
+                        />
+                        <span>双子（二人目のお子様）の情報を登録する</span>
+                      </label>
+                    </div>
+
+                    {editFormData.is_twin === 1 && (
+                      <>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>第二子 氏名</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={editFormData.child_name2 || ''}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_name2: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>第二子 フリガナ</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={editFormData.child_kana2 || ''}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_kana2: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>第二子 生年月日 (YYYY-MM-DD)</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="例: 2018-05-05"
+                            value={editFormData.child_birthday2 || ''}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_birthday2: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>第二子 性別</label>
+                          <select
+                            className="form-control"
+                            value={editFormData.child_gender2 || ''}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_gender2: (e.target.value || undefined) as any }))}
+                          >
+                            <option value="">-- 未選択 --</option>
+                            <option value="男">男の子</option>
+                            <option value="女">女の子</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>父親 氏名</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.father_name || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, father_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>父親 フリガナ</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.father_kana || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, father_kana: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>母親 氏名</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.mother_name || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, mother_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>母親 フリガナ</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.mother_kana || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, mother_kana: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2-b. お車情報セクション */}
+                <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>🚗 車祓用車両情報</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>メーカー名</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.car_maker || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, car_maker: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>車種名</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.car_model || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, car_model: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                      <label style={{ fontSize: '0.75rem' }}>車両ナンバー</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.car_number || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, car_number: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2-c. 厄年・寿祝区分 */}
+                <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>✨ 厄年・長寿祝設定</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>厄年区分</label>
+                      <select
+                        className="form-control"
+                        value={editFormData.yakudoshi_type || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, yakudoshi_type: e.target.value as any }))}
+                      >
+                        <option value="">-- 無 --</option>
+                        <option value="maeyaku">前厄</option>
+                        <option value="honyaku">本厄</option>
+                        <option value="atoyaku">後厄</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>寿祝区分</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="例: 還暦、古希など"
+                        value={editFormData.kotobuki_type || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, kotobuki_type: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // 3. 団体祈祷用情報
+              <div style={{ marginBottom: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '1rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>■ 企業・団体情報</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>会社・団体名 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.company_name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, company_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>フリガナ <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.company_kana || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, company_kana: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem' }}>所在地 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.company_address || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, company_address: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem' }}>所在地フリガナ <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.company_address_kana || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, company_address_kana: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>代表者役職・氏名 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.representative_title_name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, representative_title_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>お札墨書名 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.talisman_name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, talisman_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>申込担当者名 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.staff_dept_title_name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, staff_dept_title_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>担当者電話番号 <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.staff_phone || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, staff_phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem' }}>担当者メールアドレス <span className="required">*</span></label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      value={editFormData.staff_email || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, staff_email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* 3-a. 必勝祈願・工事安全 */}
+                <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>🏆 必勝祈願・工事安全詳細</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>大会名 (必勝祈願用)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.tournament_name || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, tournament_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>大会日程</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.tournament_schedule || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, tournament_schedule: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>工事名 (工事安全祈願用)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.construction_name || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, construction_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>工期</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.construction_period || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, construction_period: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. 備考欄セクション */}
+            <div className="form-group">
+              <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>■ 備考（お車のメーカーや生年月日テキスト等のシステムデータも含まれます）</label>
+              <textarea
+                className="form-control"
+                value={editFormData.notes || ''}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                style={{ fontSize: '0.85rem' }}
+              />
+            </div>
+
+            {/* 5. フッターアクションボタン */}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setEditTargetBooking(null)}
+                disabled={savingDetail}
+                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleUpdateBookingDetail}
+                disabled={savingDetail}
+                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+              >
+                {savingDetail ? '保存中...' : '💾 変更を上書き保存する'}
               </button>
             </div>
           </div>
