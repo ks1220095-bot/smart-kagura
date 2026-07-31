@@ -364,7 +364,7 @@ router.post('/', async (req, res) => {
             const kLabel = b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type;
             text += `・長寿祝区分　　　: ${kLabel}\n`;
           }
-          if (b.prayer1 === '車のお祓い' && b.car_maker) {
+          if (b.prayer1 === '車祓（お車のお祓い）' && b.car_maker) {
             text += `・お車メーカー名　: ${b.car_maker}\n`;
             text += `・お車車種名　　　: ${b.car_model}\n`;
             text += `・お車ナンバー　　: ${b.car_number}\n`;

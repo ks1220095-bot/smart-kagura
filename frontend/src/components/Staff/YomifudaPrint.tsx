@@ -306,7 +306,10 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             {/* 車祓（お車のお祓い）用 metadata (ハイライト表示) */}
             {isIndiv && booking.prayer1 === '車祓（お車のお祓い）' && (() => {
               const carInfo = parseNotesCarInfo(booking.notes || '');
-              if (!carInfo) return null;
+              const maker = booking.car_maker || carInfo?.maker || '';
+              const model = booking.car_model || carInfo?.model || '';
+              const number = booking.car_number || carInfo?.number || '';
+              if (!maker && !model && !number) return null;
               return (
                 <div style={{ 
                   marginTop: '0.3rem', 
@@ -319,9 +322,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 }}>
                   <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お祓い車両情報</span>
                   <div style={{ marginTop: '0.2rem' }}>
-                    <strong>メーカー:</strong> {carInfo.maker}<br/>
-                    <strong>車種名:</strong> {carInfo.model}<br/>
-                    <strong>車両ナンバー:</strong> <strong style={{ fontSize: '1.1rem', color: '#d80100' }}>{carInfo.number}</strong>
+                    <strong>メーカー:</strong> {maker}<br/>
+                    <strong>車種名:</strong> {model}<br/>
+                    <strong>車両ナンバー:</strong> <strong style={{ fontSize: '1.1rem', color: '#d80100' }}>{number}</strong>
                   </div>
                 </div>
               );

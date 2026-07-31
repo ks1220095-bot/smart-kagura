@@ -1177,6 +1177,9 @@ export const VisitorPortal: React.FC = () => {
 
       kotobuki_type: bookingType === 'individual' ? (prayerItems[0]?.kotobuki_type || kotobukiType) : undefined,
       kotobuki_other_text: bookingType === 'individual' ? (prayerItems[0]?.kotobuki_other_text || kotobukiOtherText) : undefined,
+      car_maker: bookingType === 'individual' ? (prayerItems[0]?.car_maker || carMaker) : undefined,
+      car_model: bookingType === 'individual' ? (prayerItems[0]?.car_model || carModel) : undefined,
+      car_number: bookingType === 'individual' ? (prayerItems[0]?.car_number || carNumber) : undefined,
 
       tournament_name: bookingType === 'organization' && (p1 === '必勝祈願' || p2 === '必勝祈願') ? tournamentName : undefined,
       tournament_schedule: bookingType === 'organization' && (p1 === '必勝祈願' || p2 === '必勝祈願') ? tournamentSchedule : undefined,
@@ -1196,8 +1199,23 @@ export const VisitorPortal: React.FC = () => {
         const userBday = userBirthYear && userBirthMonth && userBirthDay
           ? `【生年月日】${getEraString(Number(userBirthYear)).split(' / ')[0]} (${userBirthYear}-${userBirthMonth.padStart(2, '0')}-${userBirthDay.padStart(2, '0')})`
           : '';
-        if (notes && userBday) return `${notes}\n${userBday}`;
-        return notes || userBday || undefined;
+        const currentPrayer1 = bookingType === 'individual' ? (prayerItems[0]?.prayer1 || prayer1) : p1;
+        const currentCarMaker = bookingType === 'individual' ? (prayerItems[0]?.car_maker || carMaker) : undefined;
+        const currentCarModel = bookingType === 'individual' ? (prayerItems[0]?.car_model || carModel) : undefined;
+        const currentCarNumber = bookingType === 'individual' ? (prayerItems[0]?.car_number || carNumber) : undefined;
+
+        const carInfoText = currentPrayer1 === '車祓（お車のお祓い）' && currentCarMaker && currentCarModel && currentCarNumber
+          ? `【お車】メーカー: ${currentCarMaker} / 車種: ${currentCarModel} / ナンバー: ${currentCarNumber}`
+          : '';
+
+        let resolvedNotes = notes || '';
+        if (userBday) {
+          resolvedNotes = resolvedNotes ? `${resolvedNotes}\n${userBday}` : userBday;
+        }
+        if (carInfoText) {
+          resolvedNotes = resolvedNotes ? `${resolvedNotes}\n${carInfoText}` : carInfoText;
+        }
+        return resolvedNotes || undefined;
       })()
     };
 
@@ -1234,7 +1252,20 @@ export const VisitorPortal: React.FC = () => {
           child_kana2: item.child_kana2 || undefined,
           child_birthday2: item.child_birthday2 || undefined,
           child_gender2: item.child_gender2 || undefined,
-          notes: notes ? `${notes} (代表: ${name})` : `申込代表者: ${name} (${kana})`
+          car_maker: item.car_maker || undefined,
+          car_model: item.car_model || undefined,
+          car_number: item.car_number || undefined,
+          notes: (() => {
+            const carInfoText = item.prayer1 === '車祓（お車のお祓い）' && item.car_maker && item.car_model && item.car_number
+              ? `【お車】メーカー: ${item.car_maker} / 車種: ${item.car_model} / ナンバー: ${item.car_number}`
+              : '';
+            
+            let baseNotes = notes ? `${notes} (代表: ${name})` : `申込代表者: ${name} (${kana})`;
+            if (carInfoText) {
+              baseNotes += `\n${carInfoText}`;
+            }
+            return baseNotes;
+          })()
         }))
       : [singlePayload];
 

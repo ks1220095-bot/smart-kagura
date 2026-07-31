@@ -307,8 +307,18 @@ export const StaffPortal: React.FC = () => {
         const userBday = manualUserBirthYear && manualUserBirthMonth && manualUserBirthDay
           ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
           : '';
-        if (manualNotes && userBday) return `${manualNotes}\n${userBday}`;
-        return manualNotes || userBday || undefined;
+        const carInfoText = manualPrayer1 === '車祓（お車のお祓い）' && manualCarMaker && manualCarModel && manualCarNumber
+          ? `【お車】メーカー: ${manualCarMaker} / 車種: ${manualCarModel} / ナンバー: ${manualCarNumber}`
+          : '';
+
+        let resolvedNotes = manualNotes || '';
+        if (userBday) {
+          resolvedNotes = resolvedNotes ? `${resolvedNotes}\n${userBday}` : userBday;
+        }
+        if (carInfoText) {
+          resolvedNotes = resolvedNotes ? `${resolvedNotes}\n${carInfoText}` : carInfoText;
+        }
+        return resolvedNotes || undefined;
       })()
     };
 
@@ -585,7 +595,7 @@ export const StaffPortal: React.FC = () => {
         notes: (() => {
           const coreNotes = item.notes ? `${item.notes} (代表: ${manualName || manualCompanyName || '手動登録'})` : `申込代表者: ${manualName || manualCompanyName || '手動登録'}`;
           const carDetails = item.car_maker && item.car_model && item.car_number
-            ? `【車輌情報】メーカー: ${item.car_maker} / 車種: ${item.car_model} / ナンバー: ${item.car_number}`
+            ? `【お車】メーカー: ${item.car_maker} / 車種: ${item.car_model} / ナンバー: ${item.car_number}`
             : '';
           return [coreNotes, carDetails].filter(Boolean).join('\n');
         })(),
@@ -598,6 +608,9 @@ export const StaffPortal: React.FC = () => {
         child_birthday2: item.child_birthday2,
         child_gender2: item.child_gender2,
         yakudoshi_type: item.yakudoshi_type,
+        car_maker: item.car_maker,
+        car_model: item.car_model,
+        car_number: item.car_number,
         father_name: item.father_name,
         father_kana: item.father_kana,
         mother_name: item.mother_name,
@@ -676,7 +689,7 @@ export const StaffPortal: React.FC = () => {
             ? `【生年月日】${getEraString(Number(manualUserBirthYear)).split(' / ')[0]} (${manualUserBirthYear}-${manualUserBirthMonth.padStart(2, '0')}-${manualUserBirthDay.padStart(2, '0')})`
             : '';
           const carInfo = (manualPrayer1 === '車祓（お車のお祓い）' || manualPrayer2 === '車祓（お車のお祓い）') && manualCarMaker && manualCarModel && manualCarNumber
-            ? `【車輌情報】メーカー: ${manualCarMaker} / 車種: ${manualCarModel} / ナンバー: ${manualCarNumber}`
+            ? `【お車】メーカー: ${manualCarMaker} / 車種: ${manualCarModel} / ナンバー: ${manualCarNumber}`
             : '';
           const parts = [manualNotes, userBday, carInfo].filter(Boolean);
           return parts.length > 0 ? parts.join('\n') : undefined;
@@ -693,6 +706,9 @@ export const StaffPortal: React.FC = () => {
           ? `${manualBirthYear2}-${manualBirthMonth2.padStart(2, '0')}-${manualBirthDay2.padStart(2, '0')}`
           : undefined,
         child_gender2: manualType === 'individual' && manualIsTwin ? manualChildGender2 || undefined : undefined,
+        car_maker: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarMaker || undefined : undefined,
+        car_model: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarModel || undefined : undefined,
+        car_number: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarNumber || undefined : undefined,
         yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
         father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
         father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherKana || undefined : undefined,
