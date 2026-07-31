@@ -422,7 +422,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 <div><strong>番号:</strong> {booking.receipt_number}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                <span style={{ fontSize: '0.6rem', color: '#666' }}>受付印</span>
+                <span style={{ fontSize: '0.6rem', color: '#666' }}>受付NO,</span>
                 <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
               </div>
             </div>
