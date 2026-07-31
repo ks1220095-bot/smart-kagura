@@ -434,7 +434,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
   };
 
   return (
-    <div style={{
+    <div className="yomifuda-print-modal-parent" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -453,24 +453,35 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             size: A4 landscape !important;
             margin: 0 !important;
           }
-          body {
-            background-color: #ffffff !important;
+          /* 画面上の元要素（root配下の他コンポーネント）を完全非表示 */
+          #root > *:not(.yomifuda-print-modal-parent) {
+            display: none !important;
+          }
+          html, body, #root {
             margin: 0 !important;
             padding: 0 !important;
+            width: 297mm !important;
+            height: 210mm !important;
+            overflow: visible !important;
+            background-color: #ffffff !important;
           }
-          /* コントロールバーなどを非表示 */
+          /* 印刷に関係のない要素（コントロールバーなど）を非表示 */
           .no-print {
             display: none !important;
           }
-          /* 背景暗転やスクロール枠を印刷から除外・全画面化 */
-          div[style*="rgba(0,0,0,0.85)"] {
-            background-color: transparent !important;
+          /* 印刷用親モーダル自体を非表示にし、単なる透明コンテナにする */
+          .yomifuda-print-modal-parent {
             position: absolute !important;
             top: 0 !important;
             left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: 297mm !important;
+            height: 210mm !important;
             overflow: visible !important;
+            background: none !important;
+            background-color: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            z-index: auto !important;
           }
           /* 外枠ラッパーのパディングを除去 */
           .yomifuda-print-wrapper {
