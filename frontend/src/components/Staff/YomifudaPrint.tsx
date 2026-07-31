@@ -322,8 +322,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 }}>
                   <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お祓い車両情報</span>
                   <div style={{ marginTop: '0.2rem' }}>
-                    <strong>メーカー:</strong> {maker}<br/>
-                    <strong>車種名:</strong> {model}<br/>
+                    <strong>メーカー:</strong> <strong style={{ color: '#d80100' }}>{maker}</strong><br/>
+                    <strong>車種名:</strong> <strong style={{ color: '#d80100' }}>{model}</strong><br/>
                     <strong>車両ナンバー:</strong> <strong style={{ fontSize: '1.1rem', color: '#d80100' }}>{number}</strong>
                   </div>
                 </div>
