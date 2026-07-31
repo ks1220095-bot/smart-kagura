@@ -450,7 +450,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
       <style>{`
         @media print {
           @page {
-            size: A4 landscape !important;
+            size: B5 landscape !important;
             margin: 0 !important;
           }
           /* ページ全体を一旦印刷時に非表示にする */
@@ -458,6 +458,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             visibility: hidden !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 257mm !important;
+            height: 182mm !important;
+            overflow: visible !important;
             background-color: #ffffff !important;
           }
           /* 印刷モーダルとその中身の要素だけを可視化 */
@@ -470,8 +473,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             position: absolute !important;
             top: 0 !important;
             left: 0 !important;
-            width: 297mm !important;
-            height: 210mm !important;
+            width: 257mm !important;
+            height: 182mm !important;
             overflow: visible !important;
             background: #ffffff !important;
             padding: 0 !important;
@@ -489,13 +492,14 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             margin: 0 !important;
             display: block !important;
           }
-          /* 印刷対象の用紙をぴったり余白0でA4横配置 */
+          /* 印刷対象の用紙をぴったり余白0でB5横配置 */
           .print-yomifuda-page {
             position: absolute !important;
             top: 0 !important;
             left: 0 !important;
-            width: 297mm !important;
-            height: 210mm !important;
+            width: 257mm !important;
+            height: 182mm !important;
+            padding: 7mm 8mm !important;
             margin: 0 !important;
             box-shadow: none !important;
             page-break-inside: avoid !important;
@@ -515,7 +519,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
         borderBottom: '2px solid var(--color-gold)'
       }}>
         <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
-          ご祈祷受付票・読み札 印刷プレビュー（A4横置き・左右二分割）
+          ご祈祷受付票・読み札 印刷プレビュー（B5横置き・左右二分割）
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button 
@@ -524,7 +528,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
             <Printer size={14} />
-            印刷する (A4横)
+            印刷する (B5横)
           </button>
           <button 
             onClick={onClose} 
@@ -545,9 +549,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             backgroundColor: '#ffffff',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
             position: 'relative',
-            width: '297mm',   // A4 Width
-            height: '210mm',  // A4 Height
-            padding: '10mm 10mm',
+            width: '257mm',   // B5 Width
+            height: '182mm',  // B5 Height
+            padding: '7mm 8mm',
             boxSizing: 'border-box',
             display: 'flex',
             justifyContent: 'space-between',
