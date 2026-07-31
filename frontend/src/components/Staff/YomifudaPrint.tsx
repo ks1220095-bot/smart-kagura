@@ -446,6 +446,53 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
       zIndex: 2000,
       overflowY: 'auto'
     }}>
+      {/* 印刷用 CSS スタイルの流し込み */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 landscape !important;
+            margin: 0 !important;
+          }
+          body {
+            background-color: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          /* コントロールバーなどを非表示 */
+          .no-print {
+            display: none !important;
+          }
+          /* 背景暗転やスクロール枠を印刷から除外・全画面化 */
+          div[style*="rgba(0,0,0,0.85)"] {
+            background-color: transparent !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: visible !important;
+          }
+          /* 外枠ラッパーのパディングを除去 */
+          .yomifuda-print-wrapper {
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          /* 印刷対象の用紙をぴったり余白0でA4横配置 */
+          .print-yomifuda-page {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 297mm !important;
+            height: 210mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+          }
+        }
+      `}</style>
       {/* Control bar */}
       <div className="no-print" style={{
         backgroundColor: 'var(--color-urushi)',
@@ -480,7 +527,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
       </div>
 
       {/* Yomifuda Body (Horizontal A4 page with 2 half-sheets) */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+      <div className="yomifuda-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
         <div 
           className="yomifuda-sheet print-yomifuda-page" 
           style={{
