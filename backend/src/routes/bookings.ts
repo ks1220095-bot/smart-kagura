@@ -18,6 +18,26 @@ function generateReceiptNumber(): string {
   return `SRY-${dateStr}-${rand}`;
 }
 
+function ensureNotesCarInfo(booking: any) {
+  if (booking.prayer1 === '車祓（お車のお祓い）' && booking.car_maker && booking.car_model && booking.car_number) {
+    const carTag = `【お車】メーカー: ${booking.car_maker} / 車種: ${booking.car_model} / ナンバー: ${booking.car_number}`;
+    let notes = booking.notes || '';
+    
+    // Check if tag already exists in notes
+    const regex = /【お車】メーカー:\s*[^/]+?\s*\/\s*車種:\s*[^/]+?\s*\/\s*ナンバー:\s*.+$/;
+    const regexOld = /【車輌情報】メーカー:\s*[^/]+?\s*\/\s*車種:\s*[^/]+?\s*\/\s*ナンバー:\s*.+$/;
+    
+    if (regex.test(notes)) {
+      notes = notes.replace(regex, carTag);
+    } else if (regexOld.test(notes)) {
+      notes = notes.replace(regexOld, carTag);
+    } else {
+      notes = notes ? `${notes}\n${carTag}` : carTag;
+    }
+    booking.notes = notes;
+  }
+}
+
 function timeToMinutes(timeStr: string): number {
   if (!timeStr) return 0;
   const parts = timeStr.split(':').map(Number);
@@ -285,6 +305,7 @@ router.post('/', async (req, res) => {
       const b = bookings[i];
       b.receipt_number = bookings.length > 1 ? `${baseReceiptNum}-${i + 1}` : baseReceiptNum;
       b.payment_status = 'unpaid';
+      ensureNotesCarInfo(b);
 
       const result = await db.query(`
         INSERT INTO bookings (
@@ -844,6 +865,8 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ error: '変更先の日時は祭典・行事等により受付停止中です。' });
       }
     }
+
+    ensureNotesCarInfo(booking);
 
     // Update Query
     await db.query(`
