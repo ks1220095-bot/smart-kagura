@@ -118,10 +118,10 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
     
     return (
       <div style={{
-        width: '133mm',
-        height: '188mm',
+        width: '116mm',
+        height: '100%',
         border: '3px double #d80100',
-        padding: '8mm 8mm',
+        padding: '5mm 6mm',
         boxSizing: 'border-box',
         position: 'relative',
         backgroundColor: '#ffffff',
