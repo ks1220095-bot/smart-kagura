@@ -68,7 +68,7 @@ export interface Booking {
   is_cancelled?: number;
   is_changed?: number;
   notes?: string;
-  progress_status?: '新規です♪' | 'チェック済み！' | '返信済み！' | '遅刻中＞＜';
+  progress_status?: '新規です♪' | 'チェック済み！' | '受付済み♪' | 'ご祈祷中👏' | '返信済み！' | '遅刻中＞＜';
   progress_status_updated_at?: string;
   changed_at?: string;
   changed_history?: string;

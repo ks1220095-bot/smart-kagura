@@ -757,7 +757,7 @@ router.patch('/:id/progress', async (req, res) => {
     return res.status(400).json({ error: '進捗状況は文字列で指定してください。' });
   }
 
-  const validStatuses = ['新規です♪', 'チェック済み！', '返信済み！', '遅刻中＞＜'];
+  const validStatuses = ['新規です♪', 'チェック済み！', '受付済み♪', 'ご祈祷中👏', '返信済み！', '遅刻中＞＜'];
   if (!validStatuses.includes(progress_status)) {
     return res.status(400).json({ error: '無効な進捗状況です。' });
   }

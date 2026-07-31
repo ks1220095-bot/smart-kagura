@@ -222,7 +222,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     }
   };
 
-  const handleSaveProgress = async (bookingId: number, status: '新規です♪' | 'チェック済み！' | '返信済み！' | '遅刻中＞＜') => {
+  const handleSaveProgress = async (bookingId: number, status: '新規です♪' | 'チェック済み！' | '受付済み♪' | 'ご祈祷中👏' | '返信済み！' | '遅刻中＞＜') => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/bookings/${bookingId}/progress`, {
@@ -573,6 +573,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 <option value="" disabled>ステータスを選択...</option>
                 <option value="新規です♪">新規です♪</option>
                 <option value="チェック済み！">チェック済み！</option>
+                <option value="受付済み♪">受付済み♪</option>
+                <option value="ご祈祷中👏">ご祈祷中👏</option>
                 <option value="返信済み！">返信済み！</option>
                 <option value="遅刻中＞＜">遅刻中＞＜</option>
               </select>
@@ -1090,6 +1092,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         >
                           <option value="新規です♪">新規です♪</option>
                           <option value="チェック済み！">チェック済み！</option>
+                          <option value="受付済み♪">受付済み♪</option>
+                          <option value="ご祈祷中👏">ご祈祷中👏</option>
                           <option value="返信済み！">返信済み！</option>
                           <option value="遅刻中＞＜">遅刻中＞＜</option>
                         </select>
@@ -1111,6 +1115,14 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                 bg = '#e8f5e9';
                                 text = '#1b5e20';
                                 border = '#c8e6c9';
+                              } else if (status === '受付済み♪') {
+                                bg = '#fff3e0';
+                                text = '#e65100';
+                                border = '#ffe0b2';
+                              } else if (status === 'ご祈祷中👏') {
+                                bg = '#e8eaf6';
+                                text = '#1a237e';
+                                border = '#c5cae9';
                               } else if (status === '返信済み！') {
                                 bg = '#f3e5f5';
                                 text = '#4a148c';
