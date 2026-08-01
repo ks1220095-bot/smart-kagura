@@ -350,6 +350,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 {booking.representative_title_name && (
                   <div>
                     <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>参拝代表者役職・氏名</span>
+                    {booking.representative_kana && (
+                      <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', fontWeight: 'bold' }}>フリガナ: {booking.representative_kana}</span>
+                    )}
                     <strong style={{ fontSize: '1.0rem' }}>{booking.representative_title_name}</strong>
                   </div>
                 )}

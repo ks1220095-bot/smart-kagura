@@ -250,6 +250,7 @@ export const VisitorPortal: React.FC = () => {
   const [companyAddress, setCompanyAddress] = useState(savedDraft?.companyAddress ?? '');
   const [companyAddressKana, setCompanyAddressKana] = useState(savedDraft?.companyAddressKana ?? '');
   const [representativeTitleName, setRepresentativeTitleName] = useState(savedDraft?.representativeTitleName ?? '');
+  const [representativeKana, setRepresentativeKana] = useState(savedDraft?.representativeKana ?? '');
   const [staffDeptTitleName, setStaffDeptTitleName] = useState(savedDraft?.staffDeptTitleName ?? '');
   const [staffPhone, setStaffPhone] = useState(savedDraft?.staffPhone ?? '');
   const [staffEmail, setStaffEmail] = useState(savedDraft?.staffEmail ?? '');
@@ -385,6 +386,7 @@ export const VisitorPortal: React.FC = () => {
       companyAddress,
       companyAddressKana,
       representativeTitleName,
+      representativeKana,
       staffDeptTitleName,
       staffPhone,
       staffEmail,
@@ -466,6 +468,7 @@ export const VisitorPortal: React.FC = () => {
     companyAddress,
     companyAddressKana,
     representativeTitleName,
+    representativeKana,
     staffDeptTitleName,
     staffPhone,
     staffEmail,
@@ -620,7 +623,7 @@ export const VisitorPortal: React.FC = () => {
       prayer1, prayer2, hatsuhoryo, attendingCount, prayerItems,
       name, kana, address, addressKana, phone, email,
       companyName, companyKana, companyAddress, companyAddressKana,
-      representativeTitleName, staffDeptTitleName, staffPhone, staffEmail,
+      representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
       talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
       hasPastPrayer, isTwin, childName2, childKana2, notes,
       birthYear, birthMonth, birthDay,
@@ -644,7 +647,7 @@ export const VisitorPortal: React.FC = () => {
     prayer1, prayer2, hatsuhoryo, attendingCount, prayerItems,
     name, kana, address, addressKana, phone, email,
     companyName, companyKana, companyAddress, companyAddressKana,
-    representativeTitleName, staffDeptTitleName, staffPhone, staffEmail,
+    representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
     talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
     hasPastPrayer, isTwin, childName2, childKana2, notes,
     birthYear, birthMonth, birthDay,
@@ -687,6 +690,7 @@ export const VisitorPortal: React.FC = () => {
         if (state.companyAddress) setCompanyAddress(state.companyAddress);
         if (state.companyAddressKana) setCompanyAddressKana(state.companyAddressKana);
         if (state.representativeTitleName) setRepresentativeTitleName(state.representativeTitleName);
+        if (state.representativeKana) setRepresentativeKana(state.representativeKana);
         if (state.staffDeptTitleName) setStaffDeptTitleName(state.staffDeptTitleName);
         if (state.staffPhone) setStaffPhone(state.staffPhone);
         if (state.staffEmail) setStaffEmail(state.staffEmail);
@@ -876,7 +880,7 @@ export const VisitorPortal: React.FC = () => {
         return '自由入力の願意を記載してください。';
       }
       if (!companyName.trim() || !companyKana.trim() || !companyAddress.trim() || !companyAddressKana.trim() || 
-          !representativeTitleName.trim() || !staffDeptTitleName.trim() || !staffPhone.trim() || !staffEmail.trim() ||
+          !representativeTitleName.trim() || !representativeKana.trim() || !staffDeptTitleName.trim() || !staffPhone.trim() || !staffEmail.trim() ||
           !talismanName.trim()) {
         return '企業情報（企業名・所在地・代表者・担当者氏名・連絡先等）および神札墨書名をすべてご入力ください。';
       }
@@ -1150,6 +1154,7 @@ export const VisitorPortal: React.FC = () => {
       company_address: bookingType === 'organization' ? companyAddress : undefined,
       company_address_kana: bookingType === 'organization' ? companyAddressKana : undefined,
       representative_title_name: bookingType === 'organization' ? representativeTitleName : undefined,
+      representative_kana: bookingType === 'organization' ? representativeKana : undefined,
       staff_dept_title_name: bookingType === 'organization' ? staffDeptTitleName : undefined,
       staff_phone: bookingType === 'organization' ? staffPhone : undefined,
       staff_email: bookingType === 'organization' ? staffEmail : undefined,
@@ -1342,6 +1347,7 @@ export const VisitorPortal: React.FC = () => {
     setCompanyAddress('');
     setCompanyAddressKana('');
     setRepresentativeTitleName('');
+    setRepresentativeKana('');
     setStaffDeptTitleName('');
     setStaffPhone('');
     setStaffEmail('');
@@ -2715,7 +2721,7 @@ export const VisitorPortal: React.FC = () => {
                   </div>
 
                   <div className="form-row">
-                    <div className="form-group">
+                    <div className="form-group" style={{ flex: 1 }}>
                       <label>団体（企業）代表者 役職・氏名 <span className="required">*</span></label>
                       <input
                         type="text"
@@ -2723,6 +2729,18 @@ export const VisitorPortal: React.FC = () => {
                         placeholder="例：代表取締役社長 清瀧太郎"
                         value={representativeTitleName}
                         onChange={(e) => setRepresentativeTitleName(e.target.value)}
+                        required
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label>代表者 役職・氏名（フリガナ） <span className="required">*</span></label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="例：ダイヒョウトリシマリヤクシャチョウ キヨタキタロウ"
+                        value={representativeKana}
+                        onChange={(e) => setRepresentativeKana(e.target.value)}
                         required
                         autoComplete="off"
                       />
@@ -3088,8 +3106,8 @@ export const VisitorPortal: React.FC = () => {
                       <span>{companyAddress} ({companyAddressKana})</span>
                     </div>
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>代表者名</span>
-                      <span>{representativeTitleName}</span>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>代表者名 (フリガナ)</span>
+                      <span>{representativeTitleName} ({representativeKana})</span>
                     </div>
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
                       <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>お申込担当者</span>

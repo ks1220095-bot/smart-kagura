@@ -1947,6 +1947,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>代表者役職・氏名（フリガナ） <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.representative_kana || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, representative_kana: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.75rem' }}>お札墨書名 <span className="required">*</span></label>
                     <input
                       type="text"

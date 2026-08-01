@@ -24,6 +24,7 @@ export interface Booking {
   company_address?: string;
   company_address_kana?: string;
   representative_title_name?: string;
+  representative_kana?: string;
   staff_dept_title_name?: string;
   staff_phone?: string;
   staff_email?: string;

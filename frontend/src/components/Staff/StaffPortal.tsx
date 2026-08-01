@@ -188,6 +188,7 @@ export const StaffPortal: React.FC = () => {
   const [manualCompanyAddress, setManualCompanyAddress] = useState('');
   const [manualCompanyAddressKana, setManualCompanyAddressKana] = useState('');
   const [manualRepName, setManualRepName] = useState('');
+  const [manualRepKana, setManualRepKana] = useState('');
   const [manualStaffName, setManualStaffName] = useState('');
   const [manualStaffPhone, setManualStaffPhone] = useState('');
   const [manualStaffEmail, setManualStaffEmail] = useState('');
@@ -431,6 +432,7 @@ export const StaffPortal: React.FC = () => {
     setManualCompanyAddress('');
     setManualCompanyAddressKana('');
     setManualRepName('');
+    setManualRepKana('');
     setManualStaffName('');
     setManualStaffPhone('');
     setManualStaffEmail('');
@@ -591,6 +593,7 @@ export const StaffPortal: React.FC = () => {
         company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
         company_address_kana: manualType === 'organization' ? manualCompanyAddressKana || undefined : undefined,
         representative_title_name: manualType === 'organization' ? manualRepName : undefined,
+        representative_kana: manualType === 'organization' ? manualRepKana || undefined : undefined,
         staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
         staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
         staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
@@ -685,6 +688,7 @@ export const StaffPortal: React.FC = () => {
         company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
         company_address_kana: manualType === 'organization' ? manualCompanyAddressKana || undefined : undefined,
         representative_title_name: manualType === 'organization' ? manualRepName : undefined,
+        representative_kana: manualType === 'organization' ? manualRepKana || undefined : undefined,
         staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
         staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
         staff_email: manualType === 'organization' ? manualStaffEmail : undefined,
@@ -1684,11 +1688,15 @@ export const StaffPortal: React.FC = () => {
                       </div>
                     </div>
                     <div className="form-row">
-                      <div className="form-group">
+                      <div className="form-group" style={{ flex: 1 }}>
                         <label>代表者役職氏名 <span className="required">*</span></label>
                         <input type="text" className="form-control" value={manualRepName} onChange={(e) => setManualRepName(e.target.value)} required />
                       </div>
-                      <div className="form-group">
+                      <div className="form-group" style={{ flex: 1 }}>
+                        <label>代表者（フリガナ） <span className="required">*</span></label>
+                        <input type="text" className="form-control" placeholder="例：ダイヒョウ..." value={manualRepKana} onChange={(e) => setManualRepKana(e.target.value)} required />
+                      </div>
+                      <div className="form-group" style={{ flex: 1.2 }}>
                         <label>申込担当者部署役職氏名 <span className="required">*</span></label>
                         <input type="text" className="form-control" value={manualStaffName} onChange={(e) => setManualStaffName(e.target.value)} required />
                       </div>

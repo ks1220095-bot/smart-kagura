@@ -311,7 +311,7 @@ router.post('/', async (req, res) => {
         INSERT INTO bookings (
           receipt_number, booking_type, booking_date, booking_time, prayer1, prayer2, hatsuhoryo, payment_status, attending_count,
           name, kana, address, address_kana, phone, email,
-          company_name, company_kana, company_address, company_address_kana, representative_title_name,
+          company_name, company_kana, company_address, company_address_kana, representative_title_name, representative_kana,
           staff_dept_title_name, staff_phone, staff_email, talisman_name, additional_talismans,
           wants_receipt, receipt_name, receipt_amount,
           yakudoshi_type, father_name, father_kana, mother_name, mother_kana, child_name, child_kana, child_birthday,
@@ -319,12 +319,12 @@ router.post('/', async (req, res) => {
           construction_name, construction_designer, construction_builder, construction_period, notes,
           has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
           car_maker, car_model, car_number, child_gender, child_gender2
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
         b.name || null, b.kana || null, b.address || null, b.address_kana || null, b.phone || null, b.email || null,
-        b.company_name || null, b.company_kana || null, b.company_address || null, b.company_address_kana || null, b.representative_title_name || null,
+        b.company_name || null, b.company_kana || null, b.company_address || null, b.company_address_kana || null, b.representative_title_name || null, b.representative_kana || null,
         b.staff_dept_title_name || null, b.staff_phone || null, b.staff_email || null, b.talisman_name || null, b.additional_talismans || null,
         b.wants_receipt || 0, b.receipt_name || null, b.receipt_amount || null,
         b.yakudoshi_type || null, b.father_name || null, b.father_kana || null, b.mother_name || null, b.mother_kana || null, b.child_name || null, b.child_kana || null, b.child_birthday || null,
@@ -873,21 +873,21 @@ router.put('/:id', async (req, res) => {
       UPDATE bookings SET
         booking_type = $1, booking_date = $2, booking_time = $3, prayer1 = $4, prayer2 = $5, hatsuhoryo = $6, attending_count = $7,
         name = $8, kana = $9, address = $10, address_kana = $11, phone = $12, email = $13,
-        company_name = $14, company_kana = $15, company_address = $16, company_address_kana = $17, representative_title_name = $18,
-        staff_dept_title_name = $19, staff_phone = $20, staff_email = $21, talisman_name = $22, additional_talismans = $23,
-        wants_receipt = $24, receipt_name = $25, receipt_amount = $26,
-        yakudoshi_type = $27, father_name = $28, father_kana = $29, mother_name = $30, mother_kana = $31, child_name = $32, child_kana = $33, child_birthday = $34,
-        kotobuki_type = $35, kotobuki_other_text = $36, tournament_name = $37, tournament_schedule = $38,
-        construction_name = $39, construction_designer = $40, construction_builder = $41, construction_period = $42, notes = $43,
-        has_past_prayer = $44, is_twin = $45, child_name2 = $46, child_kana2 = $47, child_birthday2 = $48,
-        car_maker = $49, car_model = $50, car_number = $51,
-        child_gender = $52, child_gender2 = $53,
+        company_name = $14, company_kana = $15, company_address = $16, company_address_kana = $17, representative_title_name = $18, representative_kana = $19,
+        staff_dept_title_name = $20, staff_phone = $21, staff_email = $22, talisman_name = $23, additional_talismans = $24,
+        wants_receipt = $25, receipt_name = $26, receipt_amount = $27,
+        yakudoshi_type = $28, father_name = $29, father_kana = $30, mother_name = $31, mother_kana = $32, child_name = $33, child_kana = $34, child_birthday = $35,
+        kotobuki_type = $36, kotobuki_other_text = $37, tournament_name = $38, tournament_schedule = $39,
+        construction_name = $40, construction_designer = $41, construction_builder = $42, construction_period = $43, notes = $44,
+        has_past_prayer = $45, is_twin = $46, child_name2 = $47, child_kana2 = $48, child_birthday2 = $49,
+        car_maker = $50, car_model = $51, car_number = $52,
+        child_gender = $53, child_gender2 = $54,
         is_changed = 1
-      WHERE id = $54
+      WHERE id = $55
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
-      booking.company_name || null, booking.company_kana || null, booking.company_address || null, booking.company_address_kana || null, booking.representative_title_name || null,
+      booking.company_name || null, booking.company_kana || null, booking.company_address || null, booking.company_address_kana || null, booking.representative_title_name || null, booking.representative_kana || null,
       booking.staff_dept_title_name || null, booking.staff_phone || null, booking.staff_email || null, booking.talisman_name || null, booking.additional_talismans || null,
       booking.wants_receipt || 0, booking.receipt_name || null, booking.receipt_amount || null,
       booking.yakudoshi_type || null, booking.father_name || null, booking.father_kana || null, booking.mother_name || null, booking.mother_kana || null, booking.child_name || null, booking.child_kana || null, booking.child_birthday || null,

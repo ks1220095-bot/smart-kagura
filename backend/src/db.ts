@@ -159,6 +159,7 @@ async function initSqlite() {
           company_address TEXT,
           company_address_kana TEXT,
           representative_title_name TEXT,
+          representative_kana TEXT,
           staff_dept_title_name TEXT,
           staff_phone TEXT,
           staff_email TEXT,
@@ -232,6 +233,7 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN cancelled_at TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_gender TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_gender2 TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN representative_kana TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -312,6 +314,7 @@ async function verifyPostgresSchema() {
         company_address TEXT,
         company_address_kana TEXT,
         representative_title_name VARCHAR(255),
+        representative_kana VARCHAR(255),
         staff_dept_title_name VARCHAR(255),
         staff_phone VARCHAR(50),
         staff_email VARCHAR(255),
@@ -427,6 +430,9 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS child_gender2 VARCHAR(10)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS representative_kana VARCHAR(255)
     `);
 
     await client.query(`
