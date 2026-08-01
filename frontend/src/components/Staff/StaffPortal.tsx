@@ -178,6 +178,7 @@ export const StaffPortal: React.FC = () => {
   const [manualName, setManualName] = useState('');
   const [manualKana, setManualKana] = useState('');
   const [manualAddress, setManualAddress] = useState('');
+  const [manualAddressKana, setManualAddressKana] = useState('');
   const [manualPhone, setManualPhone] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   
@@ -185,6 +186,7 @@ export const StaffPortal: React.FC = () => {
   const [manualCompanyName, setManualCompanyName] = useState('');
   const [manualCompanyKana, setManualCompanyKana] = useState('');
   const [manualCompanyAddress, setManualCompanyAddress] = useState('');
+  const [manualCompanyAddressKana, setManualCompanyAddressKana] = useState('');
   const [manualRepName, setManualRepName] = useState('');
   const [manualStaffName, setManualStaffName] = useState('');
   const [manualStaffPhone, setManualStaffPhone] = useState('');
@@ -384,6 +386,7 @@ export const StaffPortal: React.FC = () => {
     setManualName('');
     setManualKana('');
     setManualAddress('');
+    setManualAddressKana('');
     setManualPhone('');
     setManualEmail('');
     setManualNotes('');
@@ -426,6 +429,7 @@ export const StaffPortal: React.FC = () => {
     setManualCompanyName('');
     setManualCompanyKana('');
     setManualCompanyAddress('');
+    setManualCompanyAddressKana('');
     setManualRepName('');
     setManualStaffName('');
     setManualStaffPhone('');
@@ -579,11 +583,13 @@ export const StaffPortal: React.FC = () => {
         name: manualType === 'individual' ? (item.name || manualName || '手動登録') : undefined,
         kana: manualType === 'individual' ? (item.kana || manualKana || 'シュドウトウロク') : undefined,
         address: manualType === 'individual' ? manualAddress : undefined,
+        address_kana: manualType === 'individual' ? manualAddressKana || undefined : undefined,
         phone: manualType === 'individual' ? manualPhone : undefined,
         email: manualType === 'individual' ? manualEmail : undefined,
         company_name: manualType === 'organization' ? (item.company_name || manualCompanyName) : undefined,
         company_kana: manualType === 'organization' ? (item.company_kana || manualCompanyKana) : undefined,
         company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
+        company_address_kana: manualType === 'organization' ? manualCompanyAddressKana || undefined : undefined,
         representative_title_name: manualType === 'organization' ? manualRepName : undefined,
         staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
         staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
@@ -671,11 +677,13 @@ export const StaffPortal: React.FC = () => {
         name: manualType === 'individual' ? resolvedName : undefined,
         kana: manualType === 'individual' ? resolvedKana : undefined,
         address: manualType === 'individual' ? manualAddress : undefined,
+        address_kana: manualType === 'individual' ? manualAddressKana || undefined : undefined,
         phone: manualType === 'individual' ? manualPhone : undefined,
         email: manualType === 'individual' ? manualEmail : undefined,
         company_name: manualType === 'organization' ? manualCompanyName : undefined,
         company_kana: manualType === 'organization' ? manualCompanyKana : undefined,
         company_address: manualType === 'organization' ? manualCompanyAddress : undefined,
+        company_address_kana: manualType === 'organization' ? manualCompanyAddressKana || undefined : undefined,
         representative_title_name: manualType === 'organization' ? manualRepName : undefined,
         staff_dept_title_name: manualType === 'organization' ? manualStaffName : undefined,
         staff_phone: manualType === 'organization' ? manualStaffPhone : undefined,
@@ -1300,9 +1308,15 @@ export const StaffPortal: React.FC = () => {
                         <input type="text" className="form-control" value={manualKana} onChange={(e) => setManualKana(e.target.value)} required />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label>住所 <span className="required">*</span></label>
-                      <input type="text" className="form-control" value={manualAddress} onChange={(e) => setManualAddress(e.target.value)} required />
+                    <div className="form-row">
+                      <div className="form-group" style={{ flex: 2 }}>
+                        <label>住所 <span className="required">*</span></label>
+                        <input type="text" className="form-control" value={manualAddress} onChange={(e) => setManualAddress(e.target.value)} required />
+                      </div>
+                      <div className="form-group" style={{ flex: 1.5 }}>
+                        <label>住所（フリガナ） <span className="required">*</span></label>
+                        <input type="text" className="form-control" placeholder="例：チバケンウラヤスシ..." value={manualAddressKana} onChange={(e) => setManualAddressKana(e.target.value)} required />
+                      </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
@@ -1659,9 +1673,15 @@ export const StaffPortal: React.FC = () => {
                         <input type="text" className="form-control" value={manualCompanyKana} onChange={(e) => setManualCompanyKana(e.target.value)} required />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label>所在地 <span className="required">*</span></label>
-                      <input type="text" className="form-control" value={manualCompanyAddress} onChange={(e) => setManualCompanyAddress(e.target.value)} required />
+                    <div className="form-row">
+                      <div className="form-group" style={{ flex: 2 }}>
+                        <label>所在地 <span className="required">*</span></label>
+                        <input type="text" className="form-control" value={manualCompanyAddress} onChange={(e) => setManualCompanyAddress(e.target.value)} required />
+                      </div>
+                      <div className="form-group" style={{ flex: 1.5 }}>
+                        <label>所在地（フリガナ） <span className="required">*</span></label>
+                        <input type="text" className="form-control" placeholder="例：チバケンウラヤスシ..." value={manualCompanyAddressKana} onChange={(e) => setManualCompanyAddressKana(e.target.value)} required />
+                      </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
