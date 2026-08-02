@@ -111,10 +111,22 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
   };
 
   const renderHalfSheet = (title: '神社控' | '祈祷控') => {
-    const displayName = isIndiv ? booking.name : booking.company_name;
-    const displayKana = isIndiv ? booking.kana : booking.company_kana;
-    const displayAddress = isIndiv ? booking.address : booking.company_address;
-    const displayAddressKana = isIndiv ? booking.address_kana : booking.company_address_kana;
+    const displayName = (isIndiv ? booking.name : booking.company_name) || '';
+    const displayKana = (isIndiv ? booking.kana : booking.company_kana) || '';
+    const displayAddress = (isIndiv ? booking.address : booking.company_address) || '';
+    const displayAddressKana = (isIndiv ? booking.address_kana : booking.company_address_kana) || '';
+
+    // 動的フォントサイズ & 行間調整ロジック (情報量過多への自動縮退対応)
+    const nameFontSize = displayName.length > 25 ? '1.05rem' : displayName.length > 15 ? '1.25rem' : '1.45rem';
+    const nameLineHeight = displayName.length > 15 ? '1.15' : '1.2';
+    
+    const addressFontSize = displayAddress.length > 35 ? '0.68rem' : displayAddress.length > 25 ? '0.76rem' : '0.85rem';
+    const addressLineHeight = displayAddress.length > 25 ? '1.15' : '1.3';
+    
+    const notesFontSize = (booking.notes || '').length > 80 ? '0.58rem' : (booking.notes || '').length > 40 ? '0.64rem' : '0.7rem';
+    const notesLineHeight = (booking.notes || '').length > 40 ? '1.15' : '1.3';
+
+    const talismanFontSize = (booking.talisman_name || '').length > 20 ? '0.9rem' : (booking.talisman_name || '').length > 12 ? '1.02rem' : '1.15rem';
     
     return (
       <div style={{
@@ -147,7 +159,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
         </div>
 
         {/* Inner Content Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%', height: '100%', zIndex: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%', height: 'calc(100% - 13.5mm)', overflow: 'hidden', zIndex: 2 }}>
           
           {/* Header Title Bar */}
           <div style={{ 
@@ -170,13 +182,12 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             padding: '0.4rem 0.5rem', 
             borderRadius: '2px', 
             border: '1px solid #eee',
-            display: 'grid',
-            gridTemplateColumns: '1.2fr 1fr',
+            display: 'flex',
+            flexDirection: 'column',
             gap: '0.2rem'
           }}>
-            <div><strong>受付番号:</strong> {booking.receipt_number}</div>
             <div><strong>初穂料:</strong> 金 {booking.hatsuhoryo?.toLocaleString()} 円 ({booking.payment_status === 'paid' ? '納済' : '当日'})</div>
-            <div style={{ gridColumn: 'span 2' }}><strong>祈祷日時:</strong> {formatImperialDate(booking.booking_date)} {booking.booking_time}の回</div>
+            <div><strong>祈祷日時:</strong> {formatImperialDate(booking.booking_date)} {booking.booking_time}の回</div>
           </div>
 
           {/* Willing Section */}
@@ -202,19 +213,19 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
           </div>
 
           {/* Address Section */}
-          <div style={{ borderBottom: '1px dashed #eee', paddingBottom: '0.4rem' }}>
+          <div style={{ borderBottom: '1px dashed #eee', paddingBottom: '0.25rem' }}>
             <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 郵便番号・住所</span>
-            <span style={{ fontSize: '0.65rem', color: '#888', display: 'block' }}>フリガナ: {displayAddressKana}</span>
-            <span style={{ fontSize: '0.85rem', display: 'block', marginTop: '0.1rem', lineHeight: '1.3' }}>
+            <span style={{ fontSize: '0.62rem', color: '#888', display: 'block' }}>フリガナ: {displayAddressKana}</span>
+            <span style={{ fontSize: addressFontSize, display: 'block', marginTop: '0.05rem', lineHeight: addressLineHeight }}>
               {displayAddress}
             </span>
           </div>
 
           {/* Names Section (Main highlighted for Priest chanting) */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お札墨書・お申込名</span>
-            <span style={{ fontSize: '0.65rem', color: '#888' }}>フリガナ: {displayKana}</span>
-            <strong style={{ fontSize: '1.45rem', color: '#111', display: 'block', margin: '0.1rem 0', lineHeight: '1.2' }}>
+            <span style={{ fontSize: '0.62rem', color: '#888' }}>フリガナ: {displayKana}</span>
+            <strong style={{ fontSize: nameFontSize, color: '#111', display: 'block', margin: '0.05rem 0', lineHeight: nameLineHeight }}>
               {displayName}
             </strong>
 
@@ -342,9 +353,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                 lineHeight: '1.35' 
               }}>
                 {booking.talisman_name && (
-                  <div style={{ borderBottom: booking.representative_title_name ? '1px dashed rgba(197, 160, 89, 0.15)' : 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
-                    <strong style={{ fontSize: '1.15rem', color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
+                  <div style={{ borderBottom: booking.representative_title_name ? '1px dashed rgba(197, 160, 89, 0.15)' : 'none', paddingBottom: '0.15rem', marginBottom: '0.15rem' }}>
+                    <span style={{ fontSize: '0.6', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
+                    <strong style={{ fontSize: talismanFontSize, color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
                   </div>
                 )}
                 {booking.representative_title_name && (
@@ -373,7 +384,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
               );
             })()}
             {booking.notes && (
-              <div style={{ color: '#666', fontSize: '0.7rem', backgroundColor: '#fdfdfd', border: '1px solid #f0f0f0', padding: '0.2rem', marginTop: '0.1rem', borderRadius: '2px' }}>
+              <div style={{ color: '#666', fontSize: notesFontSize, backgroundColor: '#fdfdfd', border: '1px solid #f0f0f0', padding: '0.15rem', marginTop: '0.05rem', borderRadius: '2px', lineHeight: notesLineHeight }}>
                 <strong>備考:</strong> {booking.notes}
               </div>
             )}
@@ -402,36 +413,45 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
             )}
           </div>
 
-          {/* Footer Area */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'flex-end', 
-            marginTop: '0.4rem', 
-            borderTop: '1.5px solid #d80100', 
-            paddingTop: '0.3rem' 
-          }}>
-            <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em', color: '#333' }}>清瀧神社社務所</span>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.45rem' }}>
-              <div style={{ 
-                fontSize: '0.62rem', 
-                color: '#444', 
-                textAlign: 'right', 
-                lineHeight: '1.25', 
-                borderRight: '1px dashed #d80100', 
-                paddingRight: '0.45rem'
-              }}>
-                <div><strong>願意:</strong> {booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}</div>
-                <div><strong>番号:</strong> {booking.receipt_number}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                <span style={{ fontSize: '0.6rem', color: '#666' }}>受付NO,</span>
-                <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
-              </div>
-            </div>
-          </div>
-          
         </div>
+
+        {/* Footer Area (Absolute Bottom to prevent overflow見切れ) */}
+        <div style={{ 
+          position: 'absolute',
+          bottom: '5mm',
+          left: '6mm',
+          right: '6mm',
+          height: '11mm',
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'flex-end', 
+          borderTop: '1.5px solid #d80100', 
+          paddingTop: '0.25rem',
+          backgroundColor: '#ffffff',
+          zIndex: 10
+        }}>
+          {/* 左下に入れ替えた受付NO.丸枠 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.6rem', color: '#666', fontWeight: 'bold' }}>受付NO,</span>
+            <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
+          </div>
+
+          {/* 右端に配置した願意と社務所名（受付番号は完全に削除） */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.45rem' }}>
+            <div style={{ 
+              fontSize: '0.62rem', 
+              color: '#444', 
+              textAlign: 'right', 
+              lineHeight: '1.25', 
+              borderRight: '1px dashed #d80100', 
+              paddingRight: '0.45rem'
+            }}>
+              <div><strong>願意:</strong> {booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}</div>
+            </div>
+            <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em', color: '#333' }}>清瀧神社社務所</span>
+          </div>
+        </div>
+
       </div>
     );
   };
