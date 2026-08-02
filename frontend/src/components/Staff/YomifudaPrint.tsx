@@ -223,7 +223,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
 
           {/* Names Section (Main highlighted for Priest chanting) */}
           <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お札墨書・お申込名</span>
+            <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お申込名</span>
             <span style={{ fontSize: '0.62rem', color: '#888' }}>フリガナ: {displayKana}</span>
             <strong style={{ fontSize: nameFontSize, color: '#111', display: 'block', margin: '0.05rem 0', lineHeight: nameLineHeight }}>
               {displayName}
