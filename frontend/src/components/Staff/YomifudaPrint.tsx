@@ -341,35 +341,6 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
               );
             })()}
 
-            {/* Representative & Talisman Name Details (Gold highlight border block) */}
-            {!isIndiv && (
-              <div style={{ 
-                marginTop: '0.3rem', 
-                padding: '0.45rem 0.55rem', 
-                backgroundColor: 'rgba(197, 160, 89, 0.03)', 
-                border: '1.5px solid rgba(197, 160, 89, 0.25)', 
-                borderRadius: '4px',
-                fontSize: '0.8rem', 
-                lineHeight: '1.35' 
-              }}>
-                {booking.talisman_name && (
-                  <div style={{ borderBottom: booking.representative_title_name ? '1px dashed rgba(197, 160, 89, 0.15)' : 'none', paddingBottom: '0.15rem', marginBottom: '0.15rem' }}>
-                    <span style={{ fontSize: '0.6', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
-                    <strong style={{ fontSize: talismanFontSize, color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
-                  </div>
-                )}
-                {booking.representative_title_name && (
-                  <div>
-                    <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>参拝代表者役職・氏名</span>
-                    {booking.representative_kana && (
-                      <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', fontWeight: 'bold' }}>フリガナ: {booking.representative_kana}</span>
-                    )}
-                    <strong style={{ fontSize: '1.0rem' }}>{booking.representative_title_name}</strong>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Contacts & Notes */}
             {(() => {
               const contactName = isIndiv 
@@ -407,6 +378,35 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
                   <div style={{ lineHeight: '1.25' }}>
                     <strong>工事名:</strong> {booking.construction_name}<br/>
                     <strong>施工:</strong> {booking.construction_builder} | <strong>工期:</strong> {booking.construction_period}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Representative & Talisman Name Details (Gold highlight border block) */}
+            {!isIndiv && (
+              <div style={{ 
+                marginTop: '0.3rem', 
+                padding: '0.45rem 0.55rem', 
+                backgroundColor: 'rgba(197, 160, 89, 0.03)', 
+                border: '1.5px solid rgba(197, 160, 89, 0.25)', 
+                borderRadius: '4px',
+                fontSize: '0.8rem', 
+                lineHeight: '1.35' 
+              }}>
+                {booking.talisman_name && (
+                  <div style={{ borderBottom: booking.representative_title_name ? '1px dashed rgba(197, 160, 89, 0.15)' : 'none', paddingBottom: '0.15rem', marginBottom: '0.15rem' }}>
+                    <span style={{ fontSize: '0.6', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
+                    <strong style={{ fontSize: talismanFontSize, color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
+                  </div>
+                )}
+                {booking.representative_title_name && (
+                  <div>
+                    <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>参拝代表者役職・氏名</span>
+                    {booking.representative_kana && (
+                      <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', fontWeight: 'bold' }}>フリガナ: {booking.representative_kana}</span>
+                    )}
+                    <strong style={{ fontSize: '1.0rem' }}>{booking.representative_title_name}</strong>
                   </div>
                 )}
               </div>
