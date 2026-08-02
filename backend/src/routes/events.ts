@@ -80,4 +80,40 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// 4. Update an event
+router.put('/:id', async (req, res) => {
+  const event: CalendarEvent = req.body;
+  if (!event.title || !event.event_date || !event.start_time || !event.end_time) {
+    return res.status(400).json({ error: '必須項目が不足しています。' });
+  }
+
+  try {
+    const db = getDb();
+    const checkResult = await db.query(`SELECT * FROM events WHERE id = $1`, [req.params.id]);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '指定された行事が見つかりません。' });
+    }
+
+    await db.query(
+      `UPDATE events 
+       SET title = $1, event_date = $2, start_time = $3, end_time = $4, description = $5, is_closed_slot = $6
+       WHERE id = $7`,
+      [
+        event.title,
+        event.event_date,
+        event.start_time,
+        event.end_time,
+        event.description || null,
+        event.is_closed_slot || 0,
+        req.params.id
+      ]
+    );
+
+    res.json({ message: '行事情報が更新されました。', updatedEvent: { ...event, id: Number(req.params.id) } });
+  } catch (error) {
+    console.error('Event update error:', error);
+    res.status(500).json({ error: '行事情報の更新に失敗しました。' });
+  }
+});
+
 export default router;

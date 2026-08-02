@@ -65,6 +65,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
   const [description, setDescription] = useState('');
   const [isClosedSlot, setIsClosedSlot] = useState(false);
 
+  // Edit event form state
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editEventDate, setEditEventDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('09:30');
+  const [editEndTime, setEditEndTime] = useState('16:00');
+  const [editDescription, setEditDescription] = useState('');
+  const [editIsClosedSlot, setEditIsClosedSlot] = useState(false);
+
   // Batch slots selection states
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [loadingBatch, setLoadingBatch] = useState(false);
@@ -266,6 +275,55 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
     }
   };
 
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent || !editingEvent.id || !editTitle || !editEventDate || !editStartTime || !editEndTime) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/events/${editingEvent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          event_date: editEventDate,
+          start_time: editStartTime,
+          end_time: editEndTime,
+          description: editDescription,
+          is_closed_slot: editIsClosedSlot ? 1 : 0
+        })
+      });
+
+      if (!res.ok) throw new Error('行事情報の更新に失敗しました。');
+      
+      setEditingEvent(null);
+      fetchEvents();
+      onRefreshBookings();
+    } catch (error) {
+      alert(error);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!editingEvent || !editingEvent.id) return;
+    if (!window.confirm(`「${editingEvent.title}」を削除してもよろしいですか？`)) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/events/${editingEvent.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) throw new Error('行事情報の削除に失敗しました。');
+      
+      setEditingEvent(null);
+      fetchEvents();
+      onRefreshBookings();
+    } catch (error) {
+      alert(error);
+    }
+  };
+
 
 
 
@@ -328,17 +386,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
             {/* Display shrine events inside cells */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.25rem' }} className="no-print">
               {dayEvents.map(e => (
-                <div key={e.id} style={{ 
-                  backgroundColor: e.is_closed_slot ? 'rgba(50, 136, 163, 0.08)' : 'rgba(197, 160, 89, 0.08)', 
-                  color: e.is_closed_slot ? 'var(--color-mizuiro)' : 'var(--color-gold)',
-                  border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.2)' : '1px solid rgba(197, 160, 89, 0.2)',
-                  fontSize: '0.6rem', 
-                  padding: '0.1rem 0.2rem', 
-                  borderRadius: '2px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
+                <div 
+                  key={e.id} 
+                  onClick={(evt) => {
+                    evt.stopPropagation();
+                    setEditingEvent(e);
+                    setEditTitle(e.title);
+                    setEditEventDate(e.event_date);
+                    setEditStartTime(e.start_time);
+                    setEditEndTime(e.end_time);
+                    setEditDescription(e.description || '');
+                    setEditIsClosedSlot(e.is_closed_slot === 1);
+                    setShowAddForm(false); // 新規フォームが開いていたら閉じる
+                  }}
+                  style={{ 
+                    backgroundColor: e.is_closed_slot ? 'rgba(50, 136, 163, 0.08)' : 'rgba(197, 160, 89, 0.08)', 
+                    color: e.is_closed_slot ? 'var(--color-mizuiro)' : 'var(--color-gold)',
+                    border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.2)' : '1px solid rgba(197, 160, 89, 0.2)',
+                    fontSize: '0.6rem', 
+                    padding: '0.1rem 0.2rem', 
+                    borderRadius: '2px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
                   <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>
                     {e.is_closed_slot ? '🔒' : '📢'} {e.title}
                   </span>
@@ -393,6 +466,62 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
             神社行事の登録
           </button>
         </div>
+
+        {/* Edit Shrine event form */}
+        {editingEvent && (
+          <form onSubmit={handleUpdateEvent} className="alert-warning" style={{ marginBottom: '1.25rem', border: '1px solid var(--color-mizuiro-hover)', padding: '1.25rem', backgroundColor: 'rgba(50, 136, 163, 0.05)' }}>
+            <h4 style={{ fontSize: '0.95rem', marginBottom: '0.75rem', fontFamily: 'var(--font-serif)', color: 'var(--color-mizuiro-hover)' }}>神社行事の変更・削除</h4>
+            
+            <div className="grid-2">
+              <div className="form-group">
+                <label>行事・祭典名 <span className="required">*</span></label>
+                <input type="text" className="form-control" placeholder="例：大祓式、例大祭など" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>該当日の選択 <span className="required">*</span></label>
+                <input type="date" className="form-control" value={editEventDate} onChange={(e) => setEditEventDate(e.target.value)} required />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>開始時刻 <span className="required">*</span></label>
+                <input type="time" className="form-control" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>終了時刻 <span className="required">*</span></label>
+                <input type="time" className="form-control" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} required />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>説明（備考）</label>
+              <input type="text" className="form-control" placeholder="例：例大祭準備のため受付制限" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+            </div>
+
+            <div className="form-group" style={{ margin: '0.75rem 0' }}>
+              <label className="checkbox-label" style={{ color: 'var(--color-mizuiro-hover)', fontWeight: 'bold' }}>
+                <input type="checkbox" checked={editIsClosedSlot} onChange={(e) => setEditIsClosedSlot(e.target.checked)} />
+                この時間帯の一般予約枠をロック（自動クローズ）する
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem' }}>変更を保存する</button>
+                <button type="button" onClick={() => setEditingEvent(null)} className="btn btn-secondary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem' }}>キャンセル</button>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleDeleteEvent} 
+                className="btn btn-secondary" 
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', backgroundColor: '#fff1f0', borderColor: '#ffa39e', color: '#f5222d' }}
+              >
+                🗑️ この行事を削除する
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* Add Shrine event form */}
         {showAddForm && (
