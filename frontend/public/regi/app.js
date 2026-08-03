@@ -1960,7 +1960,6 @@ function renderDailyReportView(data) {
   
   // 出力項目のチェック状態を取得
   const includeItems = document.getElementById('chk-include-items').checked;
-  const includePrayers = document.getElementById('chk-include-prayers').checked;
   
   let itemRowsHtml = '';
   if (Object.keys(data.itemDetails).length === 0) {
@@ -1972,22 +1971,6 @@ function renderDailyReportView(data) {
         <tr>
           <td>${name}</td>
           <td class="text-center">${details.quantity} 体</td>
-          <td class="text-right">${details.amount.toLocaleString()} 円</td>
-        </tr>
-      `;
-    }
-  }
-
-  let prayerRowsHtml = '';
-  if (!data.prayerDetails || Object.keys(data.prayerDetails).length === 0) {
-    prayerRowsHtml = '<tr><td colspan="3" class="text-center">ご祈祷受付なし</td></tr>';
-  } else {
-    for (let type in data.prayerDetails) {
-      const details = data.prayerDetails[type];
-      prayerRowsHtml += `
-        <tr>
-          <td>${type}</td>
-          <td class="text-center">${details.count} 件</td>
           <td class="text-right">${details.amount.toLocaleString()} 円</td>
         </tr>
       `;
@@ -2021,31 +2004,6 @@ function renderDailyReportView(data) {
     `;
   }
 
-  // ご祈祷内訳セクション
-  let prayersSectionHtml = '';
-  if (includePrayers) {
-    prayersSectionHtml = `
-      <h3 style="margin-bottom:0.75rem; border-left:3px solid var(--color-green); padding-left:0.5rem; margin-top:2rem;">ご祈祷 内訳</h3>
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>祈祷種別</th>
-            <th style="width: 120px;">件数</th>
-            <th style="width: 180px;">初穂料総額</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${prayerRowsHtml}
-          <tr style="font-weight: bold; background-color: #FAF9F6;">
-            <td>ご祈祷 小計</td>
-            <td class="text-center">${data.prayerCount} 件</td>
-            <td class="text-right">${data.prayerSalesTotal.toLocaleString()} 円</td>
-          </tr>
-        </tbody>
-      </table>
-    `;
-  }
-
   DOM.reportSheetView.innerHTML = `
     <div class="report-paper">
       <div class="report-paper-header">
@@ -2056,23 +2014,18 @@ function renderDailyReportView(data) {
         </div>
       </div>
       
-      <div class="report-summary-boxes">
+      <div class="report-summary-boxes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
         <div class="report-sum-box">
           <span style="font-size:0.8rem; color:var(--color-text-muted); display:block; margin-bottom:0.25rem;">授与品 合計初穂料</span>
           <span class="report-sum-value" style="color:var(--color-vermilion);">${data.itemSalesTotal.toLocaleString()} 円</span>
         </div>
-        <div class="report-sum-box">
-          <span style="font-size:0.8rem; color:var(--color-text-muted); display:block; margin-bottom:0.25rem;">ご祈祷 合計初穂料</span>
-          <span class="report-sum-value">${data.prayerSalesTotal.toLocaleString()} 円 (${data.prayerCount}件)</span>
-        </div>
         <div class="report-sum-box" style="border-color:var(--color-gold); background-color:rgba(196,162,100,0.05);">
           <span style="font-size:0.8rem; color:var(--color-text-muted); display:block; margin-bottom:0.25rem; font-weight:700;">本日 総合計初穂料</span>
-          <span class="report-sum-value" style="color:var(--color-vermilion); font-weight:700;">${data.grandTotal.toLocaleString()} 円</span>
+          <span class="report-sum-value" style="color:var(--color-vermilion); font-weight:700;">${data.itemSalesTotal.toLocaleString()} 円</span>
         </div>
       </div>
       
       ${itemsSectionHtml}
-      ${prayersSectionHtml}
     </div>
   `;
 }
