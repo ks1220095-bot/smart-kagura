@@ -2014,14 +2014,10 @@ function renderDailyReportView(data) {
         </div>
       </div>
       
-      <div class="report-summary-boxes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <div class="report-sum-box">
-          <span style="font-size:0.8rem; color:var(--color-text-muted); display:block; margin-bottom:0.25rem;">授与品 合計初穂料</span>
-          <span class="report-sum-value" style="color:var(--color-vermilion);">${data.itemSalesTotal.toLocaleString()} 円</span>
-        </div>
-        <div class="report-sum-box" style="border-color:var(--color-gold); background-color:rgba(196,162,100,0.05);">
-          <span style="font-size:0.8rem; color:var(--color-text-muted); display:block; margin-bottom:0.25rem; font-weight:700;">本日 総合計初穂料</span>
-          <span class="report-sum-value" style="color:var(--color-vermilion); font-weight:700;">${data.itemSalesTotal.toLocaleString()} 円</span>
+      <div class="report-summary-boxes" style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+        <div class="report-sum-box" style="max-width: 360px; width: 100%; border-color: var(--color-vermilion); padding: 1.2rem; text-align: center;">
+          <span style="font-size: 0.9rem; color: var(--color-text-muted); display: block; margin-bottom: 0.4rem; font-weight: 700; letter-spacing: 0.05em;">授与品 合計初穂料</span>
+          <span class="report-sum-value" style="color: var(--color-vermilion); font-weight: 700; font-size: 2.2rem; display: block; line-height: 1.2;">${data.itemSalesTotal.toLocaleString()} 円</span>
         </div>
       </div>
       
