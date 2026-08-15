@@ -118,7 +118,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
 
   if (showPrintPreview) {
     return (
-      <div style={{
+      <div className="schedule-print-modal-parent" style={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -130,6 +130,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
         zIndex: 2000,
         overflowY: 'auto'
       }}>
+        {/* 印刷用 CSS スタイルの流し込み */}
+        <style>{`
+          @media print {
+            @page {
+              size: A4 landscape !important;
+              margin: 0 !important;
+            }
+            /* ページ全体を一旦印刷時に非表示にする */
+            html, body, #root {
+              visibility: hidden !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+            }
+            /* 印刷モーダルとその中身の要素だけを可視化 */
+            .schedule-print-modal-parent,
+            .schedule-print-modal-parent * {
+              visibility: visible !important;
+            }
+            /* 印刷用親モーダル自体をページの左上にぴったり配置 */
+            .schedule-print-modal-parent {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 297mm !important;
+              height: 210mm !important;
+              overflow: visible !important;
+              background: #ffffff !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              z-index: 9999999 !important;
+            }
+            /* コントロールバーなどの非表示 */
+            .no-print, .no-print * {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            /* 外枠のパディングを除去 */
+            .schedule-print-sheet {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 297mm !important;
+              height: 210mm !important;
+              padding: 20mm !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+            }
+          }
+        `}</style>
         {/* Print controls bar */}
         <div className="no-print" style={{
           backgroundColor: 'var(--color-urushi)',
@@ -250,7 +300,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
   // B5 Portrait Report Print Preview Modal
   if (showReportPrintPreview) {
     return (
-      <div style={{
+      <div className="report-print-modal-parent" style={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -262,6 +312,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
         zIndex: 2000,
         overflowY: 'auto'
       }}>
+        {/* 印刷用 CSS スタイルの流し込み */}
+        <style>{`
+          @media print {
+            @page {
+              size: B5 portrait !important;
+              margin: 0 !important;
+            }
+            /* ページ全体を一旦印刷時に非表示にする */
+            html, body, #root {
+              visibility: hidden !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+            }
+            /* 印刷モーダルとその中身の要素だけを可視化 */
+            .report-print-modal-parent,
+            .report-print-modal-parent * {
+              visibility: visible !important;
+            }
+            /* 印刷用親モーダル自体をページの左上にぴったり配置 */
+            .report-print-modal-parent {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 182mm !important;
+              height: 257mm !important;
+              overflow: visible !important;
+              background: #ffffff !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              z-index: 9999999 !important;
+            }
+            /* コントロールバーなどの非表示 */
+            .no-print, .no-print * {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            /* 外枠のパディングを除去 */
+            .report-print-sheet {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 182mm !important;
+              height: 257mm !important;
+              padding: 15mm !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+            }
+          }
+        `}</style>
         {/* Controls bar */}
         <div className="no-print" style={{
           backgroundColor: '#800000',
@@ -405,7 +505,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
 
   if (showMonthlyPrintPreview) {
     return (
-      <div style={{
+      <div className="monthly-print-modal-parent" style={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -417,6 +517,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
         zIndex: 2000,
         overflowY: 'auto'
       }}>
+        {/* 印刷用 CSS スタイルの流し込み */}
+        <style>{`
+          @media print {
+            @page {
+              size: B5 portrait !important;
+              margin: 0 !important;
+            }
+            /* ページ全体を一旦印刷時に非表示にする */
+            html, body, #root {
+              visibility: hidden !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+            }
+            /* 印刷モーダルとその中身の要素だけを可視化 */
+            .monthly-print-modal-parent,
+            .monthly-print-modal-parent * {
+              visibility: visible !important;
+            }
+            /* 印刷用親モーダル自体をページの左上にぴったり配置 */
+            .monthly-print-modal-parent {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 182mm !important;
+              height: 257mm !important;
+              overflow: visible !important;
+              background: #faf7f0 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              z-index: 9999999 !important;
+            }
+            /* コントロールバーなどの非表示 */
+            .no-print, .no-print * {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            /* 外枠のパディングを除去 */
+            .report-print-sheet {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 182mm !important;
+              height: 257mm !important;
+              padding: 20mm 15mm !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+            }
+          }
+        `}</style>
         {/* Print controls bar */}
         <div className="no-print" style={{
           backgroundColor: 'var(--color-urushi)',
