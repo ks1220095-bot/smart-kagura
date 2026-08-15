@@ -3,12 +3,13 @@ import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
 
 interface YomifudaPrintProps {
-  booking: Booking;
+  booking?: Booking;
+  bookings?: Booking[];
   onClose: () => void;
 }
 
-export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }) => {
-  const isIndiv = booking.booking_type === 'individual';
+export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings, onClose }) => {
+  const targetBookings = bookings || (booking ? [booking] : []);
 
   // 満年齢の計算
   const getFullAge = (birthdayStr: string, bookingDateStr: string): number => {
@@ -110,7 +111,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
     return `${b.kotobuki_type}御祝`;
   };
 
-  const renderHalfSheet = (title: '神社控' | '祈祷控') => {
+  const renderHalfSheet = (booking: Booking, title: '神社控' | '祈祷控') => {
+    const isIndiv = booking.booking_type === 'individual';
     const displayName = (isIndiv ? booking.name : booking.company_name) || '';
     const displayKana = (isIndiv ? booking.kana : booking.company_kana) || '';
     const displayAddress = (isIndiv ? booking.address : booking.company_address) || '';
@@ -516,17 +518,15 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
           }
           /* 印刷対象の用紙をぴったり余白0でB5横配置 */
           .print-yomifuda-page {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            position: relative !important;
             width: 257mm !important;
             height: 182mm !important;
             padding: 7mm 8mm !important;
             margin: 0 !important;
             box-shadow: none !important;
             page-break-inside: avoid !important;
-            page-break-after: avoid !important;
-            page-break-before: avoid !important;
+            page-break-after: always !important;
+            break-after: page !important;
           }
         }
       `}</style>
@@ -564,40 +564,44 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, onClose }
       </div>
 
       {/* Yomifuda Body (Horizontal A4 page with 2 half-sheets) */}
-      <div className="yomifuda-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
-        <div 
-          className="yomifuda-sheet print-yomifuda-page" 
-          style={{
-            backgroundColor: '#ffffff',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            position: 'relative',
-            width: '257mm',   // B5 Width
-            height: '182mm',  // B5 Height
-            padding: '7mm 8mm',
-            boxSizing: 'border-box',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '5mm',
-            color: '#000000',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Right half: 神社控 */}
-          {renderHalfSheet('神社控')}
+      <div className="yomifuda-print-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center', padding: '2rem' }}>
+        {targetBookings.map((b, idx) => (
+          <div 
+            key={b.id || idx}
+            className="yomifuda-sheet print-yomifuda-page" 
+            style={{
+              backgroundColor: '#ffffff',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              position: 'relative',
+              width: '257mm',   // B5 Width
+              height: '182mm',  // B5 Height
+              padding: '7mm 8mm',
+              boxSizing: 'border-box',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '5mm',
+              color: '#000000',
+              overflow: 'hidden',
+              marginBottom: idx < targetBookings.length - 1 ? '2rem' : 0
+            }}
+          >
+            {/* Right half: 神社控 */}
+            {renderHalfSheet(b, '神社控')}
 
-          {/* Center cutting dashed divider */}
-          <div style={{
-            height: '100%',
-            borderLeft: '2px dashed #999',
-            width: '1px',
-            position: 'relative',
-            zIndex: 10
-          }} className="no-print" />
+            {/* Center cutting dashed divider */}
+            <div style={{
+              height: '100%',
+              borderLeft: '2px dashed #999',
+              width: '1px',
+              position: 'relative',
+              zIndex: 10
+            }} className="no-print" />
 
-          {/* Left half: 祈祷控 */}
-          {renderHalfSheet('祈祷控')}
-        </div>
+            {/* Left half: 祈祷控 */}
+            {renderHalfSheet(b, '祈祷控')}
+          </div>
+        ))}
       </div>
     </div>
   );

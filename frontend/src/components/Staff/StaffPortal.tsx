@@ -165,6 +165,7 @@ export const StaffPortal: React.FC = () => {
   // Print Preview Selection states
   const [selectedYomifuda, setSelectedYomifuda] = useState<Booking | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<Booking | null>(null);
+  const [selectedBulkYomifuda, setSelectedBulkYomifuda] = useState<Booking[] | null>(null);
 
   // Manual Booking Add Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1760,6 +1761,7 @@ export const StaffPortal: React.FC = () => {
               onRefresh={fetchBookings}
               onSelectYomifuda={setSelectedYomifuda}
               onSelectReceipt={setSelectedReceipt}
+              onSelectBulkYomifuda={setSelectedBulkYomifuda}
             />
           )}
 
@@ -1771,6 +1773,13 @@ export const StaffPortal: React.FC = () => {
           <YomifudaPrint 
             booking={selectedYomifuda} 
             onClose={() => setSelectedYomifuda(null)} 
+          />
+        )}
+
+        {selectedBulkYomifuda && (
+          <YomifudaPrint 
+            bookings={selectedBulkYomifuda} 
+            onClose={() => setSelectedBulkYomifuda(null)} 
           />
         )}
 

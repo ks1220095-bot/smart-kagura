@@ -7,6 +7,7 @@ interface BookingsListProps {
   onRefresh: () => void;
   onSelectYomifuda: (booking: Booking) => void;
   onSelectReceipt: (booking: Booking) => void;
+  onSelectBulkYomifuda?: (bookings: Booking[]) => void;
 }
 
 // Helper: Determine visually distinct pastel colors based on prayer types
@@ -37,7 +38,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   bookings,
   onRefresh,
   onSelectYomifuda,
-  onSelectReceipt
+  onSelectReceipt,
+  onSelectBulkYomifuda
 }) => {
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -603,6 +605,38 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 }}
               >
                 一括取消
+              </button>
+            </div>
+
+            {/* 一括: 読み札印刷 */}
+            <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  const selectedBookings = bookings.filter(b => selectedBookingIds.includes(b.id!) && b.is_cancelled !== 1);
+                  if (selectedBookings.length === 0) {
+                    alert('印刷可能な予約（キャンセルされていない予約）が選択されていません。');
+                    return;
+                  }
+                  if (onSelectBulkYomifuda) {
+                    onSelectBulkYomifuda(selectedBookings);
+                  }
+                }}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '0.3rem 0.6rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                  backgroundColor: 'var(--color-mizuiro-hover)',
+                  borderColor: 'var(--color-mizuiro-hover)',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={12} />
+                一括お札印刷
               </button>
             </div>
           </div>
