@@ -327,9 +327,13 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     display: none !important;
   }
   
+  .print-modal-overlay,
+  .print-modal-overlay * {
+    visibility: visible !important;
+  }
+  
   .print-modal-overlay {
     display: block !important;
-    visibility: visible !important;
     position: relative !important;
     top: auto !important;
     left: auto !important;
