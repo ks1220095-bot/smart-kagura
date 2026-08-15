@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
 
@@ -16,8 +17,8 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
   const amount = booking.receipt_amount || booking.hatsuhoryo || 0;
   const address = booking.receipt_name || booking.company_name || '';
 
-  return (
-    <div style={{
+  return createPortal(
+    <div className="receipt-print-modal-parent" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -65,7 +66,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
       {/* Receipt Sheet */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 0' }}>
         <div 
-          className="receipt-sheet" 
+          className="receipt-sheet print-landscape-page" 
           style={{
             backgroundColor: '#ffffff',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
@@ -174,7 +175,8 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
 
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 export default ReceiptPrint;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
 
@@ -457,7 +458,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     );
   };
 
-  return (
+  return createPortal(
     <div className="yomifuda-print-modal-parent" style={{
       position: 'fixed',
       top: 0,
@@ -470,66 +471,6 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
       zIndex: 2000,
       overflowY: 'auto'
     }}>
-      {/* 印刷用 CSS スタイルの流し込み */}
-      <style>{`
-        @media print {
-          @page {
-            size: B5 landscape !important;
-            margin: 0 !important;
-          }
-          /* ページ全体を一旦印刷時に非表示にする */
-          html, body, #root {
-            visibility: hidden !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 257mm !important;
-            height: 182mm !important;
-            overflow: visible !important;
-            background-color: #ffffff !important;
-          }
-          /* 印刷モーダルとその中身の要素だけを可視化 */
-          .yomifuda-print-modal-parent,
-          .yomifuda-print-modal-parent * {
-            visibility: visible !important;
-          }
-          /* 印刷用親モーダル自体をページの左上にぴったり配置 */
-          .yomifuda-print-modal-parent {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 257mm !important;
-            height: 182mm !important;
-            overflow: visible !important;
-            background: #ffffff !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            z-index: 9999999 !important;
-          }
-          /* コントロールバーなどの非表示 */
-          .no-print, .no-print * {
-            display: none !important;
-            visibility: hidden !important;
-          }
-          /* 外枠ラッパーのパディングを除去 */
-          .yomifuda-print-wrapper {
-            padding: 0 !important;
-            margin: 0 !important;
-            display: block !important;
-          }
-          /* 印刷対象の用紙をぴったり余白0でB5横配置 */
-          .print-yomifuda-page {
-            position: relative !important;
-            width: 257mm !important;
-            height: 182mm !important;
-            padding: 7mm 8mm !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            page-break-inside: avoid !important;
-            page-break-after: always !important;
-            break-after: page !important;
-          }
-        }
-      `}</style>
       {/* Control bar */}
       <div className="no-print" style={{
         backgroundColor: 'var(--color-urushi)',
@@ -603,7 +544,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           </div>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 export default YomifudaPrint;
