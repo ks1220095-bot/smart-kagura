@@ -142,7 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
         }}>
           <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Printer size={18} />
-            本日分ご祈祷日程表 印刷プレビュー (横向き印刷推奨)
+            ご祈祷日程内訳表 印刷プレビュー (横向き印刷推奨)
           </h4>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button 
@@ -181,7 +181,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: 0 }}>清瀧神社 ご祈祷日程内訳表</h2>
-              <span style={{ fontSize: '1.1rem' }}>対象日： {today} (本日)</span>
+              <span style={{ fontSize: '1.1rem' }}>対象日： {getWarekiDateString(reportDate)}</span>
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
@@ -198,14 +198,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
                 </tr>
               </thead>
               <tbody>
-                {todayBookings.length === 0 ? (
+                {reportBookings.length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#666' }}>
-                      本日予定されているご祈祷はありません。
+                      選択された日に予定されているご祈祷はありません。
                     </td>
                   </tr>
                 ) : (
-                  todayBookings.map((b) => {
+                  reportBookings.map((b) => {
                     const isIndiv = b.booking_type === 'individual';
                     const name = isIndiv ? b.name : b.company_name;
                     return (
@@ -700,8 +700,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
               margin: 0,
               fontFamily: 'var(--font-serif)'
             }}>
-              本日のご祈祷日程表 (本日: {today})
+              ご祈祷日程表
             </h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.75rem', color: '#666' }}>対象日:</span>
+              <input 
+                type="date" 
+                value={reportDate} 
+                onChange={(e) => setReportDate(e.target.value)} 
+                style={{
+                  padding: '0.2rem 0.4rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid var(--color-border)',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }} 
+              />
+            </div>
             
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button 
@@ -712,7 +729,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
                 <Printer size={12} />
                 日次報告書
               </button>
-              {todayBookings.length > 0 && (
+              {reportBookings.length > 0 && (
                 <button 
                   onClick={() => setShowPrintPreview(true)}
                   className="btn btn-primary"
@@ -725,9 +742,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
             </div>
           </div>
 
-          {todayBookings.length === 0 ? (
+          {reportBookings.length === 0 ? (
             <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.85rem', textAlign: 'center', margin: '2rem 0' }}>
-              本日予定されているご祈祷はございません。
+              選択された日に予定されているご祈祷はございません。
             </p>
           ) : (
             <div style={{ 
@@ -738,7 +755,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
               gap: '0.4rem', 
               fontSize: '0.8rem' 
             }}>
-              {todayBookings.map(b => (
+              {reportBookings.map(b => (
                 <div key={b.id} style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
