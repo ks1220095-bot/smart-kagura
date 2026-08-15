@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
+import { printElement } from '../../utils/printUtils';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -10,6 +11,7 @@ interface YomifudaPrintProps {
 }
 
 export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings, onClose }) => {
+  const printRef = useRef<HTMLDivElement>(null);
   const targetBookings = bookings || (booking ? [booking] : []);
 
   // 満年齢の計算
@@ -475,7 +477,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button 
-            onClick={() => window.print()} 
+            onClick={() => printElement(printRef.current, { title: 'ご祈祷受付票・読み札', orientation: 'landscape', size: 'B5' })} 
             className="btn btn-primary" 
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
@@ -494,7 +496,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
       </div>
 
       {/* Yomifuda Body (Horizontal A4 page with 2 half-sheets) */}
-      <div className="yomifuda-print-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center', padding: '2rem' }}>
+      <div ref={printRef} className="yomifuda-print-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center', padding: '2rem' }}>
         {targetBookings.map((b, idx) => (
           <div 
             key={b.id || idx}

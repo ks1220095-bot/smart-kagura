@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
+import { printElement } from '../../utils/printUtils';
 
 interface ReceiptPrintProps {
   booking: Booking;
@@ -9,6 +10,7 @@ interface ReceiptPrintProps {
 }
 
 export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) => {
+  const printRef = useRef<HTMLDivElement>(null);
   const getTodayString = () => {
     const today = new Date();
     return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
@@ -34,7 +36,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button 
-            onClick={() => window.print()} 
+            onClick={() => printElement(printRef.current, { title: '領収証', orientation: 'landscape', size: 'A5' })} 
             className="btn btn-primary" 
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
@@ -55,6 +57,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
       {/* Receipt Sheet */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 0' }}>
         <div 
+          ref={printRef}
           className="receipt-sheet print-landscape-page" 
           style={{
             backgroundColor: '#ffffff',

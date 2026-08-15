@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft } from 'lucide-react';
 import type { Booking } from '../../types';
+import { printElement } from '../../utils/printUtils';
 
 interface DashboardProps {
   bookings: Booking[];
@@ -405,8 +406,13 @@ export default Dashboard;
 
 // --- PRINT COMPONENT: SCHEDULE INNER PRINT ---
 export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
+  const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = () => {
-    window.print();
+    printElement(printRef.current, {
+      title: '清瀧神社 ご祈祷日程内訳表',
+      orientation: 'landscape',
+      size: 'A4'
+    });
   };
 
   const getWarekiDateString = (dateStr: string) => {
@@ -466,6 +472,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
 
       <div className="schedule-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
         <div 
+          ref={printRef}
           className="schedule-print-sheet print-landscape-page"
           style={{
             backgroundColor: 'white',
@@ -563,6 +570,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
 
 // --- PRINT COMPONENT: DAILY REPORT PRINT ---
 export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
+  const printRef = useRef<HTMLDivElement>(null);
   const getWarekiDateString = (dateStr: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -609,7 +617,11 @@ export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onC
           日次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズ推奨)
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={() => window.print()} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', backgroundColor: '#d4af37', borderColor: '#d4af37', color: '#800000' }}>
+          <button 
+            onClick={() => printElement(printRef.current, { title: '清瀧神社 日次ご祈祷料集計報告書', orientation: 'portrait', size: 'B5' })} 
+            className="btn btn-primary" 
+            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', backgroundColor: '#d4af37', borderColor: '#d4af37', color: '#800000' }}
+          >
             印刷する
           </button>
           <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: '#ccc', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -621,6 +633,7 @@ export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onC
 
       <div className="daily-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
         <div 
+          ref={printRef}
           className="report-print-sheet print-portrait-page"
           style={{
             backgroundColor: 'white',
@@ -759,6 +772,7 @@ export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onC
 };
 
 export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; onClose: () => void }> = ({ bookings, month, onClose }) => {
+  const printRef = useRef<HTMLDivElement>(null);
   const getWarekiMonthString = (monthStr: string) => {
     if (!monthStr) return '';
     const parts = monthStr.split('-');
@@ -804,7 +818,11 @@ export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; 
           月次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズ推奨)
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={() => window.print()} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', backgroundColor: '#d4af37', borderColor: '#d4af37', color: '#800000' }}>
+          <button 
+            onClick={() => printElement(printRef.current, { title: '清瀧神社 月次ご祈祷料集計報告書', orientation: 'portrait', size: 'B5' })} 
+            className="btn btn-primary" 
+            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', backgroundColor: '#d4af37', borderColor: '#d4af37', color: '#800000' }}
+          >
             印刷する
           </button>
           <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: '#ccc', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -816,6 +834,7 @@ export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; 
 
       <div className="monthly-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
         <div 
+          ref={printRef}
           className="report-print-sheet print-portrait-page"
           style={{
             backgroundColor: 'white',
