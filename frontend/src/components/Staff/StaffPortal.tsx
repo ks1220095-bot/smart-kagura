@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key, Coins } from 'lucide-react';
 import type { Booking } from '../../types';
-import Dashboard from './Dashboard';
+import Dashboard, { ScheduleInnerPrint, DailyReportPrint, MonthlyReportPrint } from './Dashboard';
 import CalendarView from './CalendarView';
 import BookingsList from './BookingsList';
 import SettingsView from './SettingsView';
@@ -162,10 +162,12 @@ export const StaffPortal: React.FC = () => {
   const [pinCode, setPinCode] = useState('');
   const [pinError, setPinError] = useState('');
 
-  // Print Preview Selection states
   const [selectedYomifuda, setSelectedYomifuda] = useState<Booking | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<Booking | null>(null);
   const [selectedBulkYomifuda, setSelectedBulkYomifuda] = useState<Booking[] | null>(null);
+  const [selectedSchedulePrintDate, setSelectedSchedulePrintDate] = useState<string | null>(null);
+  const [selectedDailyReportPrintDate, setSelectedDailyReportPrintDate] = useState<string | null>(null);
+  const [selectedMonthlyReportPrintMonth, setSelectedMonthlyReportPrintMonth] = useState<string | null>(null);
 
   // Manual Booking Add Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1746,7 +1748,14 @@ export const StaffPortal: React.FC = () => {
 
         {/* ACTIVE SUBPORTAL COMPONENT DISPLAY */}
         <div className="no-print">
-          {activeTab === 'dashboard' && <Dashboard bookings={bookings} />}
+          {activeTab === 'dashboard' && (
+            <Dashboard 
+              bookings={bookings} 
+              onSelectSchedulePrint={setSelectedSchedulePrintDate}
+              onSelectDailyReportPrint={setSelectedDailyReportPrintDate}
+              onSelectMonthlyReportPrint={setSelectedMonthlyReportPrintMonth}
+            />
+          )}
           
           {activeTab === 'calendar' && (
             <CalendarView 
@@ -1787,6 +1796,30 @@ export const StaffPortal: React.FC = () => {
           <ReceiptPrint 
             booking={selectedReceipt} 
             onClose={() => setSelectedReceipt(null)} 
+          />
+        )}
+
+        {selectedSchedulePrintDate && (
+          <ScheduleInnerPrint 
+            bookings={bookings} 
+            date={selectedSchedulePrintDate} 
+            onClose={() => setSelectedSchedulePrintDate(null)} 
+          />
+        )}
+
+        {selectedDailyReportPrintDate && (
+          <DailyReportPrint 
+            bookings={bookings} 
+            date={selectedDailyReportPrintDate} 
+            onClose={() => setSelectedDailyReportPrintDate(null)} 
+          />
+        )}
+
+        {selectedMonthlyReportPrintMonth && (
+          <MonthlyReportPrint 
+            bookings={bookings} 
+            month={selectedMonthlyReportPrintMonth} 
+            onClose={() => setSelectedMonthlyReportPrintMonth(null)} 
           />
         )}
 

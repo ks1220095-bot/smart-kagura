@@ -4,12 +4,17 @@ import type { Booking } from '../../types';
 
 interface DashboardProps {
   bookings: Booking[];
+  onSelectSchedulePrint?: (date: string) => void;
+  onSelectDailyReportPrint?: (date: string) => void;
+  onSelectMonthlyReportPrint?: (month: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
-  const [showPrintPreview, setShowPrintPreview] = useState(false);
-  const [showReportPrintPreview, setShowReportPrintPreview] = useState(false);
-  const [showMonthlyPrintPreview, setShowMonthlyPrintPreview] = useState(false);
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  bookings,
+  onSelectSchedulePrint,
+  onSelectDailyReportPrint,
+  onSelectMonthlyReportPrint
+}) => {
 
   const getTodayString = () => {
     const today = new Date();
@@ -46,29 +51,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
   const indivCount = bookings.filter(b => b.booking_type === 'individual').length;
   const orgCount = bookings.filter(b => b.booking_type === 'organization').length;
 
-  // Handle printing trigger
-  const handlePrintSchedule = () => {
-    window.print();
-  };
-
   // Target date bookings for report
   const reportBookings = bookings.filter(b => b.booking_date === reportDate);
-  const reportTotalPrayers = reportBookings.length;
-  const reportIndividualPrayers = reportBookings.filter(b => b.booking_type === 'individual').length;
-  const reportOrganizationPrayers = reportBookings.filter(b => b.booking_type === 'organization').length;
-  const reportTotalRevenue = reportBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
-
-  // Prayer breakdown
-  const prayerDetails: { [key: string]: { count: number; fee: number } } = {};
-  reportBookings.forEach(b => {
-    const prayer = b.prayer1 ? b.prayer1.trim() : 'その他';
-    const fee = b.hatsuhoryo || 0;
-    if (!prayerDetails[prayer]) {
-      prayerDetails[prayer] = { count: 0, fee: 0 };
-    }
-    prayerDetails[prayer].count++;
-    prayerDetails[prayer].fee += fee;
-  });
 
   // Target month bookings for report
   const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth));
@@ -102,604 +86,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
   };
 
 
-  const getWarekiDateString = (dateStr: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
-    
-    const reiwaYear = year - 2018;
-    const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
-    return `令和${eraStr}年${month}月${day}日（${dayOfWeek}）`;
-  };
-
-  if (showPrintPreview) {
-    return (
-      <div className="schedule-print-modal-parent" style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 2000,
-        overflowY: 'auto'
-      }}>
-        {/* 印刷用 CSS スタイルの流し込み */}
-        <style>{`
-          @media print {
-            @page {
-              size: A4 landscape !important;
-              margin: 0 !important;
-            }
-            /* ページ全体を一旦印刷時に非表示にする */
-            html, body, #root {
-              visibility: hidden !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              overflow: visible !important;
-            }
-            /* 印刷モーダルとその中身の要素だけを可視化 */
-            .schedule-print-modal-parent,
-            .schedule-print-modal-parent * {
-              visibility: visible !important;
-            }
-            /* 印刷用親モーダル自体をページの左上にぴったり配置 */
-            .schedule-print-modal-parent {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 297mm !important;
-              height: 210mm !important;
-              overflow: visible !important;
-              background: #ffffff !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              z-index: 9999999 !important;
-            }
-            /* コントロールバーなどの非表示 */
-            .no-print, .no-print * {
-              display: none !important;
-              visibility: hidden !important;
-            }
-            /* 外枠のパディングを除去 */
-            .schedule-print-sheet {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 297mm !important;
-              height: 210mm !important;
-              padding: 20mm !important;
-              margin: 0 !important;
-              box-shadow: none !important;
-            }
-          }
-        `}</style>
-        {/* Print controls bar */}
-        <div className="no-print" style={{
-          backgroundColor: 'var(--color-urushi)',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: 'white',
-          borderBottom: '2px solid var(--color-gold)'
-        }}>
-          <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Printer size={18} />
-            ご祈祷日程内訳表 印刷プレビュー (横向き印刷推奨)
-          </h4>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button 
-              onClick={handlePrintSchedule} 
-              className="btn btn-primary" 
-              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}
-            >
-              印刷する (A4横)
-            </button>
-            <button 
-              onClick={() => setShowPrintPreview(false)} 
-              className="btn btn-secondary" 
-              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <ArrowLeft size={14} />
-              元の画面に戻る
-            </button>
-          </div>
-        </div>
-
-        {/* Print layout sheet */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-          <div 
-            className="schedule-print-sheet print-landscape-page"
-            style={{
-              backgroundColor: 'white',
-              width: '297mm', // A4 Landscape width
-              minHeight: '210mm',
-              padding: '20mm',
-              color: 'black',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-              fontFamily: 'var(--font-serif)',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: 0 }}>清瀧神社 ご祈祷日程内訳表</h2>
-              <span style={{ fontSize: '1.1rem' }}>対象日： {getWarekiDateString(reportDate)}</span>
-            </div>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #000', backgroundColor: '#f0f0f0' }}>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '8%' }}>時間</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '10%' }}>受付番号</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '8%' }}>区分</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '22%' }}>氏名 / 会社・団体名</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '22%' }}>願意</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'right', width: '7%' }}>人数</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'right', width: '13%' }}>初穂料</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', width: '10%' }}>支払状況</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportBookings.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#666' }}>
-                      選択された日に予定されているご祈祷はありません。
-                    </td>
-                  </tr>
-                ) : (
-                  reportBookings.map((b) => {
-                    const isIndiv = b.booking_type === 'individual';
-                    const name = isIndiv ? b.name : b.company_name;
-                    return (
-                      <tr key={b.id} style={{ borderBottom: '1px solid #ccc' }}>
-                        <td style={{ padding: '0.6rem 0.5rem', fontWeight: 'bold' }}>{b.booking_time}</td>
-                        <td style={{ padding: '0.6rem 0.5rem' }}>{b.receipt_number}</td>
-                        <td style={{ padding: '0.6rem 0.5rem' }}>{isIndiv ? '個人' : '団体'}</td>
-                        <td style={{ padding: '0.6rem 0.5rem', fontWeight: 600 }}>{name}</td>
-                        <td style={{ padding: '0.6rem 0.5rem' }}>
-                          {b.prayer1}
-                          {b.prayer2 ? ` / ${b.prayer2}` : ''}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right' }}>{b.attending_count} 名</td>
-                        <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{b.hatsuhoryo.toLocaleString()} 円</td>
-                        <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
-                          {b.payment_status === 'paid' ? '支払済' : '未納'}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-
-            {/* Print statistics footer */}
-            <div style={{ marginTop: 'auto', paddingTop: '2rem', borderTop: '2px dashed #ccc', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <div>
-                <span>本日予定数： {todayBookings.length} 件</span>
-                <span style={{ marginLeft: '1.5rem' }}>（個人：{todayBookings.filter(b => b.booking_type === 'individual').length}件 / 団体：{todayBookings.filter(b => b.booking_type === 'organization').length}件）</span>
-              </div>
-              <div>
-                <span>初穂料合計 (本日済)： <strong>￥{todayRevenue.toLocaleString()}</strong></span>
-                <span style={{ marginLeft: '1.5rem', color: '#d3381c' }}>未収： ￥{todayUnpaidRevenue.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // B5 Portrait Report Print Preview Modal
-  if (showReportPrintPreview) {
-    return (
-      <div className="report-print-modal-parent" style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 2000,
-        overflowY: 'auto'
-      }}>
-        {/* 印刷用 CSS スタイルの流し込み */}
-        <style>{`
-          @media print {
-            @page {
-              size: B5 portrait !important;
-              margin: 0 !important;
-            }
-            /* ページ全体を一旦印刷時に非表示にする */
-            html, body, #root {
-              visibility: hidden !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              overflow: visible !important;
-            }
-            /* 印刷モーダルとその中身の要素だけを可視化 */
-            .report-print-modal-parent,
-            .report-print-modal-parent * {
-              visibility: visible !important;
-            }
-            /* 印刷用親モーダル自体をページの左上にぴったり配置 */
-            .report-print-modal-parent {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 182mm !important;
-              height: 257mm !important;
-              overflow: visible !important;
-              background: #ffffff !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              z-index: 9999999 !important;
-            }
-            /* コントロールバーなどの非表示 */
-            .no-print, .no-print * {
-              display: none !important;
-              visibility: hidden !important;
-            }
-            /* 外枠のパディングを除去 */
-            .report-print-sheet {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 182mm !important;
-              height: 257mm !important;
-              padding: 15mm !important;
-              margin: 0 !important;
-              box-shadow: none !important;
-            }
-          }
-        `}</style>
-        {/* Controls bar */}
-        <div className="no-print" style={{
-          backgroundColor: '#800000',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: 'white',
-          borderBottom: '2px solid #d4af37'
-        }}>
-          <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Printer size={18} />
-            日次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズ推奨)
-          </h4>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'white', margin: 0 }}>対象日の選択:</label>
-              <input 
-                type="date" 
-                value={reportDate} 
-                onChange={(e) => setReportDate(e.target.value)}
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', borderRadius: '2px', border: '1px solid #ccc' }}
-              />
-            </div>
-            <button 
-              onClick={handlePrintSchedule} 
-              className="btn btn-primary" 
-              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', backgroundColor: '#d4af37', borderColor: '#d4af37', color: '#800000' }}
-            >
-              印刷する
-            </button>
-            <button 
-              onClick={() => setShowReportPrintPreview(false)} 
-              className="btn btn-secondary" 
-              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: '#ccc', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <ArrowLeft size={14} />
-              閉じる
-            </button>
-          </div>
-        </div>
-
-        {/* B5 Sheet layout */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-          <div 
-            className="report-print-sheet print-portrait-page"
-            style={{
-              backgroundColor: 'white',
-              width: '182mm', // B5 portrait width
-              minHeight: '257mm', // B5 portrait height
-              padding: '15mm',
-              color: 'black',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-              fontFamily: '"Noto Serif JP", serif',
-              display: 'flex',
-              flexDirection: 'column',
-              boxSizing: 'border-box'
-            }}
-          >
-            <div style={{ textAlign: 'center', marginBottom: '5px' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#800000', margin: 0, padding: '10px 0', letterSpacing: '2px', borderBottom: '1px solid #800000' }}>
-                清瀧神社  日次ご祈祷料集計報告書
-              </h1>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: '11px', color: '#555', marginTop: '5px', marginBottom: '25px' }}>
-              集計日: {getWarekiDateString(reportDate)}
-            </div>
-
-            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', backgroundColor: '#faf7f0', padding: '8px 12px', borderLeft: '5px solid #800000', marginBottom: '12px' }}>
-              【 ご祈祷（初穂料）の部 】
-            </div>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>ご祈祷総数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>個人祈祷数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>団体祈祷数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>初穂料総額</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>内訳備考</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportTotalPrayers} 件</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportIndividualPrayers} 件</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportOrganizationPrayers} 件</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportTotalRevenue.toLocaleString()} 円</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}></td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#555', marginTop: '15px', marginBottom: '8px' }}>
-              ＜願意別の内訳＞
-            </div>
-
-            <table style={{ width: '70%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '50%' }}>願意名</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>祈祷件数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>初穂料小計</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(prayerDetails).length === 0 ? (
-                  <tr>
-                    <td colSpan={3} style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center', color: '#777' }}>
-                      （該当日のご祈祷はありません）
-                    </td>
-                  </tr>
-                ) : (
-                  Object.keys(prayerDetails).map(pName => (
-                    <tr key={pName}>
-                      <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}>{pName}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{prayerDetails[pName].count} 件</td>
-                      <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'right' }}>{prayerDetails[pName].fee.toLocaleString()} 円</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-
-            <div style={{
-              backgroundColor: '#faf7f0',
-              border: '3px double #800000',
-              padding: '15px',
-              textAlign: 'center',
-              marginTop: '40px'
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', marginBottom: '8px' }}>【 本日の社入金 】</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#800000', marginBottom: '6px' }}>金  {reportTotalRevenue.toLocaleString()}  円 整</div>
-              <div style={{ fontSize: '11px', color: '#555' }}>（内訳  ご祈祷: {reportTotalRevenue.toLocaleString()} 円）</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (showMonthlyPrintPreview) {
-    return (
-      <div className="monthly-print-modal-parent" style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 2000,
-        overflowY: 'auto'
-      }}>
-        {/* 印刷用 CSS スタイルの流し込み */}
-        <style>{`
-          @media print {
-            @page {
-              size: B5 portrait !important;
-              margin: 0 !important;
-            }
-            /* ページ全体を一旦印刷時に非表示にする */
-            html, body, #root {
-              visibility: hidden !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              overflow: visible !important;
-            }
-            /* 印刷モーダルとその中身の要素だけを可視化 */
-            .monthly-print-modal-parent,
-            .monthly-print-modal-parent * {
-              visibility: visible !important;
-            }
-            /* 印刷用親モーダル自体をページの左上にぴったり配置 */
-            .monthly-print-modal-parent {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 182mm !important;
-              height: 257mm !important;
-              overflow: visible !important;
-              background: #faf7f0 !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              z-index: 9999999 !important;
-            }
-            /* コントロールバーなどの非表示 */
-            .no-print, .no-print * {
-              display: none !important;
-              visibility: hidden !important;
-            }
-            /* 外枠のパディングを除去 */
-            .report-print-sheet {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 182mm !important;
-              height: 257mm !important;
-              padding: 20mm 15mm !important;
-              margin: 0 !important;
-              box-shadow: none !important;
-            }
-          }
-        `}</style>
-        {/* Print controls bar */}
-        <div className="no-print" style={{
-          backgroundColor: 'var(--color-urushi)',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: 'white',
-          borderBottom: '2px solid var(--color-gold)'
-        }}>
-          <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Printer size={18} />
-            月次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズで作成)
-          </h4>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button 
-              onClick={() => window.print()} 
-              className="btn btn-primary" 
-              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}
-            >
-              印刷する
-            </button>
-            <button 
-              onClick={() => setShowMonthlyPrintPreview(false)} 
-              className="btn btn-secondary" 
-              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <ArrowLeft size={14} />
-              元の画面に戻る
-            </button>
-          </div>
-        </div>
-
-        {/* Print layout sheet */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-          <div 
-            className="report-print-sheet"
-            style={{
-              backgroundColor: '#faf7f0', // Washi-like color
-              width: '182mm', // B5 width
-              minHeight: '257mm', // B5 height
-              padding: '20mm 15mm',
-              color: 'var(--color-urushi)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-              fontFamily: 'var(--font-serif)',
-              border: '2px solid #800000',
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              boxSizing: 'border-box'
-            }}
-          >
-            <div style={{ textAlign: 'center', marginBottom: '5px' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#800000', margin: 0, padding: '10px 0', letterSpacing: '2px', borderBottom: '1px solid #800000' }}>
-                清瀧神社  月次ご祈祷料集計報告書
-              </h1>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: '11px', color: '#555', marginTop: '5px', marginBottom: '25px' }}>
-              集計対象月: {getWarekiMonthString(reportMonth)}
-            </div>
-
-            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', backgroundColor: '#faf7f0', padding: '8px 12px', borderLeft: '5px solid #800000', marginBottom: '12px' }}>
-              【 ご祈祷（初穂料）の部 】
-            </div>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>ご祈祷総数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>個人祈祷数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>団体祈祷数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>初穂料総額</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>内訳備考</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyTotalPrayers} 件</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyIndividualPrayers} 件</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyOrganizationPrayers} 件</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyTotalRevenue.toLocaleString()} 円</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}></td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#555', marginTop: '15px', marginBottom: '8px' }}>
-              ＜願意別の内訳＞
-            </div>
-
-            <table style={{ width: '70%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '50%' }}>願意名</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>祈祷件数</th>
-                  <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>初穂料小計</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(monthlyPrayerDetails).length === 0 ? (
-                  <tr>
-                    <td colSpan={3} style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center', color: '#777' }}>
-                      （該当月のご祈祷はありません）
-                    </td>
-                  </tr>
-                ) : (
-                  Object.keys(monthlyPrayerDetails).map(pName => (
-                    <tr key={pName}>
-                      <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}>{pName}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyPrayerDetails[pName].count} 件</td>
-                      <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'right' }}>{monthlyPrayerDetails[pName].fee.toLocaleString()} 円</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-
-            <div style={{
-              backgroundColor: '#faf7f0',
-              border: '3px double #800000',
-              padding: '15px',
-              textAlign: 'center',
-              marginTop: '40px'
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', marginBottom: '8px' }}>【 当月の総社入金 】</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#800000', marginBottom: '6px' }}>金  {monthlyTotalRevenue.toLocaleString()}  円 整</div>
-              <div style={{ fontSize: '11px', color: '#555' }}>（内訳  ご祈祷: {monthlyTotalRevenue.toLocaleString()} 円）</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -872,7 +258,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
             
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button 
-                onClick={() => setShowReportPrintPreview(true)}
+                onClick={() => onSelectDailyReportPrint && onSelectDailyReportPrint(reportDate)}
                 className="btn btn-secondary"
                 style={{ padding: '0.3rem 0.60rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
               >
@@ -881,7 +267,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
               </button>
               {reportBookings.length > 0 && (
                 <button 
-                  onClick={() => setShowPrintPreview(true)}
+                  onClick={() => onSelectSchedulePrint && onSelectSchedulePrint(reportDate)}
                   className="btn btn-primary"
                   style={{ padding: '0.3rem 0.60rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                 >
@@ -950,7 +336,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
               />
             </label>
             <button 
-              onClick={() => setShowMonthlyPrintPreview(true)}
+              onClick={() => onSelectMonthlyReportPrint && onSelectMonthlyReportPrint(reportMonth)}
               className="btn btn-secondary"
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
             >
@@ -1015,3 +401,627 @@ export const Dashboard: React.FC<DashboardProps> = ({ bookings }) => {
 };
 
 export default Dashboard;
+
+// --- PRINT COMPONENT: SCHEDULE INNER PRINT ---
+export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const getWarekiDateString = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+    
+    const reiwaYear = year - 2018;
+    const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
+    return `令和${eraStr}年${month}月${day}日（${dayOfWeek}）`;
+  };
+
+  const reportBookings = bookings
+    .filter(b => b.booking_date === date)
+    .sort((a, b) => a.booking_time.localeCompare(b.booking_time));
+  
+  const count = reportBookings.length;
+  // 自動スケーリング設定
+  const printPadding = count > 24 ? '4mm 6mm' : count > 20 ? '6mm 8mm' : count > 15 ? '8mm 10mm' : count > 8 ? '12mm 15mm' : '20mm';
+  const printFontSize = count > 24 ? '0.62rem' : count > 20 ? '0.68rem' : count > 15 ? '0.74rem' : count > 8 ? '0.8rem' : '0.9rem';
+  const printTitleSize = count > 24 ? '1.15rem' : count > 15 ? '1.3rem' : '1.75rem';
+  const printHeaderMargin = count > 24 ? '0.2rem' : count > 15 ? '0.4rem' : '1.5rem';
+  const printRowPadding = count > 24 ? '0.2rem 0.35rem' : count > 20 ? '0.28rem 0.4rem' : count > 15 ? '0.4rem 0.5rem' : '0.6rem 0.5rem';
+  const printFooterMargin = count > 24 ? '0.3rem' : count > 15 ? '0.5rem' : '2rem';
+  
+  const totalPaid = reportBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const totalUnpaid = reportBookings.filter(b => b.payment_status === 'unpaid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+
+  return (
+    <div className="schedule-print-modal-parent" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.85)',
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 2000,
+      overflowY: 'auto'
+    }}>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 landscape !important;
+            margin: 0 !important;
+          }
+          html, body, #root {
+            visibility: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          .schedule-print-modal-parent,
+          .schedule-print-modal-parent * {
+            visibility: visible !important;
+          }
+          .schedule-print-modal-parent {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 297mm !important;
+            height: 210mm !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            z-index: 9999999 !important;
+          }
+          .no-print, .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          .schedule-print-sheet {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 297mm !important;
+            height: 210mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+      <div className="no-print" style={{
+        backgroundColor: 'var(--color-urushi)',
+        padding: '0.75rem 1.5rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'white',
+        borderBottom: '2px solid var(--color-gold)'
+      }}>
+        <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Printer size={18} />
+          ご祈祷日程内訳表 印刷プレビュー (横向き印刷推奨)
+        </h4>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button onClick={handlePrint} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+            印刷する (A4横)
+          </button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <ArrowLeft size={14} />
+            元の画面に戻る
+          </button>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+        <div 
+          className="schedule-print-sheet print-landscape-page"
+          style={{
+            backgroundColor: 'white',
+            width: '297mm',
+            minHeight: '210mm',
+            padding: printPadding,
+            color: 'black',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+            fontFamily: 'var(--font-serif)',
+            display: 'flex',
+            flexDirection: 'column',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '0.3rem', marginBottom: printHeaderMargin }}>
+            <h2 style={{ fontSize: printTitleSize, fontWeight: 'bold', margin: 0 }}>清瀧神社 ご祈祷日程内訳表</h2>
+            <span style={{ fontSize: count > 15 ? '0.9rem' : '1.1rem' }}>対象日： {getWarekiDateString(date)}</span>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: printFontSize }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #000', backgroundColor: '#f0f0f0' }}>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', width: '8%' }}>時間</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', width: '10%' }}>受付番号</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', width: '8%' }}>区分</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', width: '22%' }}>氏名 / 会社・団体名</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', width: '22%' }}>願意</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'right', width: '7%' }}>人数</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'right', width: '13%' }}>初穂料</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', width: '10%' }}>支払状況</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#666' }}>
+                    選択された日に予定されているご祈祷はありません。
+                  </td>
+                </tr>
+              ) : (
+                reportBookings.map((b) => {
+                  const isIndiv = b.booking_type === 'individual';
+                  const name = isIndiv ? b.name : b.company_name;
+                  return (
+                    <tr key={b.id} style={{ borderBottom: '1px solid #ccc' }}>
+                      <td style={{ padding: printRowPadding, fontWeight: 'bold' }}>{b.booking_time}</td>
+                      <td style={{ padding: printRowPadding }}>{b.receipt_number}</td>
+                      <td style={{ padding: printRowPadding }}>{isIndiv ? '個人' : '団体'}</td>
+                      <td style={{ padding: printRowPadding, fontWeight: 600 }}>{name}</td>
+                      <td style={{ padding: printRowPadding }}>
+                        {b.prayer1}
+                        {b.prayer2 ? ` / ${b.prayer2}` : ''}
+                      </td>
+                      <td style={{ padding: printRowPadding, textAlign: 'right' }}>{b.attending_count} 名</td>
+                      <td style={{ padding: printRowPadding, textAlign: 'right', fontWeight: 600 }}>{b.hatsuhoryo.toLocaleString()} 円</td>
+                      <td style={{ padding: printRowPadding, textAlign: 'center' }}>
+                        {b.payment_status === 'paid' ? '支払済' : '未納'}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+
+          <div style={{ 
+            marginTop: count > 24 ? '0.2rem' : 'auto', 
+            paddingTop: printFooterMargin, 
+            borderTop: '2px dashed #ccc', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            fontSize: count > 24 ? '0.7rem' : count > 15 ? '0.75rem' : '0.85rem' 
+          }}>
+            <div>
+              <span>予定件数： {count} 件</span>
+              <span style={{ marginLeft: '1.5rem' }}>（個人：{reportBookings.filter(b => b.booking_type === 'individual').length}件 / 団体：{reportBookings.filter(b => b.booking_type === 'organization').length}件）</span>
+            </div>
+            <div>
+              <span>初穂料合計 (受取済)： <strong>￥{totalPaid.toLocaleString()}</strong></span>
+              <span style={{ marginLeft: '1.5rem', color: '#d3381c' }}>未収： ￥{totalUnpaid.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- PRINT COMPONENT: DAILY REPORT PRINT ---
+export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
+  const getWarekiDateString = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+    
+    const reiwaYear = year - 2018;
+    const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
+    return `令和${eraStr}年${month}月${day}日（${dayOfWeek}）`;
+  };
+
+  const reportBookings = bookings.filter(b => b.booking_date === date);
+  const reportTotalPrayers = reportBookings.length;
+  const reportIndividualPrayers = reportBookings.filter(b => b.booking_type === 'individual').length;
+  const reportOrganizationPrayers = reportBookings.filter(b => b.booking_type === 'organization').length;
+  const reportTotalRevenue = reportBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+
+  const prayerDetails: { [key: string]: { count: number; fee: number } } = {};
+  reportBookings.forEach(b => {
+    const prayer = b.prayer1 ? b.prayer1.trim() : 'その他';
+    const fee = b.hatsuhoryo || 0;
+    if (!prayerDetails[prayer]) {
+      prayerDetails[prayer] = { count: 0, fee: 0 };
+    }
+    prayerDetails[prayer].count++;
+    prayerDetails[prayer].fee += fee;
+  });
+
+  return (
+    <div className="report-print-modal-parent" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.85)',
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 2000,
+      overflowY: 'auto'
+    }}>
+      <style>{`
+        @media print {
+          @page {
+            size: B5 portrait !important;
+            margin: 0 !important;
+          }
+          html, body, #root {
+            visibility: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          .report-print-modal-parent,
+          .report-print-modal-parent * {
+            visibility: visible !important;
+          }
+          .report-print-modal-parent {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 182mm !important;
+            height: 257mm !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            z-index: 9999999 !important;
+          }
+          .no-print, .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          .report-print-sheet {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 182mm !important;
+            height: 257mm !important;
+            padding: 15mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+      <div className="no-print" style={{
+        backgroundColor: '#800000',
+        padding: '0.75rem 1.5rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'white',
+        borderBottom: '2px solid #d4af37'
+      }}>
+        <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Printer size={18} />
+          日次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズ推奨)
+        </h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button onClick={() => window.print()} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', backgroundColor: '#d4af37', borderColor: '#d4af37', color: '#800000' }}>
+            印刷する
+          </button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: '#ccc', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <ArrowLeft size={14} />
+            閉じる
+          </button>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+        <div 
+          className="report-print-sheet print-portrait-page"
+          style={{
+            backgroundColor: 'white',
+            width: '182mm',
+            minHeight: '257mm',
+            padding: '15mm',
+            color: 'black',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            fontFamily: '"Noto Serif JP", serif',
+            display: 'flex',
+            flexDirection: 'column',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '5px' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#800000', margin: 0, padding: '10px 0', letterSpacing: '2px', borderBottom: '1px solid #800000' }}>
+              清瀧神社  日次ご祈祷料集計報告書
+            </h1>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: '11px', color: '#555', marginTop: '5px', marginBottom: '25px' }}>
+            集計日: {getWarekiDateString(date)}
+          </div>
+
+          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', backgroundColor: '#faf7f0', padding: '8px 12px', borderLeft: '5px solid #800000', marginBottom: '12px' }}>
+            【 ご祈祷（初穂料）の部 】
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>ご祈祷総数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>個人祈祷数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>団体祈祷数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>初穂料総額</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>内訳備考</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportTotalPrayers} 件</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportIndividualPrayers} 件</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportOrganizationPrayers} 件</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{reportTotalRevenue.toLocaleString()} 円</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#555', marginTop: '15px', marginBottom: '8px' }}>
+            ＜願意別の内訳＞
+          </div>
+
+          <table style={{ width: '70%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '50%' }}>願意名</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>祈祷件数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f9f9f9', fontWeight: 'bold', textAlign: 'center', width: '25%' }}>初穂料小計</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(prayerDetails).length === 0 ? (
+                <tr>
+                  <td colSpan={3} style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center', color: '#777' }}>
+                    （該当日のご祈祷はありません）
+                  </td>
+                </tr>
+              ) : (
+                Object.keys(prayerDetails).map(pName => (
+                  <tr key={pName}>
+                    <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}>{pName}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{prayerDetails[pName].count} 件</td>
+                    <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'right' }}>{prayerDetails[pName].fee.toLocaleString()} 円</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+
+          <div style={{
+            backgroundColor: '#faf7f0',
+            border: '3px double #800000',
+            padding: '15px',
+            textAlign: 'center',
+            marginTop: '40px'
+          }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', marginBottom: '8px' }}>【 本日の社入金 】</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#800000', marginBottom: '6px' }}>金  {reportTotalRevenue.toLocaleString()}  円 整</div>
+            <div style={{ fontSize: '11px', color: '#555' }}>（内訳  ご祈祷: {reportTotalRevenue.toLocaleString()} 円）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- PRINT COMPONENT: MONTHLY REPORT PRINT ---
+export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; onClose: () => void }> = ({ bookings, month, onClose }) => {
+  const getWarekiMonthString = (monthStr: string) => {
+    if (!monthStr) return '';
+    const parts = monthStr.split('-');
+    if (parts.length < 2) return monthStr;
+    const year = Number(parts[0]);
+    const monthVal = Number(parts[1]);
+    
+    const reiwaYear = year - 2018;
+    const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
+    return `令和${eraStr}年${monthVal}月度`;
+  };
+
+  const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(month));
+  const monthlyTotalPrayers = monthlyBookings.length;
+  const monthlyIndividualPrayers = monthlyBookings.filter(b => b.booking_type === 'individual').length;
+  const monthlyOrganizationPrayers = monthlyBookings.filter(b => b.booking_type === 'organization').length;
+  const monthlyTotalRevenue = monthlyBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+
+  const monthlyPrayerDetails: { [key: string]: { count: number; fee: number } } = {};
+  monthlyBookings.forEach(b => {
+    const prayer = b.prayer1 ? b.prayer1.trim() : 'その他';
+    const fee = b.hatsuhoryo || 0;
+    if (!monthlyPrayerDetails[prayer]) {
+      monthlyPrayerDetails[prayer] = { count: 0, fee: 0 };
+    }
+    monthlyPrayerDetails[prayer].count++;
+    monthlyPrayerDetails[prayer].fee += fee;
+  });
+
+  return (
+    <div className="monthly-print-modal-parent" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.85)',
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 2000,
+      overflowY: 'auto'
+    }}>
+      <style>{`
+        @media print {
+          @page {
+            size: B5 portrait !important;
+            margin: 0 !important;
+          }
+          html, body, #root {
+            visibility: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          .monthly-print-modal-parent,
+          .monthly-print-modal-parent * {
+            visibility: visible !important;
+          }
+          .monthly-print-modal-parent {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 182mm !important;
+            height: 257mm !important;
+            overflow: visible !important;
+            background: #faf7f0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            z-index: 9999999 !important;
+          }
+          .no-print, .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          .report-print-sheet {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 182mm !important;
+            height: 257mm !important;
+            padding: 20mm 15mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+      <div className="no-print" style={{
+        backgroundColor: 'var(--color-urushi)',
+        padding: '0.75rem 1.5rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'white',
+        borderBottom: '2px solid var(--color-gold)'
+      }}>
+        <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Printer size={18} />
+          月次ご祈祷料集計報告書 印刷プレビュー (B5縦サイズで作成)
+        </h4>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button onClick={() => window.print()} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+            印刷する
+          </button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <ArrowLeft size={14} />
+            元の画面に戻る
+          </button>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+        <div 
+          className="report-print-sheet"
+          style={{
+            backgroundColor: '#faf7f0',
+            width: '182mm',
+            minHeight: '257mm',
+            padding: '20mm 15mm',
+            color: 'var(--color-urushi)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+            fontFamily: 'var(--font-serif)',
+            border: '2px solid #800000',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '5px' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#800000', margin: 0, padding: '10px 0', letterSpacing: '2px', borderBottom: '1px solid #800000' }}>
+              清瀧神社  月次ご祈祷料集計報告書
+            </h1>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: '11px', color: '#555', marginTop: '5px', marginBottom: '25px' }}>
+            集計対象月: {getWarekiMonthString(month)}
+          </div>
+
+          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', backgroundColor: '#faf7f0', padding: '8px 12px', borderLeft: '5px solid #800000', marginBottom: '12px' }}>
+            【 ご祈祷（初穂料）の部 】
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px', fontSize: '11px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>ご祈祷総数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>個人祈祷数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>団体祈祷数</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>初穂料総額</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px 10px', backgroundColor: '#f2ede4', fontWeight: 'bold', textAlign: 'center' }}>内訳備考</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyTotalPrayers} 件</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyIndividualPrayers} 件</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyOrganizationPrayers} 件</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px', textAlign: 'center' }}>{monthlyTotalRevenue.toLocaleString()} 円</td>
+                <td style={{ border: '1px solid #ccc', padding: '8px 10px' }}></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#555', marginTop: '15px', marginBottom: '8px' }}>
+            ＜願意別の内訳＞
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--color-washi-dark)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>願意名</th>
+                  <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'center', width: '25%' }}>祈祷件数</th>
+                  <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'right', width: '30%' }}>初穂料小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(monthlyPrayerDetails).map(pName => (
+                  <tr key={pName} style={{ borderBottom: '1px dashed var(--color-border)' }}>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>{pName}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{monthlyPrayerDetails[pName].count} 件</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 'bold' }}>{monthlyPrayerDetails[pName].fee.toLocaleString()} 円</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{
+            backgroundColor: '#faf7f0',
+            border: '3px double #800000',
+            padding: '15px',
+            textAlign: 'center',
+            marginTop: '40px'
+          }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#800000', marginBottom: '8px' }}>【 当月の総社入金 】</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#800000', marginBottom: '6px' }}>金  {monthlyTotalRevenue.toLocaleString()}  円 整</div>
+            <div style={{ fontSize: '11px', color: '#555' }}>（内訳  ご祈祷: {monthlyTotalRevenue.toLocaleString()} 円）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
