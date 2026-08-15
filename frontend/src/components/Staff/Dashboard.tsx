@@ -439,18 +439,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
   const totalUnpaid = reportBookings.filter(b => b.payment_status === 'unpaid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
 
   return createPortal(
-    <div className="schedule-print-modal-parent" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.85)',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 2000,
-      overflowY: 'auto'
-    }}>
+    <div className="print-modal-overlay">
       <div className="no-print" style={{
         backgroundColor: 'var(--color-urushi)',
         padding: '0.75rem 1.5rem',
@@ -605,18 +594,7 @@ export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onC
   });
 
   return createPortal(
-    <div className="daily-print-modal-parent" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.85)',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 2000,
-      overflowY: 'auto'
-    }}>
+    <div className="print-modal-overlay">
       <div className="no-print" style={{
         backgroundColor: '#800000',
         padding: '0.75rem 1.5rem',
@@ -811,18 +789,7 @@ export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; 
   });
 
   return createPortal(
-    <div className="monthly-print-modal-parent" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.85)',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 2000,
-      overflowY: 'auto'
-    }}>
+    <div className="print-modal-overlay">
       <div className="no-print" style={{
         backgroundColor: '#800000',
         padding: '0.75rem 1.5rem',
