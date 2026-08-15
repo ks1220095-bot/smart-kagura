@@ -322,6 +322,14 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     background: white !important;
     z-index: 9999999 !important;
   }
+
+  .schedule-print-wrapper,
+  .daily-print-wrapper,
+  .monthly-print-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
   
   .yomifuda-sheet {
     width: 257mm !important; 

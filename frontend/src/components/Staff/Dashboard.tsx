@@ -475,7 +475,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+      <div className="schedule-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
         <div 
           className="schedule-print-sheet print-landscape-page"
           style={{
@@ -641,7 +641,7 @@ export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onC
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+      <div className="daily-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
         <div 
           className="report-print-sheet print-portrait-page"
           style={{
@@ -847,7 +847,7 @@ export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; 
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+      <div className="monthly-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
         <div 
           className="report-print-sheet print-portrait-page"
           style={{
