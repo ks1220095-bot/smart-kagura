@@ -1,8 +1,53 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft } from 'lucide-react';
+import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 import type { Booking } from '../../types';
 import { printElement } from '../../utils/printUtils';
+
+export type ScheduleSortMode = 'created_asc' | 'created_desc' | 'name_asc' | 'receipt_asc' | 'custom';
+
+export const sortScheduleBookings = (list: Booking[], mode: ScheduleSortMode = 'created_asc'): Booking[] => {
+  return [...list].sort((a, b) => {
+    // 1. まず参拝予定時間 (booking_time) で比較
+    const timeComp = (a.booking_time || '').localeCompare(b.booking_time || '');
+    if (timeComp !== 0) return timeComp;
+
+    // 2. 同一時間枠内での並び順
+    if (mode === 'created_asc') {
+      // 実際に受け付けた順番（受付日時昇順 / 早い順）
+      const aCreated = a.created_at || '';
+      const bCreated = b.created_at || '';
+      if (aCreated && bCreated) {
+        const c = aCreated.localeCompare(bCreated);
+        if (c !== 0) return c;
+      }
+      return (a.id || 0) - (b.id || 0);
+    }
+    if (mode === 'created_desc') {
+      // 受付日時降順（遅い順 / 新着順）
+      const aCreated = a.created_at || '';
+      const bCreated = b.created_at || '';
+      if (aCreated && bCreated) {
+        const c = bCreated.localeCompare(aCreated);
+        if (c !== 0) return c;
+      }
+      return (b.id || 0) - (a.id || 0);
+    }
+    if (mode === 'name_asc') {
+      // 五十音・名前順
+      const aName = (a.booking_type === 'individual' ? (a.kana || a.name) : (a.company_kana || a.company_name)) || '';
+      const bName = (b.booking_type === 'individual' ? (b.kana || b.name) : (b.company_kana || b.company_name)) || '';
+      return aName.localeCompare(bName, 'ja');
+    }
+    if (mode === 'receipt_asc') {
+      // 受付番号順
+      const aNum = a.receipt_number || '';
+      const bNum = b.receipt_number || '';
+      return aNum.localeCompare(bNum);
+    }
+    return 0;
+  });
+};
 
 interface DashboardProps {
   bookings: Booking[];
@@ -35,10 +80,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const [reportMonth, setReportMonth] = useState(getCurrentMonthString());
   
-  // Sort bookings for today by time ascending
-  const todayBookings = bookings
-    .filter(b => b.booking_date === today)
-    .sort((a, b) => a.booking_time.localeCompare(b.booking_time));
+  // Sort bookings for today by time ascending and created_at ascending
+  const todayBookings = sortScheduleBookings(bookings.filter(b => b.booking_date === today), 'created_asc');
   
   // Calculate total hatsuhoryo revenues
   const todayRevenue = todayBookings
@@ -53,8 +96,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const indivCount = bookings.filter(b => b.booking_type === 'individual').length;
   const orgCount = bookings.filter(b => b.booking_type === 'organization').length;
 
-  // Target date bookings for report
-  const reportBookings = bookings.filter(b => b.booking_date === reportDate);
+  // Target date bookings for report sorted by booking_time and created_at
+  const reportBookings = sortScheduleBookings(bookings.filter(b => b.booking_date === reportDate), 'created_asc');
 
   // Target month bookings for report
   const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth));
@@ -305,7 +348,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <span>
                     <strong style={{ fontFamily: 'var(--font-serif)' }}>{b.booking_time}</strong> —{' '}
                     {b.booking_type === 'individual' ? `${b.name} 様` : `${b.company_name}`}{' '}
-                    <span style={{ color: 'var(--color-accent-gray)' }}>({b.prayer1})</span>
+                    <span style={{ color: 'var(--color-accent-gray)', fontSize: '0.75rem' }}>({b.prayer1})</span>
+                    {b.created_at && (
+                      <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#888' }}>
+                        [{b.created_at.split(' ')[0].replace(/^\d{4}-/, '').replace('-', '/')}受付]
+                      </span>
+                    )}
                   </span>
                   <span style={{ 
                     fontWeight: 600, 
@@ -407,6 +455,35 @@ export default Dashboard;
 // --- PRINT COMPONENT: SCHEDULE INNER PRINT ---
 export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [sortMode, setSortMode] = useState<ScheduleSortMode>('created_asc');
+  const [orderedBookings, setOrderedBookings] = useState<Booking[]>(() => {
+    return sortScheduleBookings(bookings.filter(b => b.booking_date === date), 'created_asc');
+  });
+
+  useEffect(() => {
+    if (sortMode !== 'custom') {
+      setOrderedBookings(sortScheduleBookings(bookings.filter(b => b.booking_date === date), sortMode));
+    }
+  }, [bookings, date, sortMode]);
+
+  const handleSortChange = (mode: ScheduleSortMode) => {
+    setSortMode(mode);
+    if (mode !== 'custom') {
+      setOrderedBookings(sortScheduleBookings(bookings.filter(b => b.booking_date === date), mode));
+    }
+  };
+
+  const moveRow = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= orderedBookings.length) return;
+    const nextList = [...orderedBookings];
+    const item = nextList[index];
+    nextList[index] = nextList[targetIndex];
+    nextList[targetIndex] = item;
+    setSortMode('custom');
+    setOrderedBookings(nextList);
+  };
+
   const handlePrint = () => {
     printElement(printRef.current, {
       title: '清瀧神社 ご祈祷日程内訳表',
@@ -429,11 +506,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
     return `令和${eraStr}年${month}月${day}日（${dayOfWeek}）`;
   };
 
-  const reportBookings = bookings
-    .filter(b => b.booking_date === date)
-    .sort((a, b) => a.booking_time.localeCompare(b.booking_time));
-  
-  const count = reportBookings.length;
+  const count = orderedBookings.length;
   // 自動スケーリング設定
   const printPadding = count > 24 ? '4mm 6mm' : count > 20 ? '6mm 8mm' : count > 15 ? '8mm 10mm' : count > 8 ? '12mm 15mm' : '20mm';
   const printFontSize = count > 24 ? '0.62rem' : count > 20 ? '0.68rem' : count > 15 ? '0.74rem' : count > 8 ? '0.8rem' : '0.9rem';
@@ -441,32 +514,85 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
   const printHeaderMargin = count > 24 ? '0.2rem' : count > 15 ? '0.4rem' : '1.5rem';
   const printRowPadding = count > 24 ? '0.2rem 0.35rem' : count > 20 ? '0.28rem 0.4rem' : count > 15 ? '0.4rem 0.5rem' : '0.6rem 0.5rem';
   
-  const totalPaid = reportBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
-  const totalUnpaid = reportBookings.filter(b => b.payment_status === 'unpaid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const totalPaid = orderedBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const totalUnpaid = orderedBookings.filter(b => b.payment_status === 'unpaid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
 
   return createPortal(
     <div className="print-modal-overlay">
       <div className="no-print" style={{
         backgroundColor: 'var(--color-urushi)',
-        padding: '0.75rem 1.5rem',
+        padding: '0.6rem 1.25rem',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         color: 'white',
-        borderBottom: '2px solid var(--color-gold)'
+        borderBottom: '2px solid var(--color-gold)',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
       }}>
-        <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
           <Printer size={18} />
           ご祈祷日程内訳表 印刷プレビュー (横向き印刷推奨)
         </h4>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={handlePrint} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
-            印刷する (A4横)
-          </button>
-          <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <ArrowLeft size={14} />
-            元の画面に戻る
-          </button>
+
+        {/* Sorting controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.6rem', borderRadius: '3px' }}>
+            <ArrowUpDown size={14} style={{ color: 'var(--color-gold)' }} />
+            <span style={{ fontSize: '0.8rem', color: '#eee' }}>並び順:</span>
+            <select
+              value={sortMode}
+              onChange={(e) => handleSortChange(e.target.value as ScheduleSortMode)}
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#222222',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '2px',
+                padding: '0.2rem 0.5rem',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="created_asc">📅 実際の受付順 (早い順)</option>
+              <option value="created_desc">📅 実際の受付順 (遅い順 / 新着順)</option>
+              <option value="name_asc">🔤 お名前順 (五十音)</option>
+              <option value="receipt_asc">🔢 受付番号順</option>
+              {sortMode === 'custom' && <option value="custom">✋ 手動並び替え中</option>}
+            </select>
+          </div>
+
+          {sortMode === 'custom' && (
+            <button
+              type="button"
+              onClick={() => handleSortChange('created_asc')}
+              className="btn"
+              style={{
+                padding: '0.25rem 0.6rem',
+                fontSize: '0.75rem',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+            >
+              <RotateCcw size={12} />
+              受付順にリセット
+            </button>
+          )}
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button onClick={handlePrint} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+              印刷する (A4横)
+            </button>
+            <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <ArrowLeft size={14} />
+              元の画面に戻る
+            </button>
+          </div>
         </div>
       </div>
 
@@ -501,6 +627,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: printFontSize }}>
             <thead>
               <tr style={{ borderBottom: '2px solid black', textAlign: 'left' }}>
+                <th className="no-print" style={{ padding: printRowPadding, fontWeight: 'bold', width: '4%', textAlign: 'center' }}>順序</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '8%' }}>時間</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '15%' }}>受付番号</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '8%' }}>区分</th>
@@ -512,18 +639,54 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
               </tr>
             </thead>
             <tbody>
-              {reportBookings.length === 0 ? (
+              {orderedBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+                  <td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
                     ご祈祷の予約はありません。
                   </td>
                 </tr>
               ) : (
-                reportBookings.map((b) => {
+                orderedBookings.map((b, idx) => {
                   const isIndiv = b.booking_type === 'individual';
                   const name = isIndiv ? b.name : b.company_name;
                   return (
-                    <tr key={b.id} style={{ borderBottom: '1px solid #ccc' }}>
+                    <tr key={b.id || idx} style={{ borderBottom: '1px solid #ccc' }}>
+                      <td className="no-print" style={{ padding: '0.1rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '1px' }}>
+                          <button
+                            type="button"
+                            onClick={() => moveRow(idx, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '1px',
+                              cursor: idx === 0 ? 'default' : 'pointer',
+                              opacity: idx === 0 ? 0.2 : 0.7,
+                              lineHeight: 1
+                            }}
+                            title="1つ上へ移動"
+                          >
+                            <ChevronUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveRow(idx, 'down')}
+                            disabled={idx === orderedBookings.length - 1}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '1px',
+                              cursor: idx === orderedBookings.length - 1 ? 'default' : 'pointer',
+                              opacity: idx === orderedBookings.length - 1 ? 0.2 : 0.7,
+                              lineHeight: 1
+                            }}
+                            title="1つ下へ移動"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </div>
+                      </td>
                       <td style={{ padding: printRowPadding, fontWeight: 'bold' }}>{b.booking_time}</td>
                       <td style={{ padding: printRowPadding }}>{b.receipt_number}</td>
                       <td style={{ padding: printRowPadding }}>{isIndiv ? '個人' : '団体'}</td>
@@ -554,7 +717,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           }}>
             <div>
               <span>予定件数： {count} 件</span>
-              <span style={{ marginLeft: '1.5rem' }}>（個人：{reportBookings.filter(b => b.booking_type === 'individual').length}件 / 団体：{reportBookings.filter(b => b.booking_type === 'organization').length}件）</span>
+              <span style={{ marginLeft: '1.5rem' }}>（個人：{orderedBookings.filter(b => b.booking_type === 'individual').length}件 / 団体：{orderedBookings.filter(b => b.booking_type === 'organization').length}件）</span>
             </div>
             <div>
               <span>初穂料合計 (受取済)： <strong>￥{totalPaid.toLocaleString()}</strong></span>
