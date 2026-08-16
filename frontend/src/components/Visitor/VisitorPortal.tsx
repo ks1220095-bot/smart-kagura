@@ -33,6 +33,14 @@ const INDIVIDUAL_PRAYERS = [
   { value: '就職祈願', price: 5000 }
 ];
 
+export const getIndividualMinPrice = (prayer: string, twin?: boolean) => {
+  if (prayer === '初宮詣（お宮参り）' && twin) {
+    return 15000;
+  }
+  const match = INDIVIDUAL_PRAYERS.find(p => p.value === prayer);
+  return match ? match.price : 5000;
+};
+
 const ORGANIZATION_PRAYERS = [
   '社運隆昌',
   '商売繁盛',
@@ -818,12 +826,7 @@ export const VisitorPortal: React.FC = () => {
   // 1. Manage Hatsuhoryo changes based on willingness and organization headcount
   useEffect(() => {
     if (bookingType === 'individual') {
-      if (prayer1 === '初宮詣（お宮参り）' && isTwin) {
-        setHatsuhoryo(15000);
-      } else {
-        const match = INDIVIDUAL_PRAYERS.find(p => p.value === prayer1);
-        setHatsuhoryo(match ? match.price : 5000);
-      }
+      setHatsuhoryo(getIndividualMinPrice(prayer1, isTwin));
     } else {
       // Organization base pricing: under 5 people = 20k, 5 or more = 30k
       const basePrice = Number(attendingCount) < 5 ? 20000 : 30000;
@@ -868,11 +871,22 @@ export const VisitorPortal: React.FC = () => {
       if (prayerItems.length === 0) {
         return 'ご祈祷内容（願意と受ける方のお名前）を入力し、「ご祈祷を予約リストに追加」ボタンを押してリストに1件以上追加してください。';
       }
+      for (let i = 0; i < prayerItems.length; i++) {
+        const item = prayerItems[i];
+        const minPrice = getIndividualMinPrice(item.prayer1, Boolean(item.is_twin));
+        if (item.hatsuhoryo < minPrice) {
+          return `【${item.prayer1}（${item.name}様）】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${minPrice.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
+        }
+      }
       if (!name.trim() || !kana.trim() || !address.trim() || !addressKana.trim() || !phone.trim() || !email.trim()) {
         return '必須のご予約者様情報（お名前・フリガナ・ご住所・電話番号・メールアドレス）をご入力ください。';
       }
     } else {
       // Organization validation
+      const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
+      if (hatsuhoryo < orgMinPrice) {
+        return `団体参拝の初穂料は基準額（${orgMinPrice.toLocaleString()}円以上）をご入力ください。`;
+      }
       if (!prayer1) {
         return '主願意を選択してください。';
       }
@@ -942,6 +956,12 @@ export const VisitorPortal: React.FC = () => {
   const handleAddPrayerItem = () => {
     if (!prayer1) {
       alert('願意を選択してください。');
+      return;
+    }
+
+    const minPrice = getIndividualMinPrice(prayer1, isTwin);
+    if (hatsuhoryo < minPrice) {
+      alert(`初穂料は選択された願意の目安金額（${minPrice.toLocaleString()}円以上）をご入力ください。`);
       return;
     }
 
@@ -1883,16 +1903,42 @@ export const VisitorPortal: React.FC = () => {
                         </select>
                       </div>
 
-                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                        <label>初穂料 (目安自動設定) <span className="required">*</span></label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          min="0"
-                          value={hatsuhoryo}
-                          onChange={(e) => setHatsuhoryo(parseInt(e.target.value) || 0)}
-                        />
-                      </div>
+                      {(() => {
+                        const minPrice = getIndividualMinPrice(prayer1, isTwin);
+                        const isBelowMin = hatsuhoryo < minPrice;
+                        return (
+                          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <label style={{ margin: 0 }}>
+                                初穂料 (目安自動設定) <span className="required">*</span>
+                              </label>
+                              {prayer1 && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
+                                  目安: {minPrice.toLocaleString()}円〜
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              className="form-control"
+                              min={minPrice}
+                              step="1000"
+                              value={hatsuhoryo || ''}
+                              onChange={(e) => setHatsuhoryo(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                              style={{
+                                marginTop: '0.25rem',
+                                border: isBelowMin ? '1.5px solid #d3381c' : undefined,
+                                backgroundColor: isBelowMin ? '#fff8f7' : undefined
+                              }}
+                            />
+                            {isBelowMin && (
+                              <div style={{ fontSize: '0.75rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 500 }}>
+                                ⚠️ 初穂料は目安金額（{minPrice.toLocaleString()}円）以上の金額をご入力ください。
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {prayer1 === '安産祈願' ? (
