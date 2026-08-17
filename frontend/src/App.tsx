@@ -12,9 +12,9 @@ export const App: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('staff') === 'true') {
       setIsStaffEnabled(true);
+      setCurrentPortal('staff');
     } else {
       setIsStaffEnabled(false);
-      // Force fallback to visitor portal if param is absent
       setCurrentPortal('visitor');
     }
   }, []);
