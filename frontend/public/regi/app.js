@@ -2034,11 +2034,16 @@ function renderDailyReportView(data) {
     itemRowsHtml = '<tr><td colspan="3" class="text-center">授与履歴なし</td></tr>';
   } else {
     // マスタ（state.items）の並び順に合わせてソートして出力します
+    console.log("[DailyReport Debug] Sorting starting...");
+    console.log("[DailyReport Debug] Master items count:", state.items.length);
+    console.log("[DailyReport Debug] Master item names:", state.items.map(i => i.name));
+    
     const sortedNames = Object.keys(data.itemDetails).sort((a, b) => {
       const idxA = state.items.findIndex(item => item.name === a);
       const idxB = state.items.findIndex(item => item.name === b);
       
-      // マスタに存在しない古い商品などは末尾に配置
+      console.log(`[DailyReport Debug] Compare: "${a}" (idx: ${idxA}) vs "${b}" (idx: ${idxB})`);
+      
       const posA = idxA === -1 ? 9999 : idxA;
       const posB = idxB === -1 ? 9999 : idxB;
       
