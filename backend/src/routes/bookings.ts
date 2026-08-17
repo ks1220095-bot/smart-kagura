@@ -470,8 +470,8 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご予約の日程変更・キャンセルについて
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-オンラインでの変更・キャンセルは【ご祈祷開始時間の30分前まで】受付しております。
-社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡ください。ご理解・ご協力のほどお願い申し上げます。
+オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の一日前まで】となっております。
+社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
 
 ご都合が悪くなった場合の日程変更やキャンセルは、以下のURLからオンラインで行うことができます。
 `;
@@ -855,16 +855,16 @@ router.put('/:id', async (req, res) => {
 
     const existing = checkResult.rows[0];
 
-    // Validate 30-minute deadline (bypass if is_staff = true)
+    // Validate 1-day (24 hours) deadline (bypass if is_staff = true)
     const isStaff = req.query.is_staff === 'true';
     if (!isStaff) {
       const now = new Date();
       const jpTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
       const bookingDateTime = new Date(`${existing.booking_date}T${existing.booking_time}:00+09:00`);
-      const diffMins = (bookingDateTime.getTime() - jpTime.getTime()) / (1000 * 60);
+      const diffHours = (bookingDateTime.getTime() - jpTime.getTime()) / (1000 * 60 * 60);
 
-      if (diffMins < 30) {
-        return res.status(400).json({ error: 'オンラインでの予約変更は、ご祈祷予定時間の30分前までとなっております。恐れ入りますが、それ以降の日程変更は清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡ください。ご理解・ご協力のほどお願い申し上げます。' });
+      if (diffHours < 24) {
+        return res.status(400).json({ error: 'オンラインでの日程変更手続きは【ご祈祷開始時間の一日前まで】となっております。社務の都合上、それ以降の直前の変更につきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。' });
       }
     }
 
@@ -1015,16 +1015,16 @@ router.delete('/:id', async (req, res) => {
 
     const target = checkResult.rows[0];
 
-    // Validate 30-minute deadline (bypass if hard delete or is_staff query is true)
+    // Validate 1-day (24 hours) deadline (bypass if hard delete or is_staff query is true)
     const isStaff = req.query.is_staff === 'true' || hardDelete;
     if (!isStaff) {
       const now = new Date();
       const jpTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
       const bookingDateTime = new Date(`${target.booking_date}T${target.booking_time}:00+09:00`);
-      const diffMins = (bookingDateTime.getTime() - jpTime.getTime()) / (1000 * 60);
+      const diffHours = (bookingDateTime.getTime() - jpTime.getTime()) / (1000 * 60 * 60);
 
-      if (diffMins < 30) {
-        return res.status(400).json({ error: 'オンラインでのキャンセルは、ご祈祷予定時間の30分前までとなっております。恐れ入りますが、それ以降のキャンセル・欠席のご連絡は清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡ください。ご理解・ご協力のほどお願い申し上げます。' });
+      if (diffHours < 24) {
+        return res.status(400).json({ error: 'オンラインでのキャンセル手続きは【ご祈祷開始時間の一日前まで】となっております。社務の都合上、それ以降の直前のキャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。' });
       }
     }
 
