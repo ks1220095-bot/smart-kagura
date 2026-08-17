@@ -1754,6 +1754,7 @@ export const StaffPortal: React.FC = () => {
               onSelectSchedulePrint={setSelectedSchedulePrintDate}
               onSelectDailyReportPrint={setSelectedDailyReportPrintDate}
               onSelectMonthlyReportPrint={setSelectedMonthlyReportPrintMonth}
+              onRefreshBookings={fetchBookings}
             />
           )}
           

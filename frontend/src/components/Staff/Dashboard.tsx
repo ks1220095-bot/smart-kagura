@@ -1,8 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
+import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle } from 'lucide-react';
 import type { Booking } from '../../types';
 import { printElement } from '../../utils/printUtils';
+
+const TIME_SLOTS = [
+  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
+];
 
 export type ScheduleSortMode = 'created_asc' | 'created_desc' | 'name_asc' | 'receipt_asc' | 'custom';
 
@@ -54,13 +59,15 @@ interface DashboardProps {
   onSelectSchedulePrint?: (date: string) => void;
   onSelectDailyReportPrint?: (date: string) => void;
   onSelectMonthlyReportPrint?: (month: string) => void;
+  onRefreshBookings?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   bookings,
   onSelectSchedulePrint,
   onSelectDailyReportPrint,
-  onSelectMonthlyReportPrint
+  onSelectMonthlyReportPrint,
+  onRefreshBookings
 }) => {
 
   const getTodayString = () => {
@@ -79,11 +86,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return `${year}-${month}`;
   };
   const [reportMonth, setReportMonth] = useState(getCurrentMonthString());
+
+  // Edit / Cancel state from Dashboard
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Filter out cancelled bookings for active schedule calculation
+  const activeBookings = bookings.filter(b => Number(b.is_cancelled) !== 1);
+
+  const todayBookings = activeBookings.filter(b => b.booking_date === today);
   
-  // Sort bookings for today by time ascending and created_at ascending
-  const todayBookings = sortScheduleBookings(bookings.filter(b => b.booking_date === today), 'created_asc');
-  
-  // Calculate total hatsuhoryo revenues
   const todayRevenue = todayBookings
     .filter(b => b.payment_status === 'paid')
     .reduce((sum, b) => sum + b.hatsuhoryo, 0);
@@ -92,16 +106,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     .filter(b => b.payment_status === 'unpaid')
     .reduce((sum, b) => sum + b.hatsuhoryo, 0);
 
-  const totalCount = bookings.length;
-  const indivCount = bookings.filter(b => b.booking_type === 'individual').length;
-  const orgCount = bookings.filter(b => b.booking_type === 'organization').length;
+  const totalCount = activeBookings.length;
+  const indivCount = activeBookings.filter(b => b.booking_type === 'individual').length;
+  const orgCount = activeBookings.filter(b => b.booking_type === 'organization').length;
 
   const [dashboardSortMode, setDashboardSortMode] = useState<ScheduleSortMode>('created_asc');
   const [dashboardList, setDashboardList] = useState<Booking[]>([]);
 
   useEffect(() => {
     if (dashboardSortMode !== 'custom') {
-      setDashboardList(sortScheduleBookings(bookings.filter(b => b.booking_date === reportDate), dashboardSortMode));
+      setDashboardList(sortScheduleBookings(activeBookings.filter(b => b.booking_date === reportDate), dashboardSortMode));
     }
   }, [bookings, reportDate, dashboardSortMode]);
 
@@ -114,6 +128,69 @@ export const Dashboard: React.FC<DashboardProps> = ({
     nextList[targetIndex] = item;
     setDashboardSortMode('custom');
     setDashboardList(nextList);
+  };
+
+  // Reschedule / Edit booking handler
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBooking || !editingBooking.id) return;
+
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${editingBooking.id}?is_staff=true`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingBooking)
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '予約日時の変更に失敗しました。');
+      }
+
+      setActionMessage({ type: 'success', text: '予約日時を正常に変更・更新いたしました。' });
+      setTimeout(() => {
+        setEditingBooking(null);
+        setActionMessage(null);
+        if (onRefreshBookings) onRefreshBookings();
+      }, 1200);
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || '通信エラーが発生しました。' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Cancel booking handler
+  const handleConfirmCancel = async () => {
+    if (!cancellingBooking || !cancellingBooking.id) return;
+
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings/${cancellingBooking.id}?is_staff=true`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '予約のキャンセルに失敗しました。');
+      }
+
+      setActionMessage({ type: 'success', text: 'ご祈祷予約を正常にキャンセル（取消）いたしました。' });
+      setTimeout(() => {
+        setCancellingBooking(null);
+        setActionMessage(null);
+        if (onRefreshBookings) onRefreshBookings();
+      }, 1200);
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || '通信エラーが発生しました。' });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Target month bookings for report
@@ -478,14 +555,55 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </span>
                   </div>
 
-                  <span style={{ 
-                    fontWeight: 600, 
-                    fontSize: '0.75rem',
-                    flexShrink: 0,
-                    color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-mizuiro)' 
-                  }}>
-                    {b.payment_status === 'paid' ? '支払済' : '未払い'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                    <span style={{ 
+                      fontWeight: 600, 
+                      fontSize: '0.72rem',
+                      color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-mizuiro)' 
+                    }}>
+                      {b.payment_status === 'paid' ? '支払済' : '未払い'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingBooking({ ...b })}
+                      style={{
+                        padding: '0.2rem 0.45rem',
+                        fontSize: '0.7rem',
+                        backgroundColor: '#fff',
+                        border: '1px solid var(--color-gold)',
+                        color: 'var(--color-urushi)',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.2rem'
+                      }}
+                      title="日時・内容を変更"
+                    >
+                      <Edit3 size={11} />
+                      変更
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCancellingBooking(b)}
+                      style={{
+                        padding: '0.2rem 0.4rem',
+                        fontSize: '0.7rem',
+                        backgroundColor: '#fff',
+                        border: '1px solid #e0b4b4',
+                        color: '#c93a3a',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.15rem'
+                      }}
+                      title="予約をキャンセル"
+                    >
+                      <Trash2 size={11} />
+                      取消
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -500,20 +618,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
             📊 月次ご祈祷料集計報告 ({getWarekiMonthString(reportMonth)})
           </h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <label style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              集計月:
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>集計月:</span>
               <input 
                 type="month" 
                 value={reportMonth} 
-                onChange={(e) => setReportMonth(e.target.value)}
-                className="form-control"
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', width: '140px', display: 'inline-block' }}
+                onChange={(e) => setReportMonth(e.target.value)} 
+                style={{
+                  padding: '0.2rem 0.4rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid var(--color-border)',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }} 
               />
-            </label>
+            </div>
             <button 
               onClick={() => onSelectMonthlyReportPrint && onSelectMonthlyReportPrint(reportMonth)}
               className="btn btn-secondary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
             >
               <Printer size={12} />
               月次報告書 印刷
@@ -521,14 +646,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {monthlyBookings.length === 0 ? (
+        {monthlyTotalPrayers === 0 ? (
           <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.85rem', textAlign: 'center', margin: '2rem 0' }}>
-            選択された月のご祈祷データはありません。
+            選択された月にご祈祷実績はございません。
           </p>
         ) : (
           <div>
-            {/* Overview Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.25rem', backgroundColor: 'var(--color-washi)', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
+            {/* KPI Cards for Selected Month */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+              gap: '0.5rem', 
+              marginBottom: '1.25rem',
+              backgroundColor: 'var(--color-washi)',
+              padding: '0.75rem',
+              borderRadius: '4px',
+              border: '1px solid var(--color-border)'
+            }}>
               <div style={{ textAlign: 'center' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>ご祈祷総数</span>
                 <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-urushi)' }}>{monthlyTotalPrayers} 件</span>
@@ -571,6 +705,387 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
       </div>
+
+{/* EDIT / RESCHEDULE MODAL */}
+{editingBooking && createPortal(
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: '1rem',
+    backdropFilter: 'blur(2px)'
+  }}>
+    <div style={{
+      backgroundColor: '#ffffff',
+      borderRadius: '6px',
+      width: '100%',
+      maxWidth: '560px',
+      boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <div style={{
+        backgroundColor: 'var(--color-urushi)',
+        color: '#ffffff',
+        padding: '0.9rem 1.25rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottom: '2px solid var(--color-gold)'
+      }}>
+        <h3 style={{ margin: 0, fontSize: '1.05rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Calendar size={18} style={{ color: 'var(--color-gold)' }} />
+          予約日時の変更・内容編集
+        </h3>
+        <button
+          type="button"
+          onClick={() => setEditingBooking(null)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            padding: '0.2rem',
+            display: 'flex'
+          }}
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Body Form */}
+      <form onSubmit={handleSaveEdit} style={{ padding: '1.25rem' }}>
+        {actionMessage && (
+          <div style={{
+            padding: '0.6rem 0.9rem',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            fontSize: '0.85rem',
+            backgroundColor: actionMessage.type === 'success' ? '#e8f5e9' : '#ffebee',
+            color: actionMessage.type === 'success' ? '#2e7d32' : '#c62828',
+            border: `1px solid ${actionMessage.type === 'success' ? '#a5d6a7' : '#ef9a9a'}`
+          }}>
+            {actionMessage.text}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
+              📅 ご祈祷予定日 <span style={{ color: 'red' }}>*</span>
+            </label>
+            <input
+              type="date"
+              value={editingBooking.booking_date}
+              onChange={(e) => setEditingBooking({ ...editingBooking, booking_date: e.target.value })}
+              required
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.6rem',
+                fontSize: '0.85rem',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '3px',
+                outline: 'none',
+                backgroundColor: '#fcfaf5'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
+              ⏰ ご祈祷時間 <span style={{ color: 'red' }}>*</span>
+            </label>
+            <select
+              value={editingBooking.booking_time}
+              onChange={(e) => setEditingBooking({ ...editingBooking, booking_time: e.target.value })}
+              required
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.6rem',
+                fontSize: '0.85rem',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '3px',
+                outline: 'none',
+                backgroundColor: '#fcfaf5'
+              }}
+            >
+              {TIME_SLOTS.map(t => (
+                <option key={t} value={t}>{t}の回</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
+            {editingBooking.booking_type === 'individual' ? '受ける方のお名前' : '企業・団体名'}
+          </label>
+          <input
+            type="text"
+            value={editingBooking.booking_type === 'individual' ? (editingBooking.name || '') : (editingBooking.company_name || '')}
+            onChange={(e) => {
+              if (editingBooking.booking_type === 'individual') {
+                setEditingBooking({ ...editingBooking, name: e.target.value });
+              } else {
+                setEditingBooking({ ...editingBooking, company_name: e.target.value });
+              }
+            }}
+            required
+            style={{
+              width: '100%',
+              padding: '0.45rem 0.6rem',
+              fontSize: '0.85rem',
+              border: '1px solid #ccc',
+              borderRadius: '3px'
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
+              主願意
+            </label>
+            <input
+              type="text"
+              value={editingBooking.prayer1}
+              onChange={(e) => setEditingBooking({ ...editingBooking, prayer1: e.target.value })}
+              required
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.6rem',
+                fontSize: '0.85rem',
+                border: '1px solid #ccc',
+                borderRadius: '3px'
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
+              初穂料（円）
+            </label>
+            <input
+              type="number"
+              value={editingBooking.hatsuhoryo}
+              onChange={(e) => setEditingBooking({ ...editingBooking, hatsuhoryo: Number(e.target.value) })}
+              min={0}
+              step={1000}
+              required
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.6rem',
+                fontSize: '0.85rem',
+                border: '1px solid #ccc',
+                borderRadius: '3px'
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
+              参列人数
+            </label>
+            <input
+              type="number"
+              value={editingBooking.attending_count}
+              onChange={(e) => setEditingBooking({ ...editingBooking, attending_count: Number(e.target.value) })}
+              min={1}
+              required
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.6rem',
+                fontSize: '0.85rem',
+                border: '1px solid #ccc',
+                borderRadius: '3px'
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
+              支払状況
+            </label>
+            <select
+              value={editingBooking.payment_status}
+              onChange={(e) => setEditingBooking({ ...editingBooking, payment_status: e.target.value as 'paid' | 'unpaid' })}
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.6rem',
+                fontSize: '0.85rem',
+                border: '1px solid #ccc',
+                borderRadius: '3px'
+              }}
+            >
+              <option value="paid">支払済</option>
+              <option value="unpaid">未納（未払い）</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setEditingBooking(null)}
+            className="btn btn-secondary"
+            disabled={actionLoading}
+            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+          >
+            キャンセル
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={actionLoading}
+            style={{ padding: '0.45rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <Check size={16} />
+            {actionLoading ? '更新中...' : '変更を保存する'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>,
+  document.body
+)}
+
+{/* CANCEL CONFIRMATION MODAL */}
+{cancellingBooking && createPortal(
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: '1rem',
+    backdropFilter: 'blur(2px)'
+  }}>
+    <div style={{
+      backgroundColor: '#ffffff',
+      borderRadius: '6px',
+      width: '100%',
+      maxWidth: '480px',
+      boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <div style={{
+        backgroundColor: '#c93a3a',
+        color: '#ffffff',
+        padding: '0.9rem 1.25rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <h3 style={{ margin: 0, fontSize: '1.05rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <AlertCircle size={18} />
+          予約のキャンセル（取消）確認
+        </h3>
+        <button
+          type="button"
+          onClick={() => setCancellingBooking(null)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            padding: '0.2rem',
+            display: 'flex'
+          }}
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '1.25rem' }}>
+        {actionMessage && (
+          <div style={{
+            padding: '0.6rem 0.9rem',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            fontSize: '0.85rem',
+            backgroundColor: actionMessage.type === 'success' ? '#e8f5e9' : '#ffebee',
+            color: actionMessage.type === 'success' ? '#2e7d32' : '#c62828',
+            border: `1px solid ${actionMessage.type === 'success' ? '#a5d6a7' : '#ef9a9a'}`
+          }}>
+            {actionMessage.text}
+          </div>
+        )}
+
+        <p style={{ fontSize: '0.9rem', lineHeight: '1.6', margin: '0 0 1rem 0', color: '#333' }}>
+          以下のご祈祷予約を<strong>キャンセル（取消）</strong>しますか？
+        </p>
+
+        <div style={{
+          backgroundColor: '#fbf7ee',
+          padding: '0.75rem 1rem',
+          borderRadius: '4px',
+          border: '1px solid #e8dbbe',
+          marginBottom: '1.25rem',
+          fontSize: '0.85rem',
+          lineHeight: '1.7'
+        }}>
+          <div><strong>日時：</strong> {cancellingBooking.booking_date} {cancellingBooking.booking_time}の回</div>
+          <div><strong>お名前：</strong> {cancellingBooking.booking_type === 'individual' ? `${cancellingBooking.name} 様` : `${cancellingBooking.company_name}`}</div>
+          <div><strong>願意：</strong> {cancellingBooking.prayer1}</div>
+          <div><strong>初穂料：</strong> {cancellingBooking.hatsuhoryo.toLocaleString()} 円</div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
+          <button
+            type="button"
+            onClick={() => setCancellingBooking(null)}
+            className="btn btn-secondary"
+            disabled={actionLoading}
+            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+          >
+            閉じる
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmCancel}
+            disabled={actionLoading}
+            style={{
+              backgroundColor: '#c93a3a',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.45rem 1.25rem',
+              borderRadius: '3px',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              fontWeight: 'bold'
+            }}
+          >
+            <Trash2 size={15} />
+            {actionLoading ? '処理中...' : 'キャンセルを実行する'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>,
+  document.body
+)}
     </div>
   );
 };
