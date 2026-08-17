@@ -87,7 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const [reportMonth, setReportMonth] = useState(getCurrentMonthString());
 
-  // Find related bookings (same applicant / same email / same phone / same name)
+  // Find related bookings (same applicant / same email / same phone / same name in the same time slot)
   const findRelatedBookings = (target: Booking | null): Booking[] => {
     if (!target || !target.id) return [];
     const targetEmail = (target.booking_type === 'individual' ? target.email : target.staff_email)?.trim().toLowerCase();
@@ -98,6 +98,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (b.id === target.id) return false;
       if (Number(b.is_cancelled) === 1) return false;
       
+      // Must be the same date and same time slot
+      if (b.booking_date !== target.booking_date || b.booking_time !== target.booking_time) return false;
+
       // 1. Same email (primary)
       const bEmail = (b.booking_type === 'individual' ? b.email : b.staff_email)?.trim().toLowerCase();
       if (targetEmail && bEmail && targetEmail === bEmail) return true;

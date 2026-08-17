@@ -693,12 +693,14 @@ router.get('/:id', async (req, res) => {
         SELECT * FROM bookings 
         WHERE id <> $1 
           AND is_cancelled = 0
+          AND booking_date = $4
+          AND booking_time = $5
           AND (
             ($2::text IS NOT NULL AND $2::text <> '' AND (LOWER(email) = LOWER($2) OR LOWER(staff_email) = LOWER($2)))
             OR ($3::text IS NOT NULL AND $3::text <> '' AND (phone = $3 OR staff_phone = $3))
           )
-        ORDER BY booking_date ASC, booking_time ASC
-      `, [booking.id, email || null, phone || null]);
+        ORDER BY id ASC
+      `, [booking.id, email || null, phone || null, booking.booking_date, booking.booking_time]);
       relatedBookings = relResult.rows;
     }
 
