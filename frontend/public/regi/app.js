@@ -778,8 +778,8 @@ async function loadMasterData(forceReload = false) {
       const apiItems = data.items.map(item => {
         let category = item.category || 'other';
         if (!item.category) {
-          if (item.name.includes('札') || item.name.includes('守札') || item.name.includes('大麻') || item.name.includes('神宮')) category = 'ofuda';
-          else if (item.name.includes('守') || item.name.includes('まもり')) category = 'omamori';
+          if (item.name.includes('札') || item.name.includes('守札') || item.name.includes('大麻') || item.name.includes('神宮') || item.name.includes('祓')) category = 'ofuda';
+          else if (item.name.includes('守') || item.name.includes('まもり') || item.name.includes('ステッカー')) category = 'omamori';
           else if (item.name.includes('朱印')) category = 'goshuin';
           else if (item.name.includes('絵馬') || item.name.includes('置物') || item.name.includes('矢')) category = 'engimono';
         }
