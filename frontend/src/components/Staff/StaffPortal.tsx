@@ -1761,7 +1761,9 @@ export const StaffPortal: React.FC = () => {
           {activeTab === 'calendar' && (
             <CalendarView 
               bookings={bookings} 
-              onRefreshBookings={fetchBookings} 
+              onRefreshBookings={fetchBookings}
+              onSelectSchedulePrint={setSelectedSchedulePrintDate}
+              onSelectDailyReportPrint={setSelectedDailyReportPrintDate}
             />
           )}
 

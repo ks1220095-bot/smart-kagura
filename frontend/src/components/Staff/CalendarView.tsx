@@ -1,17 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Lock, Unlock, CalendarDays } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Plus, Lock, Unlock, CalendarDays, Calendar, Check, X, Edit3, Trash2, Printer, AlertCircle } from 'lucide-react';
 import { getRokuyoAndInu } from '../Visitor/SlotSelector';
 import type { CalendarEvent, Booking } from '../../types';
 
 interface CalendarViewProps {
   bookings: Booking[];
   onRefreshBookings: () => void;
+  onSelectSchedulePrint?: (date: string) => void;
+  onSelectDailyReportPrint?: (date: string) => void;
 }
 
 const TIME_SLOTS = [
   '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
 ];
+
+export const getWarekiDateString = (dateStr: string) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr + 'T00:00:00+09:00');
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  const dayOfWeek = days[date.getDay()];
+
+  let era = '';
+  let eraYear = year;
+  if (year >= 2019) {
+    era = '令和';
+    eraYear = year - 2018;
+  } else if (year >= 1989) {
+    era = '平成';
+    eraYear = year - 1988;
+  }
+  const eraStr = eraYear === 1 ? '元年' : `${eraYear}年`;
+  return `${era}${eraStr}${month}月${day}日（${dayOfWeek}）`;
+};
 
 export function getUniqueGroupStats(dayBookings: any[]) {
   if (dayBookings.length === 0) {
@@ -42,7 +67,12 @@ export function getUniqueGroupStats(dayBookings: any[]) {
   return { groupsCount, totalAttending };
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshBookings }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({ 
+  bookings, 
+  onRefreshBookings,
+  onSelectSchedulePrint,
+  onSelectDailyReportPrint
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,6 +80,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
   
   // Date configuration state (For quick slot lock toggle)
   const [focusedDate, setFocusedDate] = useState<string>('');
+
+  // Detailed Day Popup Modal state
+  const [selectedDayModalDate, setSelectedDayModalDate] = useState<string | null>(null);
+
+  // Edit/Reschedule & Cancel states for modal
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -324,6 +363,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
     }
   };
 
+  const handleDeleteEventById = async (id?: number, eventTitle?: string) => {
+    if (!id) return;
+    if (!window.confirm(`「${eventTitle || 'この行事'}」を削除してもよろしいですか？`)) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/events/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) throw new Error('行事情報の削除に失敗しました。');
+      
+      fetchEvents();
+      onRefreshBookings();
+    } catch (error) {
+      alert(error);
+    }
+  };
+
 
 
 
@@ -352,7 +410,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
       cells.push(
         <div 
           key={day} 
-          onClick={() => setFocusedDate(dateStr)}
+          onClick={() => {
+            setFocusedDate(dateStr);
+            setSelectedDayModalDate(dateStr);
+          }}
           style={{ 
             border: isFocused ? '2px solid var(--color-mizuiro)' : '1px solid var(--color-border)', 
             minHeight: '105px', 
@@ -365,6 +426,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
+          title="タップしてこの日の詳細（ご祈祷予約・行事）を表示"
         >
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
@@ -925,6 +987,706 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ bookings, onRefreshB
             })()}
           </div>
         </div>
+      )}
+
+      {/* DETAILED DAY POPUP MODAL */}
+      {selectedDayModalDate && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9998,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            width: '100%',
+            maxWidth: '780px',
+            maxHeight: '90vh',
+            boxShadow: '0 12px 35px rgba(0,0,0,0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              backgroundColor: 'var(--color-urushi)',
+              color: '#ffffff',
+              padding: '1rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '3px solid var(--color-gold)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <Calendar size={22} style={{ color: 'var(--color-gold)' }} />
+                  {getWarekiDateString(selectedDayModalDate)} の詳細
+                </h3>
+                {(() => {
+                  const { rokuyo, isInu } = getRokuyoAndInu(selectedDayModalDate);
+                  return (
+                    <div style={{ fontSize: '0.8rem', color: '#fbf7ee', marginTop: '0.2rem', opacity: 0.9 }}>
+                      六曜: <strong>{rokuyo}</strong> {isInu && <span style={{ marginLeft: '0.5rem', backgroundColor: '#e27344', color: '#fff', padding: '1px 6px', borderRadius: '3px', fontSize: '0.75rem' }}>🐕 戌の日</span>}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDayModalDate(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  padding: '0.4rem',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                title="閉じる"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* SECTION 1: Shrine Events */}
+              <div style={{ backgroundColor: 'var(--color-washi)', padding: '1rem 1.25rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-urushi)' }}>
+                    📢 神社行事・予約枠制限
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEventDate(selectedDayModalDate);
+                      setShowAddForm(true);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    <Plus size={12} />
+                    行事・制限を追加
+                  </button>
+                </div>
+
+                {(() => {
+                  const dayEvents = events.filter(e => e.event_date === selectedDayModalDate);
+                  if (dayEvents.length === 0) {
+                    return (
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
+                        この日に登録されている神社行事・枠制限はございません。
+                      </p>
+                    );
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {dayEvents.map(e => (
+                        <div key={e.id} style={{
+                          backgroundColor: e.is_closed_slot ? 'rgba(50, 136, 163, 0.06)' : 'rgba(197, 160, 89, 0.06)',
+                          border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.25)' : '1px solid rgba(197, 160, 89, 0.25)',
+                          padding: '0.6rem 0.8rem',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <span style={{ fontSize: '1rem' }}>{e.is_closed_slot ? '🔒' : '📢'}</span>
+                              <strong style={{ fontSize: '0.9rem', color: 'var(--color-urushi)' }}>{e.title}</strong>
+                              <span style={{ fontSize: '0.75rem', backgroundColor: '#fff', padding: '1px 5px', borderRadius: '3px', border: '1px solid #ddd' }}>
+                                {e.start_time} 〜 {e.end_time}
+                              </span>
+                              {e.is_closed_slot === 1 && (
+                                <span style={{ fontSize: '0.7rem', backgroundColor: '#e27344', color: '#fff', padding: '1px 5px', borderRadius: '3px' }}>
+                                  予約受付不可
+                                </span>
+                              )}
+                            </div>
+                            {e.description && (
+                              <div style={{ fontSize: '0.8rem', color: '#555', marginTop: '0.25rem', marginLeft: '1.4rem' }}>
+                                {e.description}
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.35rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEvent(e);
+                                setEditTitle(e.title);
+                                setEditEventDate(e.event_date);
+                                setEditStartTime(e.start_time);
+                                setEditEndTime(e.end_time);
+                                setEditDescription(e.description || '');
+                                setEditIsClosedSlot(e.is_closed_slot === 1);
+                              }}
+                              style={{
+                                padding: '0.2rem 0.4rem',
+                                fontSize: '0.75rem',
+                                backgroundColor: '#fff',
+                                border: '1px solid var(--color-gold)',
+                                color: 'var(--color-urushi)',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              編集
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteEventById(e.id, e.title)}
+                              style={{
+                                padding: '0.2rem 0.4rem',
+                                fontSize: '0.75rem',
+                                backgroundColor: '#fff',
+                                border: '1px solid #e0b4b4',
+                                color: '#c93a3a',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              削除
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* SECTION 2: Bookings on Selected Date */}
+              <div style={{ backgroundColor: 'var(--color-washi)', padding: '1rem 1.25rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                {(() => {
+                  const dayBookings = bookings.filter(b => b.booking_date === selectedDayModalDate && Number(b.is_cancelled) !== 1);
+                  const stats = getUniqueGroupStats(dayBookings);
+                  const totalFee = dayBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+
+                  return (
+                    <div>
+                      {/* Sub-header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)' }}>
+                            ⛩️ 当日のご祈祷予約一覧
+                          </h4>
+                          <span style={{ fontSize: '0.8rem', backgroundColor: '#fff', border: '1px solid var(--color-gold)', color: 'var(--color-urushi)', padding: '1px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                            合計 {stats.groupsCount} 組 ({dayBookings.length} 件 / 参列 {stats.totalAttending} 名 / 初穂料: ¥{totalFee.toLocaleString()})
+                          </span>
+                        </div>
+
+                        {dayBookings.length > 0 && (
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onSelectSchedulePrint) onSelectSchedulePrint(selectedDayModalDate);
+                              }}
+                              className="btn btn-primary"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              <Printer size={12} />
+                              内訳印刷
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onSelectDailyReportPrint) onSelectDailyReportPrint(selectedDayModalDate);
+                              }}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              <Printer size={12} />
+                              日次報告書
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bookings List */}
+                      {dayBookings.length === 0 ? (
+                        <p style={{ margin: '1rem 0', fontSize: '0.85rem', color: 'var(--color-accent-gray)', textAlign: 'center' }}>
+                          この日に予定されているご祈祷予約はございません。
+                        </p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                          {dayBookings.map((b, idx) => {
+                            const isIndiv = b.booking_type === 'individual';
+                            const displayName = isIndiv ? b.name : (b.talisman_name || b.company_name);
+                            return (
+                              <div key={b.id || idx} style={{
+                                backgroundColor: '#ffffff',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '4px',
+                                padding: '0.75rem 1rem',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{
+                                      backgroundColor: 'var(--color-urushi)',
+                                      color: '#ffffff',
+                                      padding: '2px 8px',
+                                      borderRadius: '3px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 'bold',
+                                      fontFamily: 'var(--font-serif)'
+                                    }}>
+                                      {b.booking_time}
+                                    </span>
+                                    <strong style={{ fontSize: '0.95rem', color: 'var(--color-urushi)' }}>
+                                      {displayName} 様
+                                    </strong>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
+                                      ({isIndiv ? '個人祈祷' : '団体祈祷'})
+                                    </span>
+                                    <span style={{ 
+                                      fontSize: '0.75rem', 
+                                      fontWeight: 'bold',
+                                      color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-mizuiro)',
+                                      backgroundColor: b.payment_status === 'paid' ? 'rgba(62, 122, 92, 0.08)' : 'rgba(50, 136, 163, 0.08)',
+                                      padding: '1px 6px',
+                                      borderRadius: '2px'
+                                    }}>
+                                      {b.payment_status === 'paid' ? '支払済' : '未納'}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingBooking({ ...b })}
+                                      style={{
+                                        padding: '0.2rem 0.5rem',
+                                        fontSize: '0.75rem',
+                                        backgroundColor: '#fff',
+                                        border: '1px solid var(--color-gold)',
+                                        color: 'var(--color-urushi)',
+                                        borderRadius: '2px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.2rem'
+                                      }}
+                                    >
+                                      <Edit3 size={11} />
+                                      日時・内容変更
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setCancellingBooking(b)}
+                                      style={{
+                                        padding: '0.2rem 0.45rem',
+                                        fontSize: '0.75rem',
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #e0b4b4',
+                                        color: '#c93a3a',
+                                        borderRadius: '2px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.15rem'
+                                      }}
+                                    >
+                                      <Trash2 size={11} />
+                                      取消
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem', fontSize: '0.8rem', color: '#444', backgroundColor: '#fcfaf5', padding: '0.5rem 0.75rem', borderRadius: '3px' }}>
+                                  <div><strong>主願意：</strong> {b.prayer1} {b.prayer2 ? ` / ${b.prayer2}` : ''}</div>
+                                  <div><strong>初穂料：</strong> {b.hatsuhoryo.toLocaleString()} 円</div>
+                                  <div><strong>参列人数：</strong> {b.attending_count || 1} 名</div>
+                                  {(b.phone || b.staff_phone) && (
+                                    <div><strong>電話番号：</strong> {isIndiv ? b.phone : `${b.staff_phone} (${b.staff_dept_title_name})`}</div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ backgroundColor: '#f8f9fa', borderTop: '1px solid #eee', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedDayModalDate(null)}
+                className="btn btn-secondary"
+                style={{ padding: '0.45rem 1.25rem', fontSize: '0.85rem' }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* EDIT / RESCHEDULE MODAL FROM CALENDAR */}
+      {editingBooking && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '6px',
+            width: '100%',
+            maxWidth: '560px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              backgroundColor: 'var(--color-urushi)',
+              color: '#ffffff',
+              padding: '0.9rem 1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '2px solid var(--color-gold)'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Calendar size={18} style={{ color: 'var(--color-gold)' }} />
+                予約日時の変更・内容編集
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingBooking(null)}
+                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body Form */}
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editingBooking || !editingBooking.id) return;
+              setActionLoading(true);
+              setActionMessage(null);
+              try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const res = await fetch(`${apiUrl}/api/bookings/${editingBooking.id}?is_staff=true`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(editingBooking)
+                });
+                if (!res.ok) {
+                  const data = await res.json();
+                  throw new Error(data.error || '予約日時の変更に失敗しました。');
+                }
+                setActionMessage({ type: 'success', text: '予約日時を正常に変更・更新いたしました。' });
+                setTimeout(() => {
+                  setEditingBooking(null);
+                  setActionMessage(null);
+                  onRefreshBookings();
+                }, 1200);
+              } catch (err: any) {
+                setActionMessage({ type: 'error', text: err.message || '通信エラーが発生しました。' });
+              } finally {
+                setActionLoading(false);
+              }
+            }} style={{ padding: '1.25rem' }}>
+              {actionMessage && (
+                <div style={{
+                  padding: '0.6rem 0.9rem',
+                  borderRadius: '4px',
+                  marginBottom: '1rem',
+                  fontSize: '0.85rem',
+                  backgroundColor: actionMessage.type === 'success' ? '#e8f5e9' : '#ffebee',
+                  color: actionMessage.type === 'success' ? '#2e7d32' : '#c62828',
+                  border: `1px solid ${actionMessage.type === 'success' ? '#a5d6a7' : '#ef9a9a'}`
+                }}>
+                  {actionMessage.text}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
+                    📅 ご祈祷予定日 <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={editingBooking.booking_date}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, booking_date: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid var(--color-gold)', borderRadius: '3px', outline: 'none', backgroundColor: '#fcfaf5' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
+                    ⏰ ご祈祷時間 <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <select
+                    value={editingBooking.booking_time}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, booking_time: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid var(--color-gold)', borderRadius: '3px', outline: 'none', backgroundColor: '#fcfaf5' }}
+                  >
+                    {TIME_SLOTS.map(t => (
+                      <option key={t} value={t}>{t}の回</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                  {editingBooking.booking_type === 'individual' ? '受ける方のお名前' : '企業・団体名'}
+                </label>
+                <input
+                  type="text"
+                  value={editingBooking.booking_type === 'individual' ? (editingBooking.name || '') : (editingBooking.company_name || '')}
+                  onChange={(e) => {
+                    if (editingBooking.booking_type === 'individual') {
+                      setEditingBooking({ ...editingBooking, name: e.target.value });
+                    } else {
+                      setEditingBooking({ ...editingBooking, company_name: e.target.value });
+                    }
+                  }}
+                  required
+                  style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid #ccc', borderRadius: '3px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                    主願意
+                  </label>
+                  <input
+                    type="text"
+                    value={editingBooking.prayer1}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, prayer1: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid #ccc', borderRadius: '3px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                    初穂料（円）
+                  </label>
+                  <input
+                    type="number"
+                    value={editingBooking.hatsuhoryo}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, hatsuhoryo: Number(e.target.value) })}
+                    min={0}
+                    step={1000}
+                    required
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid #ccc', borderRadius: '3px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                    参列人数
+                  </label>
+                  <input
+                    type="number"
+                    value={editingBooking.attending_count}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, attending_count: Number(e.target.value) })}
+                    min={1}
+                    required
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid #ccc', borderRadius: '3px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                    支払状況
+                  </label>
+                  <select
+                    value={editingBooking.payment_status}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, payment_status: e.target.value as 'paid' | 'unpaid' })}
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid #ccc', borderRadius: '3px' }}
+                  >
+                    <option value="paid">支払済</option>
+                    <option value="unpaid">未納（未払い）</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingBooking(null)}
+                  className="btn btn-secondary"
+                  disabled={actionLoading}
+                  style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={actionLoading}
+                  style={{ padding: '0.45rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <Check size={16} />
+                  {actionLoading ? '更新中...' : '変更を保存する'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* CANCEL CONFIRMATION MODAL FROM CALENDAR */}
+      {cancellingBooking && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '6px',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            <div style={{ backgroundColor: '#c93a3a', color: '#ffffff', padding: '0.9rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertCircle size={18} />
+                予約のキャンセル（取消）確認
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCancellingBooking(null)}
+                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem' }}>
+              {actionMessage && (
+                <div style={{
+                  padding: '0.6rem 0.9rem',
+                  borderRadius: '4px',
+                  marginBottom: '1rem',
+                  fontSize: '0.85rem',
+                  backgroundColor: actionMessage.type === 'success' ? '#e8f5e9' : '#ffebee',
+                  color: actionMessage.type === 'success' ? '#2e7d32' : '#c62828',
+                  border: `1px solid ${actionMessage.type === 'success' ? '#a5d6a7' : '#ef9a9a'}`
+                }}>
+                  {actionMessage.text}
+                </div>
+              )}
+
+              <p style={{ fontSize: '0.9rem', lineHeight: '1.6', margin: '0 0 1rem 0' }}>
+                以下のご祈祷予約を<strong>キャンセル（取消）</strong>しますか？
+              </p>
+
+              <div style={{ backgroundColor: '#fbf7ee', padding: '0.75rem 1rem', borderRadius: '4px', border: '1px solid #e8dbbe', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.7' }}>
+                <div><strong>日時：</strong> {cancellingBooking.booking_date} {cancellingBooking.booking_time}の回</div>
+                <div><strong>お名前：</strong> {cancellingBooking.booking_type === 'individual' ? `${cancellingBooking.name} 様` : `${cancellingBooking.company_name}`}</div>
+                <div><strong>願意：</strong> {cancellingBooking.prayer1}</div>
+                <div><strong>初穂料：</strong> {cancellingBooking.hatsuhoryo.toLocaleString()} 円</div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setCancellingBooking(null)}
+                  className="btn btn-secondary"
+                  disabled={actionLoading}
+                  style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                >
+                  閉じる
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!cancellingBooking || !cancellingBooking.id) return;
+                    setActionLoading(true);
+                    setActionMessage(null);
+                    try {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                      const res = await fetch(`${apiUrl}/api/bookings/${cancellingBooking.id}?is_staff=true`, {
+                        method: 'DELETE'
+                      });
+                      if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.error || '予約のキャンセルに失敗しました。');
+                      }
+                      setActionMessage({ type: 'success', text: 'ご祈祷予約を正常にキャンセル（取消）いたしました。' });
+                      setTimeout(() => {
+                        setCancellingBooking(null);
+                        setActionMessage(null);
+                        onRefreshBookings();
+                      }, 1200);
+                    } catch (err: any) {
+                      setActionMessage({ type: 'error', text: err.message || '通信エラーが発生しました。' });
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  disabled={actionLoading}
+                  style={{ backgroundColor: '#c93a3a', color: '#ffffff', border: 'none', padding: '0.45rem 1.25rem', borderRadius: '3px', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 'bold' }}
+                >
+                  <Trash2 size={15} />
+                  {actionLoading ? '処理中...' : 'キャンセルを実行する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
