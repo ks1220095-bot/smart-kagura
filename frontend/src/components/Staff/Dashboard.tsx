@@ -578,6 +578,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
 export default Dashboard;
 
 // --- PRINT COMPONENT: SCHEDULE INNER PRINT ---
+// Time slot color palette (Traditional Japanese soft tints for elegant grouping)
+const getTimeSlotTheme = (timeStr: string) => {
+  const t = timeStr || '09:00';
+  if (t.startsWith('09:00')) return { bg: '#edf4f9', border: '#7daec9', badgeBg: '#34617d', badgeText: '#ffffff', tag: '09:00枠' };
+  if (t.startsWith('09:30')) return { bg: '#fbf7ee', border: '#d6be89', badgeBg: '#7d6124', badgeText: '#ffffff', tag: '09:30枠' };
+  if (t.startsWith('10:00')) return { bg: '#edf7f0', border: '#8ac497', badgeBg: '#2c6b3b', badgeText: '#ffffff', tag: '10:00枠' };
+  if (t.startsWith('10:30')) return { bg: '#f5f0f9', border: '#bfa0d8', badgeBg: '#643c85', badgeText: '#ffffff', tag: '10:30枠' };
+  if (t.startsWith('11:00')) return { bg: '#fdf1f3', border: '#df94a0', badgeBg: '#8e2f41', badgeText: '#ffffff', tag: '11:00枠' };
+  if (t.startsWith('11:30')) return { bg: '#fdf5ec', border: '#deb186', badgeBg: '#865123', badgeText: '#ffffff', tag: '11:30枠' };
+  if (t.startsWith('13:00')) return { bg: '#edf4f9', border: '#7daec9', badgeBg: '#34617d', badgeText: '#ffffff', tag: '13:00枠' };
+  if (t.startsWith('13:30')) return { bg: '#fbf7ee', border: '#d6be89', badgeBg: '#7d6124', badgeText: '#ffffff', tag: '13:30枠' };
+  if (t.startsWith('14:00')) return { bg: '#edf7f0', border: '#8ac497', badgeBg: '#2c6b3b', badgeText: '#ffffff', tag: '14:00枠' };
+  if (t.startsWith('14:30')) return { bg: '#f5f0f9', border: '#bfa0d8', badgeBg: '#643c85', badgeText: '#ffffff', tag: '14:30枠' };
+  if (t.startsWith('15:00')) return { bg: '#fdf1f3', border: '#df94a0', badgeBg: '#8e2f41', badgeText: '#ffffff', tag: '15:00枠' };
+  if (t.startsWith('15:30')) return { bg: '#fdf5ec', border: '#deb186', badgeBg: '#865123', badgeText: '#ffffff', tag: '15:30枠' };
+  if (t.startsWith('16:00')) return { bg: '#edf6f5', border: '#83bfba', badgeBg: '#26645e', badgeText: '#ffffff', tag: '16:00枠' };
+  return { bg: '#f8f9fa', border: '#adb5bd', badgeBg: '#495057', badgeText: '#ffffff', tag: `${t}枠` };
+};
+
 export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [sortMode, setSortMode] = useState<ScheduleSortMode>('created_asc');
@@ -784,9 +803,19 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                 orderedBookings.map((b, idx) => {
                   const isIndiv = b.booking_type === 'individual';
                   const name = isIndiv ? b.name : b.company_name;
+                  const theme = getTimeSlotTheme(b.booking_time);
+                  const isFirstOfSlot = idx === 0 || orderedBookings[idx - 1].booking_time !== b.booking_time;
+
                   return (
-                    <tr key={b.id || idx} style={{ borderBottom: '1px solid #ccc' }}>
-                      <td className="no-print" style={{ padding: '0.2rem', textAlign: 'center', verticalAlign: 'middle', backgroundColor: '#fdfbf7' }}>
+                    <tr 
+                      key={b.id || idx} 
+                      style={{ 
+                        backgroundColor: theme.bg,
+                        borderBottom: '1px solid #d0d7de',
+                        borderTop: isFirstOfSlot && idx > 0 ? `2px solid ${theme.border}` : 'none'
+                      }}
+                    >
+                      <td className="no-print" style={{ padding: '0.2rem', textAlign: 'center', verticalAlign: 'middle', backgroundColor: '#fdfbf7', borderRight: '1px solid #eee' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                           <button
                             type="button"
@@ -828,7 +857,24 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                           </button>
                         </div>
                       </td>
-                      <td style={{ padding: printRowPadding, fontWeight: 'bold' }}>{b.booking_time}</td>
+                      <td style={{ 
+                        padding: printRowPadding, 
+                        fontWeight: 'bold',
+                        borderLeft: `4px solid ${theme.badgeBg}`
+                      }}>
+                        <span style={{
+                          backgroundColor: theme.badgeBg,
+                          color: theme.badgeText,
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          display: 'inline-block',
+                          fontSize: count > 24 ? '0.65rem' : count > 15 ? '0.72rem' : '0.8rem',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.05em'
+                        }}>
+                          {b.booking_time}
+                        </span>
+                      </td>
                       <td style={{ padding: printRowPadding }}>{isIndiv ? '個人' : '団体'}</td>
                       <td style={{ padding: printRowPadding, fontWeight: 600 }}>{name}</td>
                       <td style={{ padding: printRowPadding }}>
