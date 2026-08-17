@@ -1617,11 +1617,14 @@ export const VisitorPortal: React.FC = () => {
                       <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
-                          checked={batchCancelRelated}
-                          onChange={(e) => setBatchCancelRelated(e.target.checked)}
+                          checked={batchCancelRelated && batchRescheduleRelated}
+                          onChange={(e) => {
+                            setBatchCancelRelated(e.target.checked);
+                            setBatchRescheduleRelated(e.target.checked);
+                          }}
                           style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                         />
-                        キャンセル時は、これらの関連予約（合計 {relatedBookings.length + 1} 件）もすべてまとめてキャンセルする
+                        日程変更・キャンセル時は、これらの関連予約（合計 {relatedBookings.length + 1} 件）も一緒にまとめて変更・キャンセルする
                       </label>
                     </div>
                   )}
