@@ -87,11 +87,42 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const [reportMonth, setReportMonth] = useState(getCurrentMonthString());
 
+  // Find related bookings (same applicant / same email / same phone)
+  const findRelatedBookings = (target: Booking | null): Booking[] => {
+    if (!target || !target.id) return [];
+    const targetEmail = (target.booking_type === 'individual' ? target.email : target.staff_email)?.trim().toLowerCase();
+    const targetPhone = (target.booking_type === 'individual' ? target.phone : target.staff_phone)?.trim();
+    const targetName = (target.booking_type === 'individual' ? target.name : target.company_name)?.trim();
+
+    return bookings.filter(b => {
+      if (b.id === target.id) return false;
+      if (Number(b.is_cancelled) === 1) return false;
+      
+      // 1. Same email (primary)
+      const bEmail = (b.booking_type === 'individual' ? b.email : b.staff_email)?.trim().toLowerCase();
+      if (targetEmail && bEmail && targetEmail === bEmail) return true;
+
+      // 2. Same date/time with same phone or name
+      const bPhone = (b.booking_type === 'individual' ? b.phone : b.staff_phone)?.trim();
+      const bName = (b.booking_type === 'individual' ? b.name : b.company_name)?.trim();
+      if (targetPhone && bPhone && targetPhone === bPhone && target.booking_date === b.booking_date) return true;
+      if (targetName && bName && targetName === bName && target.booking_date === b.booking_date && target.booking_time === b.booking_time) return true;
+
+      return false;
+    });
+  };
+
   // Edit / Cancel state from Dashboard
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
+  const [batchRescheduleRelated, setBatchRescheduleRelated] = useState(true);
+  const [batchCancelRelated, setBatchCancelRelated] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Related bookings for current modal targets
+  const editRelatedBookings = editingBooking ? findRelatedBookings(editingBooking) : [];
+  const cancelRelatedBookings = cancellingBooking ? findRelatedBookings(cancellingBooking) : [];
 
   // Filter out cancelled bookings for active schedule calculation
   const activeBookings = bookings.filter(b => Number(b.is_cancelled) !== 1);
@@ -139,6 +170,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setActionMessage(null);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      // 1. Update primary target
       const res = await fetch(`${apiUrl}/api/bookings/${editingBooking.id}?is_staff=true`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -150,7 +183,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         throw new Error(data.error || '予約日時の変更に失敗しました。');
       }
 
-      setActionMessage({ type: 'success', text: '予約日時を正常に変更・更新いたしました。' });
+      // 2. Batch update related bookings if checkbox is checked
+      if (batchRescheduleRelated && editRelatedBookings.length > 0) {
+        for (const rel of editRelatedBookings) {
+          const updatedRel = {
+            ...rel,
+            booking_date: editingBooking.booking_date,
+            booking_time: editingBooking.booking_time
+          };
+          await fetch(`${apiUrl}/api/bookings/${rel.id}?is_staff=true`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedRel)
+          });
+        }
+      }
+
+      const totalUpdated = 1 + (batchRescheduleRelated ? editRelatedBookings.length : 0);
+      setActionMessage({ 
+        type: 'success', 
+        text: totalUpdated > 1 
+          ? `ご予約（関連予約を含む合計 ${totalUpdated} 件）の日時を正常に変更・一括更新いたしました。` 
+          : '予約日時を正常に変更・更新いたしました。' 
+      });
       setTimeout(() => {
         setEditingBooking(null);
         setActionMessage(null);
@@ -171,6 +226,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setActionMessage(null);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      // 1. Cancel primary target
       const res = await fetch(`${apiUrl}/api/bookings/${cancellingBooking.id}?is_staff=true`, {
         method: 'DELETE'
       });
@@ -180,7 +237,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
         throw new Error(data.error || '予約のキャンセルに失敗しました。');
       }
 
-      setActionMessage({ type: 'success', text: 'ご祈祷予約を正常にキャンセル（取消）いたしました。' });
+      // 2. Batch cancel related bookings if checkbox is checked
+      if (batchCancelRelated && cancelRelatedBookings.length > 0) {
+        for (const rel of cancelRelatedBookings) {
+          await fetch(`${apiUrl}/api/bookings/${rel.id}?is_staff=true`, {
+            method: 'DELETE'
+          });
+        }
+      }
+
+      const totalCancelled = 1 + (batchCancelRelated ? cancelRelatedBookings.length : 0);
+      setActionMessage({ 
+        type: 'success', 
+        text: totalCancelled > 1 
+          ? `ご祈祷予約（同一申込者の関連予約を含む合計 ${totalCancelled} 件）をすべて一括キャンセル（取消）いたしました。` 
+          : 'ご祈祷予約を正常にキャンセル（取消）いたしました。' 
+      });
       setTimeout(() => {
         setCancellingBooking(null);
         setActionMessage(null);
@@ -891,7 +963,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
               参列人数
@@ -931,6 +1003,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </select>
           </div>
         </div>
+
+        {/* Related Bookings Batch Reschedule Box */}
+        {editRelatedBookings.length > 0 && (
+          <div style={{
+            backgroundColor: '#fffdf7',
+            border: '1px solid var(--color-gold)',
+            borderRadius: '4px',
+            padding: '0.75rem 0.9rem',
+            marginBottom: '1.25rem'
+          }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <span>💡</span> 同一申込者の関連予約が他に {editRelatedBookings.length} 件 あります：
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.6rem' }}>
+              {editRelatedBookings.map((rel, idx) => (
+                <div key={rel.id || idx} style={{ fontSize: '0.78rem', color: '#555', backgroundColor: '#ffffff', padding: '0.3rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                  ・<strong>{rel.booking_time}</strong> {rel.name || rel.company_name} 様 【{rel.prayer1}】 {rel.hatsuhoryo.toLocaleString()}円
+                </div>
+              ))}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--color-urushi)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={batchRescheduleRelated}
+                onChange={(e) => setBatchRescheduleRelated(e.target.checked)}
+                style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+              />
+              これらの関連予約（合計 {editRelatedBookings.length + 1} 件）も一緒に新しい日時に変更する
+            </label>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
@@ -1048,6 +1151,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div><strong>願意：</strong> {cancellingBooking.prayer1}</div>
           <div><strong>初穂料：</strong> {cancellingBooking.hatsuhoryo.toLocaleString()} 円</div>
         </div>
+
+        {/* Related Bookings Batch Cancel Box */}
+        {cancelRelatedBookings.length > 0 && (
+          <div style={{
+            backgroundColor: '#fdf2f2',
+            border: '1px solid #f0b6b6',
+            borderRadius: '4px',
+            padding: '0.75rem 0.9rem',
+            marginBottom: '1.25rem'
+          }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#c93a3a', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <span>💡</span> 同一申込者の関連予約が他に {cancelRelatedBookings.length} 件 あります：
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.6rem' }}>
+              {cancelRelatedBookings.map((rel, idx) => (
+                <div key={rel.id || idx} style={{ fontSize: '0.78rem', color: '#555', backgroundColor: '#ffffff', padding: '0.3rem 0.5rem', borderRadius: '3px', border: '1px solid #f5cccc' }}>
+                  ・<strong>{rel.booking_time}</strong> {rel.name || rel.company_name} 様 【{rel.prayer1}】 {rel.hatsuhoryo.toLocaleString()}円
+                </div>
+              ))}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 'bold', color: '#c93a3a', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={batchCancelRelated}
+                onChange={(e) => setBatchCancelRelated(e.target.checked)}
+                style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+              />
+              同一申込者の関連予約（合計 {cancelRelatedBookings.length + 1} 件）もすべてまとめてキャンセルする
+            </label>
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
           <button
