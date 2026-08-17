@@ -157,8 +157,15 @@ export const StaffPortal: React.FC = () => {
   const [error, setError] = useState('');
   const [lastMaxId, setLastMaxId] = useState<number | null>(null);
 
-  // Security - PIN code authorization
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Network & Offline resilience states
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
+  const [syncingOffline, setSyncingOffline] = useState<boolean>(false);
+
+  // Security - PIN code authorization (persist in session so offline reloads don't lock staff out)
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('smart_kagura_staff_auth') === 'true';
+  });
   const [pinCode, setPinCode] = useState('');
   const [pinError, setPinError] = useState('');
 
@@ -470,6 +477,33 @@ export const StaffPortal: React.FC = () => {
     fetchManualDateEvents();
   }, [manualDate]);
 
+  // Sync offline queue to backend when connection is restored
+  const syncOfflineQueue = async () => {
+    const rawQueue = localStorage.getItem('smart_kagura_offline_queue');
+    if (!rawQueue) return;
+    try {
+      const queue: any[] = JSON.parse(rawQueue);
+      if (queue.length === 0) return;
+      setSyncingOffline(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/bookings?is_staff=true`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queue)
+      });
+      if (res.ok) {
+        localStorage.removeItem('smart_kagura_offline_queue');
+        setOfflineQueueCount(0);
+        await fetchBookings();
+        alert(`📡【オフライン自動同期完了】回線復旧に伴い、オフライン中に登録されたご予約（${queue.length}件）をサーバーおよび台帳へ正常に同期・保存いたしました。`);
+      }
+    } catch (e) {
+      console.warn('Failed to sync offline queue:', e);
+    } finally {
+      setSyncingOffline(false);
+    }
+  };
+
   const fetchBookings = async () => {
     setLoading(true);
     setError('');
@@ -479,6 +513,8 @@ export const StaffPortal: React.FC = () => {
       if (!res.ok) throw new Error('予約一覧の取得に失敗しました。');
       const data = await res.json();
       setBookings(data);
+      localStorage.setItem('smart_kagura_offline_bookings', JSON.stringify(data));
+      setIsOnline(true);
       
       // Initialize lastMaxId with the current highest booking ID to prevent alert spam on load
       if (data.length > 0 && lastMaxId === null) {
@@ -486,27 +522,71 @@ export const StaffPortal: React.FC = () => {
         setLastMaxId(maxId);
       }
     } catch (err: any) {
-      setError(err.message || '接続エラーが発生しました。');
+      console.warn('Online fetch failed, restoring from local offline cache:', err);
+      const cached = localStorage.getItem('smart_kagura_offline_bookings');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setBookings(parsed);
+          setIsOnline(false);
+        } catch (e) {
+          setError('オフラインデータの復元に失敗しました。');
+        }
+      } else {
+        setError(err.message || '接続エラーが発生しました。');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Monitor network online / offline events
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncOfflineQueue();
+      fetchBookings();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial check for offline queue count
+    try {
+      const q = JSON.parse(localStorage.getItem('smart_kagura_offline_queue') || '[]');
+      setOfflineQueueCount(q.length);
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Register Service Worker and subscribe to Web Push on mount
   useEffect(() => {
     subscribeUserToPush();
   }, []);
 
-  // Set up 30-second automated polling for new bookings when authenticated
+  // Set up 30-second automated polling for new bookings when authenticated and online
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const interval = setInterval(async () => {
+      if (!navigator.onLine) {
+        setIsOnline(false);
+        return;
+      }
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         const res = await fetch(`${apiUrl}/api/bookings`);
         if (res.ok) {
           const data = await res.json();
+          setIsOnline(true);
+          localStorage.setItem('smart_kagura_offline_bookings', JSON.stringify(data));
           
           // Detect new entries using lastMaxId boundary
           if (data.length > 0 && lastMaxId !== null) {
@@ -539,6 +619,7 @@ export const StaffPortal: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchBookings();
+      syncOfflineQueue();
     }
   }, [isAuthenticated]);
 
@@ -554,6 +635,7 @@ export const StaffPortal: React.FC = () => {
 
   // Close administration portal completely (remove query parameter)
   const handleExitPortal = () => {
+    sessionStorage.removeItem('smart_kagura_staff_auth');
     window.location.href = window.location.origin;
   };
 
@@ -562,6 +644,7 @@ export const StaffPortal: React.FC = () => {
     e.preventDefault();
     if (pinCode === '5417') {
       setIsAuthenticated(true);
+      sessionStorage.setItem('smart_kagura_staff_auth', 'true');
       setPinError('');
     } else {
       setPinError('暗証番号が正しくありません。');
@@ -744,7 +827,7 @@ export const StaffPortal: React.FC = () => {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || '手動登録に失敗しました。');
       }
 
@@ -754,7 +837,36 @@ export const StaffPortal: React.FC = () => {
       
       fetchBookings();
     } catch (error: any) {
-      alert(error.message);
+      // Offline fallback: save to local queue & update state immediately
+      if (!navigator.onLine || error.message.includes('fetch') || error.message.includes('接続') || error.message.includes('Failed')) {
+        const tempBookings: Booking[] = batchPayloads.map((b, idx) => ({
+          ...b,
+          id: -Date.now() - idx,
+          receipt_number: `OFF-${Date.now().toString().slice(-4)}`,
+          created_at: new Date().toISOString()
+        }));
+
+        try {
+          const currentQueue = JSON.parse(localStorage.getItem('smart_kagura_offline_queue') || '[]');
+          currentQueue.push(...batchPayloads);
+          localStorage.setItem('smart_kagura_offline_queue', JSON.stringify(currentQueue));
+          setOfflineQueueCount(currentQueue.length);
+
+          // Update local state and cached bookings so it shows on screen immediately
+          setBookings(prev => [...tempBookings, ...prev]);
+          const cached = JSON.parse(localStorage.getItem('smart_kagura_offline_bookings') || '[]');
+          localStorage.setItem('smart_kagura_offline_bookings', JSON.stringify([...tempBookings, ...cached]));
+
+          resetManualForm();
+          setManualDate('');
+          setShowAddForm(false);
+          alert('📡【オフライン登録完了】現在インターネット回線が切断されているため、端末内に予約データを一時保管しました。\n画面の日程表・名簿には即座に反映され、内訳印刷等も可能です。回線復旧時に自動でサーバーへ本登録されます。');
+        } catch (e) {
+          alert('端末への一時保存に失敗しました。');
+        }
+      } else {
+        alert(error.message);
+      }
     }
   };
 
@@ -824,6 +936,54 @@ export const StaffPortal: React.FC = () => {
     <div style={{ padding: '2rem 0' }}>
       <div className="container">
         
+        {/* Offline Status & Sync Alert Banner */}
+        {(!isOnline || offlineQueueCount > 0) && (
+          <div className="no-print" style={{
+            backgroundColor: !isOnline ? '#fffbe6' : '#f6ffed',
+            border: `1px solid ${!isOnline ? 'var(--color-gold)' : '#b7eb8f'}`,
+            borderRadius: '6px',
+            padding: '0.75rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.88rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>{!isOnline ? '📡' : '✅'}</span>
+              <div>
+                <strong style={{ color: 'var(--color-urushi)' }}>
+                  {!isOnline ? '現在オフライン（ネット回線切断中）です' : 'ネット回線が復旧しました'}
+                </strong>
+                <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.1rem' }}>
+                  {!isOnline 
+                    ? '端末内に保存された予約データで社務を表示中。電話受付や内訳印刷等もそのままご利用いただけます。'
+                    : '未同期のデータがある場合は「今すぐ同期」でサーバーへ保存できます。'}
+                  {offlineQueueCount > 0 && (
+                    <span style={{ marginLeft: '0.5rem', color: '#d3381c', fontWeight: 'bold' }}>
+                      （オフライン未同期予約: {offlineQueueCount} 件）
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={syncOfflineQueue}
+                disabled={syncingOffline}
+                style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+              >
+                {syncingOffline ? '🔄 同期中...' : '🔄 サーバーと今すぐ同期する'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Navigation Toolbar */}
         <div className="no-print" style={{ 
           display: 'flex', 
