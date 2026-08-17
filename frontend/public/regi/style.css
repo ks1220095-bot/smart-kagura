@@ -2228,3 +2228,33 @@ body.loading-state {
   background-color: rgba(63, 81, 69, 0.05);
 }
 
+/* ネットワークステータスバッジ */
+.network-status {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.network-status.online {
+  background-color: rgba(63, 81, 69, 0.08);
+  color: var(--color-green);
+  border: 1px solid var(--color-green);
+}
+
+.network-status.offline {
+  background-color: rgba(215, 75, 52, 0.08);
+  color: var(--color-vermilion);
+  border: 1px solid var(--color-vermilion);
+  animation: pulse-offline 2s infinite alternate;
+}
+
+@keyframes pulse-offline {
+  0% { opacity: 0.8; }
+  100% { opacity: 1; box-shadow: 0 0 8px rgba(215, 75, 52, 0.25); }
+}

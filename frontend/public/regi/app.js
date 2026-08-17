@@ -157,7 +157,10 @@ const DOM = {
   btnToggleMemo: document.getElementById('btn-toggle-memo'),
   btnSyncMemo: document.getElementById('btn-sync-memo'),
   memoInput: document.getElementById('shared-memo-input'),
-  memoStatus: document.getElementById('memo-status')
+  memoStatus: document.getElementById('memo-status'),
+  
+  // ネットワーク状態
+  networkStatus: document.getElementById('network-status')
 };
 
 // ==========================================
@@ -173,6 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (state.transactions.length === 0) {
     state.transactions = getMockTransactions(); // 動作確認用の美しい過去履歴を初期セット
   }
+  setupOfflineMonitoring();
+  syncOfflineTransactions();
 });
 
 function setupDateTime() {
@@ -345,7 +350,8 @@ function setupEventListeners() {
     DOM.tabs[tabKey].addEventListener('click', () => switchTab(tabKey));
   });
 
-  DOM.btnSync.addEventListener('click', () => {
+  DOM.btnSync.addEventListener('click', async () => {
+    await syncOfflineTransactions();
     loadMasterData(true);
     syncMemoFromGAS(true);
   });
@@ -785,22 +791,49 @@ async function loadMasterData(forceReload = false) {
       
       // 保存済みの並び順でソート
       state.items = sortItemsBySavedOrder(apiItems);
+      
+      // ローカルキャッシュに本番マスタデータを保存
+      localStorage.setItem('cached_master_items', JSON.stringify(apiItems));
+      
       renderItems();
       renderMasterGrid();
       if (forceReload) showToast('マスタデータをスプレッドシートと同期しました。', 'success');
+      updateNetworkStatusUI(true);
     } else {
       throw new Error(data.message);
     }
   } catch (err) {
     console.error(err);
-    showToast('接続に失敗したため、デモ用モックデータを使用します。', 'error');
-    state.isUsingMock = true;
-    state.items = sortItemsBySavedOrder(MOCK_ITEMS);
-    renderItems();
-    renderMasterGrid();
+    const cachedItems = localStorage.getItem('cached_master_items');
+    if (cachedItems) {
+      try {
+        const apiItems = JSON.parse(cachedItems);
+        state.items = sortItemsBySavedOrder(apiItems);
+        state.isUsingMock = false;
+        
+        renderItems();
+        renderMasterGrid();
+        showToast('接続エラーのため、ローカルキャッシュから商品データを読み込みました（オフラインモード）。', 'warning');
+        updateNetworkStatusUI(false);
+      } catch (parseErr) {
+        console.error('Failed to parse cached items:', parseErr);
+        loadMockFallback();
+      }
+    } else {
+      loadMockFallback();
+    }
   } finally {
     showLoader(false);
   }
+}
+
+function loadMockFallback() {
+  showToast('接続に失敗したため、デモ用モックデータを使用します。', 'error');
+  state.isUsingMock = true;
+  state.items = sortItemsBySavedOrder(MOCK_ITEMS);
+  renderItems();
+  renderMasterGrid();
+  updateNetworkStatusUI(false);
 }
 
 // 永続化された並び順にソートするヘルパー
@@ -958,10 +991,45 @@ async function processCheckout() {
     }
   } catch (err) {
     console.error(err);
-    showToast(`売上登録エラー: ${err.message}`, 'error');
-    // エラー時はカート状態が残るため、ボタンを再活性化させる
-    if (DOM.btnCheckout) DOM.btnCheckout.disabled = false;
-    if (btnCheckoutMobile) btnCheckoutMobile.disabled = false;
+    const isOffline = !navigator.onLine || err.message.includes('fetch') || err.message.includes('NetworkError');
+    if (isOffline) {
+      state.cart.forEach(cartItem => {
+        const match = state.items.find(item => item.id === cartItem.id);
+        if (match) match.stock = Math.max(0, match.stock - cartItem.quantity);
+      });
+      
+      const localTx = {
+        transactionId: transactionId,
+        timestamp: timestamp,
+        items: cartItemsToSend,
+        total: total,
+        status: '有効'
+      };
+      
+      if (!state.transactions) state.transactions = [];
+      state.transactions.unshift(localTx);
+      
+      const queue = JSON.parse(localStorage.getItem('offline_checkout_queue') || '[]');
+      queue.push(localTx);
+      localStorage.setItem('offline_checkout_queue', JSON.stringify(queue));
+      
+      localStorage.setItem('cached_master_items', JSON.stringify(state.items));
+      
+      closeMobileCart();
+      clearCart();
+      if (change > 0) {
+        showToast(`オフライン会計を完了しました（お釣り：${change.toLocaleString()} 円 / 未同期保存）。`, 'warning');
+      } else {
+        showToast('オフライン会計を完了しました（未同期保存）。', 'warning');
+      }
+      renderItems();
+      renderMasterGrid();
+      updateNetworkStatusUI(false);
+    } else {
+      showToast(`売上登録エラー: ${err.message}`, 'error');
+      if (DOM.btnCheckout) DOM.btnCheckout.disabled = false;
+      if (btnCheckoutMobile) btnCheckoutMobile.disabled = false;
+    }
   } finally {
     showLoader(false);
     state.isCheckingOut = false;
@@ -2824,4 +2892,97 @@ function enterListInlineEditMode(item) {
       }
     });
   });
+}
+
+// ==========================================
+// ネットワーク状態＆オフライン同期機能
+// ==========================================
+function updateNetworkStatusUI(isOnline) {
+  if (!DOM.networkStatus) return;
+  
+  const queue = JSON.parse(localStorage.getItem('offline_checkout_queue') || '[]');
+  const pendingCount = queue.length;
+  
+  if (isOnline && navigator.onLine) {
+    DOM.networkStatus.className = 'network-status online';
+    if (pendingCount > 0) {
+      DOM.networkStatus.innerHTML = `<i class="fa-solid fa-circle" style="font-size:0.5rem; vertical-align:middle; margin-right:0.25rem;"></i>オンライン (未同期 ${pendingCount} 件)`;
+    } else {
+      DOM.networkStatus.innerHTML = `<i class="fa-solid fa-circle" style="font-size:0.5rem; vertical-align:middle; margin-right:0.25rem;"></i>オンライン`;
+    }
+  } else {
+    DOM.networkStatus.className = 'network-status offline';
+    if (pendingCount > 0) {
+      DOM.networkStatus.innerHTML = `<i class="fa-solid fa-circle" style="font-size:0.5rem; vertical-align:middle; margin-right:0.25rem;"></i>オフライン (未同期 ${pendingCount} 件)`;
+    } else {
+      DOM.networkStatus.innerHTML = `<i class="fa-solid fa-circle" style="font-size:0.5rem; vertical-align:middle; margin-right:0.25rem;"></i>オフライン`;
+    }
+  }
+}
+
+async function syncOfflineTransactions() {
+  const queue = JSON.parse(localStorage.getItem('offline_checkout_queue') || '[]');
+  if (queue.length === 0) {
+    updateNetworkStatusUI(true);
+    return;
+  }
+  
+  if (!navigator.onLine) {
+    showToast('オフライン状態のため、保留されている取引データを同期できません。', 'warning');
+    updateNetworkStatusUI(false);
+    return;
+  }
+  
+  showLoader(true);
+  showToast(`保留されている売上データ（${queue.length} 件）をスプレッドシートへ同期中...`, 'info');
+  
+  let successCount = 0;
+  const remainingQueue = [];
+  
+  for (let tx of queue) {
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'checkout',
+          items: tx.items
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        successCount++;
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (err) {
+      console.error('Failed to sync offline transaction:', tx.transactionId, err);
+      remainingQueue.push(tx);
+    }
+  }
+  
+  localStorage.setItem('offline_checkout_queue', JSON.stringify(remainingQueue));
+  showLoader(false);
+  
+  if (successCount > 0) {
+    showToast(`${successCount} 件の保留売上データをスプレッドシートへ同期しました！`, 'success');
+  }
+  
+  if (remainingQueue.length > 0) {
+    showToast(`一部の売上データ（${remainingQueue.length} 件）の同期に失敗しました。接続環境をご確認ください。`, 'error');
+    updateNetworkStatusUI(false);
+  } else {
+    updateNetworkStatusUI(true);
+  }
+}
+
+function setupOfflineMonitoring() {
+  window.addEventListener('online', () => {
+    updateNetworkStatusUI(true);
+    syncOfflineTransactions();
+  });
+  window.addEventListener('offline', () => {
+    updateNetworkStatusUI(false);
+  });
+  // 初期状態の設定
+  updateNetworkStatusUI(navigator.onLine);
 }
