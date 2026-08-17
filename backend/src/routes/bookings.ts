@@ -868,8 +868,8 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Capacity checks (only check if date/time changed)
-    if (existing.booking_date !== booking.booking_date || existing.booking_time !== booking.booking_time) {
+    // Capacity & closed slot checks for visitors (bypass if is_staff = true)
+    if (!isStaff && (existing.booking_date !== booking.booking_date || existing.booking_time !== booking.booking_time)) {
       const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
       const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
 

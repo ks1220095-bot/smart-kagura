@@ -71,7 +71,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     setSavingDetail(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/bookings/${editTargetBooking.id}`, {
+      const res = await fetch(`${apiUrl}/api/bookings/${editTargetBooking.id}?is_staff=true`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editFormData)
@@ -1517,7 +1517,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                    onClick={async () => {
                      try {
                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                       const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}`, { method: 'DELETE' });
+                       const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}?is_staff=true`, { method: 'DELETE' });
                        if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
                        setDeleteTarget(null);
                        onRefresh();
