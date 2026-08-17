@@ -96,8 +96,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const indivCount = bookings.filter(b => b.booking_type === 'individual').length;
   const orgCount = bookings.filter(b => b.booking_type === 'organization').length;
 
-  // Target date bookings for report sorted by booking_time and created_at
-  const reportBookings = sortScheduleBookings(bookings.filter(b => b.booking_date === reportDate), 'created_asc');
+  const [dashboardSortMode, setDashboardSortMode] = useState<ScheduleSortMode>('created_asc');
+  const [dashboardList, setDashboardList] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    if (dashboardSortMode !== 'custom') {
+      setDashboardList(sortScheduleBookings(bookings.filter(b => b.booking_date === reportDate), dashboardSortMode));
+    }
+  }, [bookings, reportDate, dashboardSortMode]);
+
+  const moveDashboardRow = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= dashboardList.length) return;
+    const nextList = [...dashboardList];
+    const item = nextList[index];
+    nextList[index] = nextList[targetIndex];
+    nextList[targetIndex] = item;
+    setDashboardSortMode('custom');
+    setDashboardList(nextList);
+  };
 
   // Target month bookings for report
   const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth));
@@ -275,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Today's timeline */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.3rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h4 style={{ 
               fontSize: '0.95rem', 
               margin: 0,
@@ -283,80 +300,188 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }}>
               ご祈祷日程表
             </h4>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#666' }}>対象日:</span>
-              <input 
-                type="date" 
-                value={reportDate} 
-                onChange={(e) => setReportDate(e.target.value)} 
-                style={{
-                  padding: '0.2rem 0.4rem',
-                  fontSize: '0.75rem',
-                  borderRadius: '3px',
-                  border: '1px solid var(--color-border)',
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }} 
-              />
-            </div>
             
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button 
-                onClick={() => onSelectDailyReportPrint && onSelectDailyReportPrint(reportDate)}
-                className="btn btn-secondary"
-                style={{ padding: '0.3rem 0.60rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
-              >
-                <Printer size={12} />
-                日次報告書
-              </button>
-              {reportBookings.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#666' }}>対象日:</span>
+                <input 
+                  type="date" 
+                  value={reportDate} 
+                  onChange={(e) => setReportDate(e.target.value)} 
+                  style={{
+                    padding: '0.2rem 0.4rem',
+                    fontSize: '0.75rem',
+                    borderRadius: '3px',
+                    border: '1px solid var(--color-border)',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
                 <button 
-                  onClick={() => onSelectSchedulePrint && onSelectSchedulePrint(reportDate)}
-                  className="btn btn-primary"
-                  style={{ padding: '0.3rem 0.60rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  onClick={() => onSelectDailyReportPrint && onSelectDailyReportPrint(reportDate)}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-border)' }}
                 >
                   <Printer size={12} />
-                  内訳印刷
+                  日次報告書
                 </button>
-              )}
+                {dashboardList.length > 0 && (
+                  <button 
+                    onClick={() => onSelectSchedulePrint && onSelectSchedulePrint(reportDate)}
+                    className="btn btn-primary"
+                    style={{ padding: '0.25rem 0.55rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    <Printer size={12} />
+                    内訳印刷
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {reportBookings.length === 0 ? (
+          {/* Sorting bar on dashboard card */}
+          {dashboardList.length > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              backgroundColor: 'var(--color-washi-dark)', 
+              padding: '0.35rem 0.6rem', 
+              borderRadius: '2px', 
+              marginBottom: '0.5rem',
+              border: '1px solid var(--color-border)',
+              fontSize: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <ArrowUpDown size={13} style={{ color: 'var(--color-gold)' }} />
+                <span style={{ fontWeight: 600, color: 'var(--color-urushi)' }}>並び順:</span>
+                <select
+                  value={dashboardSortMode}
+                  onChange={(e) => setDashboardSortMode(e.target.value as ScheduleSortMode)}
+                  style={{
+                    padding: '0.15rem 0.35rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid var(--color-gold)',
+                    borderRadius: '2px',
+                    backgroundColor: '#fff',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="created_asc">📅 実際の受付順（早い順）</option>
+                  <option value="created_desc">📅 実際の受付順（遅い順）</option>
+                  <option value="name_asc">🔤 お名前順（五十音）</option>
+                  <option value="receipt_asc">🔢 受付番号順</option>
+                  {dashboardSortMode === 'custom' && <option value="custom">✋ 手動並び替え中</option>}
+                </select>
+              </div>
+
+              {dashboardSortMode === 'custom' && (
+                <button
+                  type="button"
+                  onClick={() => setDashboardSortMode('created_asc')}
+                  style={{
+                    padding: '0.1rem 0.4rem',
+                    fontSize: '0.7rem',
+                    backgroundColor: '#fff',
+                    border: '1px solid #ccc',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem'
+                  }}
+                >
+                  <RotateCcw size={10} />
+                  受付順に戻す
+                </button>
+              )}
+            </div>
+          )}
+
+          {dashboardList.length === 0 ? (
             <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.85rem', textAlign: 'center', margin: '2rem 0' }}>
               選択された日に予定されているご祈祷はございません。
             </p>
           ) : (
             <div style={{ 
-              maxHeight: '180px', 
+              maxHeight: '220px', 
               overflowY: 'auto', 
               display: 'flex', 
               flexDirection: 'column', 
               gap: '0.4rem', 
               fontSize: '0.8rem' 
             }}>
-              {reportBookings.map(b => (
-                <div key={b.id} style={{ 
+              {dashboardList.map((b, idx) => (
+                <div key={b.id || idx} style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
-                  padding: '0.45rem', 
+                  alignItems: 'center',
+                  padding: '0.4rem 0.5rem', 
                   backgroundColor: 'var(--color-washi)', 
                   border: '1px solid var(--color-border)',
-                  borderRadius: '2px'
+                  borderRadius: '2px',
+                  gap: '0.5rem'
                 }}>
-                  <span>
-                    <strong style={{ fontFamily: 'var(--font-serif)' }}>{b.booking_time}</strong> —{' '}
-                    {b.booking_type === 'individual' ? `${b.name} 様` : `${b.company_name}`}{' '}
-                    <span style={{ color: 'var(--color-accent-gray)', fontSize: '0.75rem' }}>({b.prayer1})</span>
-                    {b.created_at && (
-                      <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#888' }}>
-                        [{b.created_at.split(' ')[0].replace(/^\d{4}-/, '').replace('-', '/')}受付]
-                      </span>
-                    )}
-                  </span>
+                  {/* Left reorder buttons */}
+                  <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => moveDashboardRow(idx, 'up')}
+                      disabled={idx === 0}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #ddd',
+                        borderRadius: '2px',
+                        padding: '1px 3px',
+                        cursor: idx === 0 ? 'default' : 'pointer',
+                        opacity: idx === 0 ? 0.2 : 0.8,
+                        lineHeight: 1
+                      }}
+                      title="1つ上へ移動"
+                    >
+                      <ChevronUp size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveDashboardRow(idx, 'down')}
+                      disabled={idx === dashboardList.length - 1}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #ddd',
+                        borderRadius: '2px',
+                        padding: '1px 3px',
+                        cursor: idx === dashboardList.length - 1 ? 'default' : 'pointer',
+                        opacity: idx === dashboardList.length - 1 ? 0.2 : 0.8,
+                        lineHeight: 1
+                      }}
+                      title="1つ下へ移動"
+                    >
+                      <ChevronDown size={11} />
+                    </button>
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ wordBreak: 'break-all' }}>
+                      <strong style={{ fontFamily: 'var(--font-serif)', marginRight: '0.35rem' }}>{b.booking_time}</strong>
+                      {b.booking_type === 'individual' ? `${b.name} 様` : `${b.company_name}`}{' '}
+                      <span style={{ color: 'var(--color-accent-gray)', fontSize: '0.75rem' }}>({b.prayer1})</span>
+                      {b.created_at && (
+                        <span style={{ marginLeft: '0.35rem', fontSize: '0.7rem', color: '#888' }}>
+                          [{b.created_at.split(' ')[0].replace(/^\d{4}-/, '').replace('-', '/')}受付]
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
                   <span style={{ 
                     fontWeight: 600, 
+                    fontSize: '0.75rem',
+                    flexShrink: 0,
                     color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-mizuiro)' 
                   }}>
                     {b.payment_status === 'paid' ? '支払済' : '未払い'}
@@ -537,27 +662,36 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
 
         {/* Sorting controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.6rem', borderRadius: '3px' }}>
-            <ArrowUpDown size={14} style={{ color: 'var(--color-gold)' }} />
-            <span style={{ fontSize: '0.8rem', color: '#eee' }}>並び順:</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.4rem', 
+            backgroundColor: '#2c2523', 
+            padding: '0.35rem 0.75rem', 
+            borderRadius: '4px',
+            border: '1.5px solid var(--color-gold)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+          }}>
+            <ArrowUpDown size={15} style={{ color: 'var(--color-gold)' }} />
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>並び順切替:</span>
             <select
               value={sortMode}
               onChange={(e) => handleSortChange(e.target.value as ScheduleSortMode)}
               style={{
                 backgroundColor: '#ffffff',
-                color: '#222222',
+                color: '#111111',
                 border: '1px solid var(--color-gold)',
-                borderRadius: '2px',
-                padding: '0.2rem 0.5rem',
-                fontSize: '0.8rem',
-                fontWeight: 500,
+                borderRadius: '3px',
+                padding: '0.3rem 0.6rem',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
                 outline: 'none',
                 cursor: 'pointer'
               }}
             >
-              <option value="created_asc">📅 実際の受付順 (早い順)</option>
-              <option value="created_desc">📅 実際の受付順 (遅い順 / 新着順)</option>
-              <option value="name_asc">🔤 お名前順 (五十音)</option>
+              <option value="created_asc">📅 実際の受付順（早い順 / 先着順）</option>
+              <option value="created_desc">📅 実際の受付順（遅い順 / 新着順）</option>
+              <option value="name_asc">🔤 お名前順（五十音順）</option>
               <option value="receipt_asc">🔢 受付番号順</option>
               {sortMode === 'custom' && <option value="custom">✋ 手動並び替え中</option>}
             </select>
@@ -569,23 +703,25 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
               onClick={() => handleSortChange('created_asc')}
               className="btn"
               style={{
-                padding: '0.25rem 0.6rem',
-                fontSize: '0.75rem',
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                color: '#ffffff',
-                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.8rem',
+                backgroundColor: '#ffffff',
+                color: 'var(--color-urushi)',
+                border: '1px solid var(--color-gold)',
+                fontWeight: 'bold',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.25rem'
+                gap: '0.3rem',
+                cursor: 'pointer'
               }}
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={13} />
               受付順にリセット
             </button>
           )}
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={handlePrint} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+            <button onClick={handlePrint} className="btn btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
               印刷する (A4横)
             </button>
             <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -627,12 +763,12 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: printFontSize }}>
             <thead>
               <tr style={{ borderBottom: '2px solid black', textAlign: 'left' }}>
-                <th className="no-print" style={{ padding: printRowPadding, fontWeight: 'bold', width: '4%', textAlign: 'center' }}>順序</th>
+                <th className="no-print" style={{ padding: printRowPadding, fontWeight: 'bold', width: '5%', textAlign: 'center', color: '#c5a059', backgroundColor: '#fcfaf5' }}>移動</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '8%' }}>時間</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '15%' }}>受付番号</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '8%' }}>区分</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '28%' }}>氏名 / 会社・団体名</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '20%' }}>願意</th>
+                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '19%' }}>願意</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '7%', textAlign: 'right' }}>人数</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '10%', textAlign: 'right' }}>初穂料</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '7%', textAlign: 'center' }}>支払状況</th>
@@ -651,19 +787,22 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                   const name = isIndiv ? b.name : b.company_name;
                   return (
                     <tr key={b.id || idx} style={{ borderBottom: '1px solid #ccc' }}>
-                      <td className="no-print" style={{ padding: '0.1rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '1px' }}>
+                      <td className="no-print" style={{ padding: '0.2rem', textAlign: 'center', verticalAlign: 'middle', backgroundColor: '#fdfbf7' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                           <button
                             type="button"
                             onClick={() => moveRow(idx, 'up')}
                             disabled={idx === 0}
                             style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '1px',
+                              background: '#ffffff',
+                              border: '1px solid #c5a059',
+                              borderRadius: '2px',
+                              padding: '2px 4px',
                               cursor: idx === 0 ? 'default' : 'pointer',
-                              opacity: idx === 0 ? 0.2 : 0.7,
-                              lineHeight: 1
+                              opacity: idx === 0 ? 0.2 : 0.9,
+                              lineHeight: 1,
+                              color: 'var(--color-urushi)',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                             }}
                             title="1つ上へ移動"
                           >
@@ -674,12 +813,15 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                             onClick={() => moveRow(idx, 'down')}
                             disabled={idx === orderedBookings.length - 1}
                             style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '1px',
+                              background: '#ffffff',
+                              border: '1px solid #c5a059',
+                              borderRadius: '2px',
+                              padding: '2px 4px',
                               cursor: idx === orderedBookings.length - 1 ? 'default' : 'pointer',
-                              opacity: idx === orderedBookings.length - 1 ? 0.2 : 0.7,
-                              lineHeight: 1
+                              opacity: idx === orderedBookings.length - 1 ? 0.2 : 0.9,
+                              lineHeight: 1,
+                              color: 'var(--color-urushi)',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                             }}
                             title="1つ下へ移動"
                           >
