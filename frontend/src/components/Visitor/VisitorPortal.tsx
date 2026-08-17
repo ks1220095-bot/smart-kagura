@@ -338,6 +338,9 @@ export const VisitorPortal: React.FC = () => {
   // Form editing mode states (For full reschedule updates)
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBookingId, setEditBookingId] = useState<number | null>(null);
+  const [relatedBookings, setRelatedBookings] = useState<Booking[]>([]);
+  const [batchRescheduleRelated, setBatchRescheduleRelated] = useState(true);
+  const [batchCancelRelated, setBatchCancelRelated] = useState(true);
 
   // Save form draft to localStorage whenever relevant fields change
   useEffect(() => {
@@ -795,6 +798,9 @@ export const VisitorPortal: React.FC = () => {
       if (!res.ok) throw new Error('ご予約情報が見つかりません。すでにキャンセルされている可能性があります。');
       const data = await res.json();
       setTargetBooking(data);
+      if (Array.isArray(data.related_bookings)) {
+        setRelatedBookings(data.related_bookings);
+      }
     } catch (err: any) {
       setChangeError(err.message || '情報の読み込みに失敗しました。');
     } finally {
@@ -804,16 +810,36 @@ export const VisitorPortal: React.FC = () => {
 
   const handleCancelBooking = async () => {
     if (!targetBooking || !targetBooking.id) return;
-    if (!confirm('ご予約をキャンセルしてもよろしいですか？この操作は取り消せません。')) return;
+    
+    const count = 1 + (batchCancelRelated ? relatedBookings.length : 0);
+    const confirmMsg = count > 1
+      ? `同一申込者のご予約（合計 ${count} 件）をすべてキャンセルしてもよろしいですか？この操作は取り消せません。`
+      : 'ご予約をキャンセルしてもよろしいですか？この操作は取り消せません。';
+    if (!confirm(confirmMsg)) return;
 
     setChangeLoading(true);
     setChangeError('');
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      // 1. Cancel primary target
       const res = await fetch(`${apiUrl}/api/bookings/${targetBooking.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('キャンセル処理に失敗しました。');
-      setChangeSuccessMsg('ご予約のキャンセル手続きが完了いたしました。またのご予約を心よりお待ちしております。');
+
+      // 2. Batch cancel related bookings if checked
+      if (batchCancelRelated && relatedBookings.length > 0) {
+        for (const rel of relatedBookings) {
+          if (rel.id) {
+            await fetch(`${apiUrl}/api/bookings/${rel.id}`, { method: 'DELETE' });
+          }
+        }
+      }
+
+      setChangeSuccessMsg(count > 1 
+        ? `ご予約（関連予約を含む合計 ${count} 件）のキャンセル手続きがすべて完了いたしました。またのご参拝を心よりお待ちしております。`
+        : 'ご予約のキャンセル手続きが完了いたしました。またのご予約を心よりお待ちしております。');
       setTargetBooking(null);
+      setRelatedBookings([]);
     } catch (err: any) {
       setChangeError(err.message || '通信エラーが発生しました。');
     } finally {
@@ -1313,6 +1339,24 @@ export const VisitorPortal: React.FC = () => {
         throw new Error(errData.error || (isEditMode ? '予約内容の変更に失敗しました。' : '予約の登録に失敗しました。'));
       }
 
+      // If batch reschedule is enabled, update related bookings to new date/time as well
+      if (isEditMode && batchRescheduleRelated && relatedBookings.length > 0) {
+        for (const rel of relatedBookings) {
+          if (rel.id) {
+            const updatedRel = {
+              ...rel,
+              booking_date: selectedDate,
+              booking_time: selectedTime
+            };
+            await fetch(`${apiUrl}/api/bookings/${rel.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedRel)
+            });
+          }
+        }
+      }
+
       const created = await res.json();
       const createdArray = Array.isArray(created) ? created : [created];
       setCreatedBookings(createdArray);
@@ -1545,11 +1589,42 @@ export const VisitorPortal: React.FC = () => {
                     オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の30分前まで】となっております。社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
                   </div>
 
-                  <div style={{ backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', padding: '1rem', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                  <div style={{ backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', padding: '1rem', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
                     <p style={{ margin: '0 0 0.5rem 0' }}><strong>お名前:</strong> {targetBooking.booking_type === 'individual' ? targetBooking.name : targetBooking.company_name} 様</p>
                     <p style={{ margin: '0 0 0.5rem 0' }}><strong>ご祈祷:</strong> {targetBooking.prayer1}</p>
                     <p style={{ margin: 0 }}><strong>現在のご希望日時:</strong> {targetBooking.booking_date} {targetBooking.booking_time}の回</p>
                   </div>
+
+                  {/* Related Bookings Box for Same Applicant */}
+                  {relatedBookings.length > 0 && (
+                    <div style={{
+                      backgroundColor: '#fffdf7',
+                      border: '1px solid var(--color-gold)',
+                      borderRadius: '4px',
+                      padding: '0.9rem 1rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>💡</span> 同時に申し込まれた関連するご予約が他に {relatedBookings.length} 件 あります：
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                        {relatedBookings.map((rel, idx) => (
+                          <div key={rel.id || idx} style={{ fontSize: '0.82rem', color: '#555', backgroundColor: '#ffffff', padding: '0.35rem 0.6rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                            ・<strong>{rel.booking_time}</strong> {rel.name || rel.company_name} 様 【{rel.prayer1}】 {rel.hatsuhoryo.toLocaleString()}円
+                          </div>
+                        ))}
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={batchCancelRelated}
+                          onChange={(e) => setBatchCancelRelated(e.target.checked)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                        キャンセル時は、これらの関連予約（合計 {relatedBookings.length + 1} 件）もすべてまとめてキャンセルする
+                      </label>
+                    </div>
+                  )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
                     <button 
@@ -3197,6 +3272,37 @@ export const VisitorPortal: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Related Bookings Batch Reschedule Option in Confirmation Step */}
+            {isEditMode && relatedBookings.length > 0 && (
+              <div style={{
+                backgroundColor: '#fffdf7',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '4px',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>💡</span> 同時に申し込まれた関連するご予約が他に {relatedBookings.length} 件 あります：
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                  {relatedBookings.map((rel, idx) => (
+                    <div key={rel.id || idx} style={{ fontSize: '0.82rem', color: '#555', backgroundColor: '#ffffff', padding: '0.4rem 0.6rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                      ・【{rel.prayer1}】 {rel.name || rel.company_name} 様 / {rel.hatsuhoryo.toLocaleString()}円 (現在: {rel.booking_date} {rel.booking_time}の回)
+                    </div>
+                  ))}
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={batchRescheduleRelated}
+                    onChange={(e) => setBatchRescheduleRelated(e.target.checked)}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  これらの関連予約（合計 {relatedBookings.length + 1} 件）も一緒に新しい日時（{selectedDate} {selectedTime}の回）に変更する
+                </label>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '3rem' }}>
               <button

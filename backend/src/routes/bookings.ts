@@ -673,7 +673,7 @@ router.get('/export-csv', async (req, res) => {
   }
 });
 
-// 5. Get single booking
+// 5. Get single booking (with related bookings for same applicant)
 router.get('/:id', async (req, res) => {
   try {
     const db = getDb();
@@ -681,7 +681,31 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '予約情報が見つかりません。' });
     }
-    res.json(result.rows[0]);
+    const booking = result.rows[0];
+
+    // Find related bookings with same email or phone
+    const email = booking.booking_type === 'individual' ? booking.email : booking.staff_email;
+    const phone = booking.booking_type === 'individual' ? booking.phone : booking.staff_phone;
+
+    let relatedBookings: any[] = [];
+    if (email || phone) {
+      const relResult = await db.query(`
+        SELECT * FROM bookings 
+        WHERE id <> $1 
+          AND is_cancelled = 0
+          AND (
+            ($2::text IS NOT NULL AND $2::text <> '' AND (LOWER(email) = LOWER($2) OR LOWER(staff_email) = LOWER($2)))
+            OR ($3::text IS NOT NULL AND $3::text <> '' AND (phone = $3 OR staff_phone = $3))
+          )
+        ORDER BY booking_date ASC, booking_time ASC
+      `, [booking.id, email || null, phone || null]);
+      relatedBookings = relResult.rows;
+    }
+
+    res.json({
+      ...booking,
+      related_bookings: relatedBookings
+    });
   } catch (error) {
     console.error('Booking detail error:', error);
     res.status(500).json({ error: '予約情報の取得に失敗しました。' });
