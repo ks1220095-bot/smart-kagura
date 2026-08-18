@@ -290,14 +290,14 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   }
 }
 
-/* Print Modal Overlay (Screen View) */
+/* Print Modal Overlay (Screen View - 100% Opaque to prevent background bleed) */
 .print-modal-overlay {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  background-color: rgba(0,0,0,0.85) !important;
+  background-color: #222222 !important;
   display: flex !important;
   flex-direction: column !important;
   z-index: 2000 !important;

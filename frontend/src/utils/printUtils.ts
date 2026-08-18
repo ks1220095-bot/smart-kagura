@@ -88,9 +88,20 @@ export const printElement = (
           .print-yomifuda-page {
             width: 100% !important;
             height: 100% !important;
+            min-width: 100% !important;
+            min-height: 100% !important;
             box-shadow: none !important;
             border: none !important;
             page-break-after: always;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: stretch !important;
+            box-sizing: border-box !important;
+            padding: 6mm 8mm !important;
+          }
+          .print-yomifuda-page > div[style*="width: 116mm"] {
+            width: 48.5% !important;
+            height: 100% !important;
           }
         </style>
       </head>

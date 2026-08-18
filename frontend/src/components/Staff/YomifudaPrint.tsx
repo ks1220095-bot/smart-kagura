@@ -143,7 +143,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         position: 'relative',
         backgroundColor: '#ffffff',
         fontFamily: 'var(--font-serif)',
-        display: 'inline-flex',
+        display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         verticalAlign: 'top',
@@ -152,7 +152,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         {/* Watermark Logo Label */}
         <div style={{
           position: 'absolute',
-          bottom: '10mm',
+          bottom: '12mm',
           left: '10mm',
           fontSize: '3.2rem',
           fontWeight: 'bold',
@@ -164,16 +164,16 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         </div>
 
         {/* Inner Content Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%', height: 'calc(100% - 13.5mm)', overflow: 'hidden', zIndex: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', flex: 1, overflow: 'hidden', zIndex: 2 }}>
           
           {/* Header Title Bar */}
           <div style={{ 
-            fontSize: '1.25rem', 
+            fontSize: '1.2rem', 
             fontWeight: 'bold', 
             color: '#d80100', 
             letterSpacing: '0.1em', 
             borderBottom: '2px solid #d80100', 
-            paddingBottom: '0.25rem',
+            paddingBottom: '0.2rem',
             textAlign: 'center'
           }}>
             ご祈祷読み札　【 {title} 】
@@ -419,18 +419,15 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
 
         </div>
 
-        {/* Footer Area (Absolute Bottom to prevent overflow見切れ) */}
+        {/* Footer Area (Natural Bottom to prevent overflow overlap) */}
         <div style={{ 
-          position: 'absolute',
-          bottom: '5mm',
-          left: '6mm',
-          right: '6mm',
-          height: '11mm',
+          width: '100%',
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'flex-end', 
           borderTop: '1.5px solid #d80100', 
-          paddingTop: '0.25rem',
+          paddingTop: '0.2rem',
+          marginTop: '0.25rem',
           backgroundColor: '#ffffff',
           zIndex: 10
         }}>
@@ -440,7 +437,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
           </div>
 
-          {/* 右端に配置した願意と社務所名（受付番号は完全に削除） */}
+          {/* 右端に配置した願意と社務所名 */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.45rem' }}>
             <div style={{ 
               fontSize: '0.62rem', 
@@ -482,7 +479,15 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
             <Printer size={14} />
-            印刷する (B5横)
+            B5横で印刷
+          </button>
+          <button 
+            onClick={() => printElement(printRef.current, { title: 'ご祈祷受付票・読み札', orientation: 'landscape', size: 'A4' })} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ffffff', borderColor: 'var(--color-gold)' }}
+          >
+            <Printer size={14} />
+            A4横で印刷
           </button>
           <button 
             onClick={onClose} 
