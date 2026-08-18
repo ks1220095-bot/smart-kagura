@@ -754,6 +754,18 @@ async function syncMemoFromGAS(showToastMsg = false) {
   }
 }
 
+// カテゴリスペル揺れ・大文字小文字の補正関数
+function normalizeCategory(rawCategory) {
+  if (!rawCategory) return '';
+  const clean = rawCategory.toString().toLowerCase().trim();
+  if (clean === 'ofuda' || clean === 'ohuda' || clean === 'ouhda' || clean === 'o-huda') return 'ofuda';
+  if (clean === 'omamori' || clean === 'omamory') return 'omamori';
+  if (clean === 'goshuin' || clean === 'gosyuin') return 'goshuin';
+  if (clean === 'engimono' || clean === 'enngimono') return 'engimono';
+  if (clean === 'other' || clean === 'others' || clean === 'oter') return 'other';
+  return clean;
+}
+
 // ==========================================
 // データ通信処理 (並び順永続ソート対応)
 // ==========================================
@@ -776,12 +788,18 @@ async function loadMasterData(forceReload = false) {
     
     if (data.status === 'success') {
       const apiItems = data.items.map(item => {
-        let category = item.category || 'other';
-        if (!item.category) {
-          if (item.name.includes('札') || item.name.includes('守札') || item.name.includes('大麻') || item.name.includes('神宮') || item.name.includes('祓')) category = 'ofuda';
-          else if (item.name.includes('守') || item.name.includes('まもり') || item.name.includes('ステッカー')) category = 'omamori';
-          else if (item.name.includes('朱印')) category = 'goshuin';
-          else if (item.name.includes('絵馬') || item.name.includes('置物') || item.name.includes('矢')) category = 'engimono';
+        // スペル揺れを自動補正
+        let category = normalizeCategory(item.category || '');
+        
+        // 補正しても無効なカテゴリである場合は、自動判別フォールバックを適用
+        const validCategories = ['ofuda', 'omamori', 'goshuin', 'engimono', 'other'];
+        if (!category || !validCategories.includes(category)) {
+          const name = item.name || '';
+          if (name.includes('札') || name.includes('守札') || name.includes('大麻') || name.includes('神宮') || name.includes('祓') || name.includes('歳神')) category = 'ofuda';
+          else if (name.includes('守') || name.includes('まもり') || name.includes('ステッカー')) category = 'omamori';
+          else if (name.includes('朱印')) category = 'goshuin';
+          else if (name.includes('絵馬') || name.includes('置物') || name.includes('矢') || name.includes('俵') || name.includes('熊手') || name.includes('土鈴')) category = 'engimono';
+          else category = 'other';
         }
         let stock = Number(item.stock);
         if (isNaN(stock)) stock = 0;
