@@ -405,29 +405,38 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   margin: 0;
 }
 
-/* Mobile responsive enhancements to prevent horizontal scroll */
+/* Mobile responsive enhancements - compact overview & smooth pinch-zoom */
 @media (max-width: 600px) {
   html, body {
-    overflow-x: hidden;
-    max-width: 100%;
+    touch-action: pan-x pan-y pinch-zoom;
+    -webkit-text-size-adjust: 100%;
+    font-size: 14px;
   }
   .container {
     padding: 0 0.5rem !important;
+    max-width: 100%;
   }
   .card {
-    padding: 1.25rem 0.75rem !important;
-    margin-bottom: 1rem !important;
+    padding: 1rem 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+    border-radius: 4px;
   }
   .form-row {
     flex-direction: column !important;
     gap: 0 !important;
   }
   input, select, textarea {
-    font-size: 16px !important; /* Prevent automatic iOS zoom-in on focus */
+    font-size: 16px !important; /* Prevent unwanted auto-zoom on input focus while allowing manual pinch-zoom */
   }
-  /* Calendar responsive fixes */
+  /* Calendar & tables responsive fixes */
   .slot-calendar {
     width: 100% !important;
     overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Dashboard compact stats cards on mobile */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
   }
 }
