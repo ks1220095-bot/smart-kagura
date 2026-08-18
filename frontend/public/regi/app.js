@@ -5,7 +5,7 @@
 // ==========================================
 // 設定値
 // ==========================================
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwWhXdvflzPD4mCgE59WPGBmGJNTiPSbkiiFHgBAQzslxhE7HImhcEs1McJzY22KNCF/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwWhXdvfIzPD4mCgE59WPGBmGJNtiPSbkiiFHgBAQzslxhE7HImhcEs1McJzY22KNCF/exec';
 
 // ==========================================
 // ローカルモックデータ (ふりがな初期設定あり)
