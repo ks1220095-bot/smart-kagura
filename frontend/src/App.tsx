@@ -59,7 +59,7 @@ export const App: React.FC = () => {
           <p style={{ color: 'var(--color-accent-gray)', margin: '0 0 0.75rem 0' }}>
             〒279-0041 千葉県浦安市堀江4-1-5　|　TEL 047-351-5417
           </p>
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
             <a 
               href="https://seiryuujinja.com/" 
               target="_blank" 
@@ -67,6 +67,18 @@ export const App: React.FC = () => {
               style={{ color: 'var(--color-gold)', textDecoration: 'none', borderBottom: '1px solid rgba(178,147,86,0.3)', paddingBottom: '0.1rem', fontSize: '0.8rem' }}
             >
               清瀧神社 公式ホームページに戻る
+            </a>
+            <a
+              href="/?staff=true"
+              onClick={(e) => {
+                e.preventDefault();
+                setIsStaffEnabled(true);
+                setCurrentPortal('staff');
+                window.history.pushState({}, '', '/?staff=true');
+              }}
+              style={{ color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', fontSize: '0.75rem', borderBottom: '1px dotted rgba(255,255,255,0.2)' }}
+            >
+              🔒 神社職員用ログイン
             </a>
           </div>
           <p style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.3)' }}>

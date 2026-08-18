@@ -94,59 +94,85 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-// Subscribe user browser to background Web Push notifications
-async function subscribeUserToPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.warn('Web Push is not supported in this browser.');
-    return;
+// Safe storage helpers for iOS Safari Private Browsing
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {}
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {}
   }
+};
 
+const safeSessionStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return sessionStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (e) {}
+  },
+  removeItem: (key: string): void => {
+    try {
+      sessionStorage.removeItem(key);
+    } catch (e) {}
+  }
+};
+
+// Safe Web Push registration for iOS Safari
+async function subscribeUserToPush() {
   try {
-    // 1. Register sw.js Service Worker
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    console.log('[Service Worker] SW registered successfully:', registration);
-
-    // 2. Request browser permission to show desktop popups
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn('Notification permission denied by user.');
+    if (typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      return;
+    }
+    // Check if Notification.permission is supported without throwing on iOS
+    if (typeof Notification.requestPermission !== 'function') {
       return;
     }
 
-    // 3. Get VAPID Public key from server settings endpoint
+    // Only register service worker quietly, do not force popup if user hasn't granted yet
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const keyRes = await fetch(`${apiUrl}/api/notifications/vapid-key`);
-    if (!keyRes.ok) throw new Error('VAPID key endpoint error');
+    if (!keyRes.ok) return;
     const { publicKey } = await keyRes.json();
+    if (!publicKey) return;
 
-    if (!publicKey) {
-      console.warn('No VAPID public key returned from backend.');
-      return;
-    }
-
-    // 4. Register browser push sub key
     const subscribeOptions = {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     };
 
     const subscription = await registration.pushManager.subscribe(subscribeOptions);
-    console.log('[Push Manager] Subscribed subscription details:', subscription);
-
-    // 5. Send registration payload back to backend database
-    const subRes = await fetch(`${apiUrl}/api/notifications/subscribe`, {
+    await fetch(`${apiUrl}/api/notifications/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription })
     });
-
-    if (subRes.ok) {
-      console.log('[Web Push Service] Subscription successfully registered on backend.');
-    } else {
-      console.error('[Web Push Service] Failed to register subscription payload.');
-    }
   } catch (err) {
-    console.error('[Web Push Service Error] SW/Push registration failed:', err);
+    console.warn('[Push Service Safely Handled for iOS/Safari]:', err);
   }
 }
 
@@ -158,13 +184,13 @@ export const StaffPortal: React.FC = () => {
   const [lastMaxId, setLastMaxId] = useState<number | null>(null);
 
   // Network & Offline resilience states
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
   const [syncingOffline, setSyncingOffline] = useState<boolean>(false);
 
   // Security - PIN code authorization (persist in session so offline reloads don't lock staff out)
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('smart_kagura_staff_auth') === 'true';
+    return safeSessionStorage.getItem('smart_kagura_staff_auth') === 'true';
   });
   const [pinCode, setPinCode] = useState('');
   const [pinError, setPinError] = useState('');
@@ -479,7 +505,7 @@ export const StaffPortal: React.FC = () => {
 
   // Sync offline queue to backend when connection is restored
   const syncOfflineQueue = async () => {
-    const rawQueue = localStorage.getItem('smart_kagura_offline_queue');
+    const rawQueue = safeStorage.getItem('smart_kagura_offline_queue');
     if (!rawQueue) return;
     try {
       const queue: any[] = JSON.parse(rawQueue);
@@ -492,7 +518,7 @@ export const StaffPortal: React.FC = () => {
         body: JSON.stringify(queue)
       });
       if (res.ok) {
-        localStorage.removeItem('smart_kagura_offline_queue');
+        safeStorage.removeItem('smart_kagura_offline_queue');
         setOfflineQueueCount(0);
         await fetchBookings();
         alert(`📡【オフライン自動同期完了】回線復旧に伴い、オフライン中に登録されたご予約（${queue.length}件）をサーバーおよび台帳へ正常に同期・保存いたしました。`);
@@ -513,7 +539,7 @@ export const StaffPortal: React.FC = () => {
       if (!res.ok) throw new Error('予約一覧の取得に失敗しました。');
       const data = await res.json();
       setBookings(data);
-      localStorage.setItem('smart_kagura_offline_bookings', JSON.stringify(data));
+      safeStorage.setItem('smart_kagura_offline_bookings', JSON.stringify(data));
       setIsOnline(true);
       
       // Initialize lastMaxId with the current highest booking ID to prevent alert spam on load
@@ -523,7 +549,7 @@ export const StaffPortal: React.FC = () => {
       }
     } catch (err: any) {
       console.warn('Online fetch failed, restoring from local offline cache:', err);
-      const cached = localStorage.getItem('smart_kagura_offline_bookings');
+      const cached = safeStorage.getItem('smart_kagura_offline_bookings');
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -556,7 +582,7 @@ export const StaffPortal: React.FC = () => {
 
     // Initial check for offline queue count
     try {
-      const q = JSON.parse(localStorage.getItem('smart_kagura_offline_queue') || '[]');
+      const q = JSON.parse(safeStorage.getItem('smart_kagura_offline_queue') || '[]');
       setOfflineQueueCount(q.length);
     } catch (e) {}
 
@@ -586,7 +612,7 @@ export const StaffPortal: React.FC = () => {
         if (res.ok) {
           const data = await res.json();
           setIsOnline(true);
-          localStorage.setItem('smart_kagura_offline_bookings', JSON.stringify(data));
+          safeStorage.setItem('smart_kagura_offline_bookings', JSON.stringify(data));
           
           // Detect new entries using lastMaxId boundary
           if (data.length > 0 && lastMaxId !== null) {
@@ -635,7 +661,7 @@ export const StaffPortal: React.FC = () => {
 
   // Close administration portal completely (remove query parameter)
   const handleExitPortal = () => {
-    sessionStorage.removeItem('smart_kagura_staff_auth');
+    safeSessionStorage.removeItem('smart_kagura_staff_auth');
     window.location.href = window.location.origin;
   };
 
@@ -644,7 +670,7 @@ export const StaffPortal: React.FC = () => {
     e.preventDefault();
     if (pinCode === '5417') {
       setIsAuthenticated(true);
-      sessionStorage.setItem('smart_kagura_staff_auth', 'true');
+      safeSessionStorage.setItem('smart_kagura_staff_auth', 'true');
       setPinError('');
     } else {
       setPinError('暗証番号が正しくありません。');
@@ -847,15 +873,15 @@ export const StaffPortal: React.FC = () => {
         }));
 
         try {
-          const currentQueue = JSON.parse(localStorage.getItem('smart_kagura_offline_queue') || '[]');
+          const currentQueue = JSON.parse(safeStorage.getItem('smart_kagura_offline_queue') || '[]');
           currentQueue.push(...batchPayloads);
-          localStorage.setItem('smart_kagura_offline_queue', JSON.stringify(currentQueue));
+          safeStorage.setItem('smart_kagura_offline_queue', JSON.stringify(currentQueue));
           setOfflineQueueCount(currentQueue.length);
 
           // Update local state and cached bookings so it shows on screen immediately
           setBookings(prev => [...tempBookings, ...prev]);
-          const cached = JSON.parse(localStorage.getItem('smart_kagura_offline_bookings') || '[]');
-          localStorage.setItem('smart_kagura_offline_bookings', JSON.stringify([...tempBookings, ...cached]));
+          const cached = JSON.parse(safeStorage.getItem('smart_kagura_offline_bookings') || '[]');
+          safeStorage.setItem('smart_kagura_offline_bookings', JSON.stringify([...tempBookings, ...cached]));
 
           resetManualForm();
           setManualDate('');
