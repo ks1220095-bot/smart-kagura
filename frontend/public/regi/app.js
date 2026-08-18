@@ -762,7 +762,7 @@ function normalizeCategory(rawCategory) {
   if (clean === 'omamori' || clean === 'omamory') return 'omamori';
   if (clean === 'goshuin' || clean === 'gosyuin') return 'goshuin';
   if (clean === 'engimono' || clean === 'enngimono') return 'engimono';
-  if (clean === 'other' || clean === 'others' || clean === 'oter') return 'other';
+  if (clean === 'other' || clean === 'others' || clean === 'oter' || clean === 'othre' || clean === 'otehr' || clean === 'othr') return 'other';
   return clean;
 }
 
