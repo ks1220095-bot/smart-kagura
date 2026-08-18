@@ -1021,20 +1021,22 @@ export const StaffPortal: React.FC = () => {
           flexWrap: 'wrap',
           gap: '1rem'
         }}>
-          {/* Tabs switch */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {/* Tabs switch (Mobile Scrollable) */}
+          <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', maxWidth: '100%', paddingBottom: '0.25rem', WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setActiveTab('dashboard')}
               className="btn btn-secondary"
               style={{
                 fontSize: '0.85rem',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.85rem',
                 backgroundColor: activeTab === 'dashboard' ? 'var(--color-mizuiro)' : 'transparent',
                 color: activeTab === 'dashboard' ? '#ffffff' : 'var(--color-urushi)',
                 borderColor: 'var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem'
+                gap: '0.4rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               <LayoutDashboard size={16} />
@@ -1045,13 +1047,15 @@ export const StaffPortal: React.FC = () => {
               className="btn btn-secondary"
               style={{
                 fontSize: '0.85rem',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.85rem',
                 backgroundColor: activeTab === 'calendar' ? 'var(--color-mizuiro)' : 'transparent',
                 color: activeTab === 'calendar' ? '#ffffff' : 'var(--color-urushi)',
                 borderColor: 'var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem'
+                gap: '0.4rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               <Calendar size={16} />
@@ -1062,13 +1066,15 @@ export const StaffPortal: React.FC = () => {
               className="btn btn-secondary"
               style={{
                 fontSize: '0.85rem',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.85rem',
                 backgroundColor: activeTab === 'list' ? 'var(--color-mizuiro)' : 'transparent',
                 color: activeTab === 'list' ? '#ffffff' : 'var(--color-urushi)',
                 borderColor: 'var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem'
+                gap: '0.4rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               <ListFilter size={16} />
@@ -1079,23 +1085,25 @@ export const StaffPortal: React.FC = () => {
               className="btn btn-secondary"
               style={{
                 fontSize: '0.85rem',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.85rem',
                 backgroundColor: activeTab === 'settings' ? 'var(--color-mizuiro)' : 'transparent',
                 color: activeTab === 'settings' ? '#ffffff' : 'var(--color-urushi)',
                 borderColor: 'var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem'
+                gap: '0.4rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               <Settings size={16} />
               予約枠上限設定
             </button>
-            <a href="/regi/index.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', backgroundColor: 'transparent', color: 'var(--color-urushi)', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}><Coins size={16} />授与品レジ ↗</a>
+            <a href="/regi/index.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem', backgroundColor: 'transparent', color: 'var(--color-urushi)', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}><Coins size={16} />授与品レジ ↗</a>
           </div>
 
           {/* Quick manual booking add button */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: '100%', justifyContent: 'flex-start' }}>
             <button 
               onClick={() => {
                 resetManualForm('individual');
@@ -1103,7 +1111,7 @@ export const StaffPortal: React.FC = () => {
                 setShowAddForm(true);
               }} 
               className="btn btn-primary" 
-              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
             >
               <Plus size={16} />
               電話受付（手動登録）
@@ -1111,7 +1119,7 @@ export const StaffPortal: React.FC = () => {
             <button
               onClick={handleExitPortal}
               className="btn btn-secondary"
-              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--color-gold)', color: 'var(--color-gold)' }}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--color-gold)', color: 'var(--color-gold)', whiteSpace: 'nowrap' }}
             >
               <X size={16} />
               管理画面を閉じる
