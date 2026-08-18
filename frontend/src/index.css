@@ -355,13 +355,19 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   }
   
   .yomifuda-sheet {
-    width: 257mm !important; 
-    height: 182mm !important; 
-    padding: 7mm 8mm !important;
+    width: 100vw !important; 
+    height: 100vh !important; 
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    padding: 5mm 6mm !important;
+    box-sizing: border-box !important;
     page-break-after: always;
     box-shadow: none !important;
     border: none !important;
     background: white !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: stretch !important;
   }
   
   .receipt-sheet {
@@ -384,16 +390,12 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 
 /* Print specifications size definition */
 @page {
+  size: landscape;
   margin: 0;
 }
 
 .print-yomifuda-page {
-  page: yomifuda;
-}
-
-@page yomifuda {
-  size: B5 landscape;
-  margin: 0;
+  page-break-after: always;
 }
 
 .print-landscape-page {

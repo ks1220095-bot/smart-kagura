@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
-import { printElement } from '../../utils/printUtils';
 
 interface ReceiptPrintProps {
   booking: Booking;
@@ -36,7 +35,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button 
-            onClick={() => printElement(printRef.current, { title: '領収証', orientation: 'landscape', size: 'A5' })} 
+            onClick={() => window.print()} 
             className="btn btn-primary" 
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >

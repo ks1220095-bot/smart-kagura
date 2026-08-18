@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { Booking } from '../../types';
-import { printElement } from '../../utils/printUtils';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -135,7 +134,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     
     return (
       <div style={{
-        width: '116mm',
+        width: 'calc(50% - 3mm)',
+        flex: 1,
         height: '100%',
         border: '3px double #d80100',
         padding: '5mm 6mm',
@@ -474,20 +474,12 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button 
-            onClick={() => printElement(printRef.current, { title: 'ご祈祷受付票・読み札', orientation: 'landscape', size: 'B5' })} 
+            onClick={() => window.print()} 
             className="btn btn-primary" 
-            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            style={{ padding: '0.4rem 1.1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            <Printer size={14} />
-            B5横で印刷
-          </button>
-          <button 
-            onClick={() => printElement(printRef.current, { title: 'ご祈祷受付票・読み札', orientation: 'landscape', size: 'A4' })} 
-            className="btn btn-secondary" 
-            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ffffff', borderColor: 'var(--color-gold)' }}
-          >
-            <Printer size={14} />
-            A4横で印刷
+            <Printer size={16} />
+            印刷する（横向き）
           </button>
           <button 
             onClick={onClose} 
