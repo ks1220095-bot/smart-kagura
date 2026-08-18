@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Booking } from '../../types';
 
@@ -56,6 +56,14 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [customNotes, setCustomNotes] = useState<string>('');
   const [savingPayment, setSavingPayment] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
+
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [editTargetBooking, setEditTargetBooking] = useState<Booking | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Booking>>({});
@@ -643,8 +651,230 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         </div>
       )}
 
-      {/* Bookings table */}
-      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+      {/* Bookings View: Mobile Cards OR Desktop Table */}
+      {isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          {sortedBookings.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-accent-gray)' }}>
+              該当するご祈祷予約は見つかりませんでした。
+            </div>
+          ) : (
+            sortedBookings.map(b => {
+              const isIndiv = b.booking_type === 'individual';
+              const name = isIndiv ? b.name : b.company_name;
+              const kana = isIndiv ? b.kana : b.company_kana;
+              const prayerColor = getPrayerColor(b.prayer1);
+              const isSelected = selectedBookingIds.includes(b.id!);
+              const isCancelled = Number(b.is_cancelled) === 1;
+
+              return (
+                <div 
+                  key={b.id}
+                  className="card"
+                  style={{
+                    padding: '1rem',
+                    margin: 0,
+                    borderLeft: `4px solid ${isCancelled ? '#999' : prayerColor.text}`,
+                    backgroundColor: isCancelled ? '#f9f9f9' : isSelected ? '#fffdf7' : '#ffffff',
+                    opacity: isCancelled ? 0.7 : 1,
+                    position: 'relative'
+                  }}
+                >
+                  {/* Top Bar: Selection, Receipt #, Time & Type Badge */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected} 
+                        onChange={() => handleToggleSelectBooking(b.id!)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', fontFamily: 'monospace' }}>
+                        #{b.receipt_number || b.id}
+                      </span>
+                      {isCancelled && (
+                        <span style={{ backgroundColor: '#fff1f0', color: '#f5222d', border: '1px solid #ffa39e', fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '2px', fontWeight: 'bold' }}>
+                          取消済
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{
+                        backgroundColor: 'var(--color-mizuiro-light)',
+                        color: 'var(--color-mizuiro)',
+                        border: '1px solid rgba(216, 1, 0, 0.2)',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '2px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {b.booking_date} {b.booking_time}
+                      </span>
+                      <span style={{
+                        backgroundColor: isIndiv ? '#f0f0f0' : 'var(--color-gold-light)',
+                        color: isIndiv ? 'var(--color-urushi)' : '#ffffff',
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: '2px',
+                        fontSize: '0.65rem'
+                      }}>
+                        {isIndiv ? '個人' : '団体'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Name, Kana & Phone */}
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    {kana && <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>{kana}</div>}
+                    <div style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--color-urushi)', textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                      {name} 様
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.1rem' }}>
+                      📞 {b.phone || b.staff_phone || '未登録'}
+                    </div>
+                  </div>
+
+                  {/* Prayer Badge & Info */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
+                    <span style={{
+                      backgroundColor: prayerColor.bg,
+                      color: prayerColor.text,
+                      border: `1px solid ${prayerColor.border}`,
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: '3px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
+                    }}>
+                      🙏 {b.prayer1} {b.prayer2 ? `・ ${b.prayer2}` : ''}
+                    </span>
+                    <span style={{
+                      backgroundColor: '#f8f9fa',
+                      color: 'var(--color-urushi)',
+                      border: '1px solid var(--color-border)',
+                      padding: '0.2rem 0.45rem',
+                      borderRadius: '3px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
+                    }}>
+                      初穂料: {(b.hatsuhoryo || 0).toLocaleString()} 円
+                    </span>
+                  </div>
+
+                  {/* Checkboxes Row: 受付 / 支払 / 領収 */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(3, 1fr)', 
+                    gap: '0.35rem', 
+                    backgroundColor: '#fafafa', 
+                    padding: '0.4rem 0.5rem', 
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-border)',
+                    marginBottom: '0.75rem',
+                    textAlign: 'center'
+                  }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={Number(b.is_accepted) === 1} 
+                        onChange={() => !isCancelled && handleToggleCheckbox(b, 'is_accepted')} 
+                        disabled={isCancelled}
+                        style={{ width: '15px', height: '15px', margin: '0 0 0.15rem 0' }}
+                      />
+                      <span>受付</span>
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={b.payment_status === 'paid'} 
+                        onChange={() => !isCancelled && handleToggleCheckbox(b, 'payment_status')} 
+                        disabled={isCancelled}
+                        style={{ width: '15px', height: '15px', margin: '0 0 0.15rem 0' }}
+                      />
+                      <span style={{ color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)', fontWeight: 'bold' }}>
+                        {b.payment_status === 'paid' ? '支払済' : '未納'}
+                      </span>
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.7rem', cursor: isCancelled ? 'not-allowed' : 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={Number(b.is_receipt_issued) === 1} 
+                        onChange={() => !isCancelled && handleToggleCheckbox(b, 'is_receipt_issued')} 
+                        disabled={isCancelled}
+                        style={{ width: '15px', height: '15px', margin: '0 0 0.15rem 0' }}
+                      />
+                      <span>領収</span>
+                    </label>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', borderTop: '1px dashed var(--color-border)', paddingTop: '0.6rem' }}>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => !isCancelled && handleOpenEditModal(b)}
+                        disabled={isCancelled}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                      >
+                        <Edit3 size={12} />
+                        詳細・変更
+                      </button>
+                      <button
+                        onClick={() => !isCancelled && handleOpenPaymentModal(b)}
+                        disabled={isCancelled}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                      >
+                        備考
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button
+                        onClick={() => !isCancelled && onSelectYomifuda(b)}
+                        disabled={isCancelled}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                      >
+                        <Printer size={12} />
+                        お札
+                      </button>
+                      {!isIndiv && b.wants_receipt === 1 && (
+                        <button
+                          onClick={() => !isCancelled && onSelectReceipt(b)}
+                          disabled={isCancelled}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', borderColor: 'var(--color-gold)', color: 'var(--color-gold)' }}
+                        >
+                          <Printer size={12} />
+                          領収
+                        </button>
+                      )}
+                      <button
+                        onClick={() => b.id && handleDeleteBooking(b)}
+                        style={{
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          color: 'var(--color-shu)',
+                          cursor: 'pointer',
+                          padding: '0.3rem',
+                          marginLeft: '0.25rem'
+                        }}
+                        title="取消・削除"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* PC Desktop Table */
+        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--color-urushi)', color: '#ffffff', borderBottom: '2px solid var(--color-gold)' }}>
@@ -1317,6 +1547,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Payment Modifying Modal */}
       {selectedBooking && (

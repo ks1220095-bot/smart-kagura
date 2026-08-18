@@ -430,7 +430,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div key={`empty-${i}`} style={{ 
           border: '1px solid var(--color-border)', 
           backgroundColor: 'var(--color-washi-dark)', 
-          minHeight: '100px' 
+          minHeight: isMobile ? '48px' : '100px' 
         }} />
       );
     }
@@ -451,8 +451,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           }}
           style={{ 
             border: isFocused ? '2px solid var(--color-mizuiro)' : '1px solid var(--color-border)', 
-            minHeight: '105px', 
-            padding: '0.4rem', 
+            minHeight: isMobile ? '52px' : '105px', 
+            padding: isMobile ? '0.2rem' : '0.4rem', 
             backgroundColor: isFocused ? 'var(--color-mizuiro-light)' : '#ffffff', 
             display: 'flex', 
             flexDirection: 'column', 
@@ -464,16 +464,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           title="タップしてこの日の詳細（ご祈祷予約・行事）を表示"
         >
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.1rem' : '0.2rem' }}>
               <span style={{ 
                 fontWeight: 700, 
-                fontSize: '0.9rem',
+                fontSize: isMobile ? '0.78rem' : '0.9rem',
                 color: isFocused ? 'var(--color-mizuiro-hover)' : 'var(--color-urushi)'
               }}>{day}</span>
               {(() => {
                 const { rokuyo, isInu } = getRokuyoAndInu(dateStr);
                 return (
-                  <span style={{ fontSize: '0.65rem', color: 'var(--color-accent-gray)', display: 'inline-flex', alignItems: 'center', gap: '0.1rem' }}>
+                  <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', color: 'var(--color-accent-gray)', display: 'inline-flex', alignItems: 'center', gap: '0.1rem', whiteSpace: 'nowrap' }}>
                     {rokuyo} {isInu && '🐕'}
                   </span>
                 );
@@ -481,7 +481,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
             
             {/* Display shrine events inside cells */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.25rem' }} className="no-print">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: isMobile ? '0.1rem' : '0.25rem' }} className="no-print">
               {dayEvents.map(e => (
                 <div 
                   key={e.id} 
@@ -494,14 +494,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     setEditEndTime(e.end_time);
                     setEditDescription(e.description || '');
                     setEditIsClosedSlot(e.is_closed_slot === 1);
-                    setShowAddForm(false); // 新規フォームが開いていたら閉じる
+                    setShowAddForm(false);
                   }}
                   style={{ 
                     backgroundColor: e.is_closed_slot ? 'rgba(50, 136, 163, 0.08)' : 'rgba(197, 160, 89, 0.08)', 
                     color: e.is_closed_slot ? 'var(--color-mizuiro)' : 'var(--color-gold)',
                     border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.2)' : '1px solid rgba(197, 160, 89, 0.2)',
-                    fontSize: '0.6rem', 
-                    padding: '0.1rem 0.2rem', 
+                    fontSize: isMobile ? '0.55rem' : '0.6rem', 
+                    padding: isMobile ? '0.05rem 0.15rem' : '0.1rem 0.2rem', 
                     borderRadius: '2px',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -509,7 +509,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     cursor: 'pointer'
                   }}
                 >
-                  <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>
+                  <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                     {e.is_closed_slot ? '🔒' : '📢'} {e.title}
                   </span>
                 </div>
@@ -520,17 +520,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {/* Aggregate booking counts */}
           {dayBookings.length > 0 && (
             <div style={{
-              backgroundColor: 'rgba(50, 136, 163, 0.05)',
-              border: '1px solid rgba(50, 136, 163, 0.15)',
+              backgroundColor: 'rgba(216, 1, 0, 0.08)',
+              border: '1px solid rgba(216, 1, 0, 0.25)',
               borderRadius: '2px',
-              padding: '0.15rem 0.25rem',
-              fontSize: '0.7rem',
+              padding: isMobile ? '0.1rem' : '0.15rem 0.25rem',
+              fontSize: isMobile ? '0.6rem' : '0.7rem',
               color: 'var(--color-mizuiro)',
               fontWeight: 'bold',
               textAlign: 'center',
-              fontFamily: 'var(--font-serif)'
+              fontFamily: 'var(--font-serif)',
+              whiteSpace: 'nowrap',
+              marginTop: '0.1rem'
             }}>
-              予約: {getUniqueGroupStats(dayBookings).groupsCount} 組
+              {isMobile ? `🔴 ${getUniqueGroupStats(dayBookings).groupsCount}組` : `予約: ${getUniqueGroupStats(dayBookings).groupsCount} 組`}
             </div>
           )}
         </div>
@@ -666,21 +668,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </form>
         )}
 
-        {/* スマホ用の横スクロール案内 */}
+        {/* スマホ用のタップ案内 */}
         {isMobile && (
           <div style={{ 
-            fontSize: '0.75rem', 
-            color: 'var(--color-accent-gray)', 
+            fontSize: '0.72rem', 
+            color: 'var(--color-mizuiro)', 
             marginBottom: '0.5rem', 
-            textAlign: 'right'
+            textAlign: 'center',
+            backgroundColor: 'var(--color-mizuiro-light)',
+            padding: '0.3rem 0.5rem',
+            borderRadius: '4px',
+            border: '1px solid rgba(216, 1, 0, 0.15)',
+            fontWeight: 'bold'
           }}>
-            ← 左右スクロールでカレンダー全体を見られます →
+            💡 日付をタップすると、その日のご祈祷内訳・行事の詳細が表示されます
           </div>
         )}
 
-        {/* Calendar Grid */}
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', overflowX: 'auto' }}>
-          <div style={{ minWidth: isMobile ? '700px' : '100%' }}>
+        {/* Calendar Grid (Full Width No Horizontal Scroll) */}
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', width: '100%', overflow: 'hidden' }}>
+          <div style={{ width: '100%' }}>
             {/* Days of week */}
             <div style={{ 
               display: 'grid', 
