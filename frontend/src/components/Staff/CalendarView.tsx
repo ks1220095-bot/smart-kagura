@@ -430,7 +430,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div key={`empty-${i}`} style={{ 
           border: '1px solid var(--color-border)', 
           backgroundColor: 'var(--color-washi-dark)', 
-          minHeight: isMobile ? '48px' : '100px' 
+          minHeight: isMobile ? '76px' : '105px' 
         }} />
       );
     }
@@ -451,8 +451,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           }}
           style={{ 
             border: isFocused ? '2px solid var(--color-mizuiro)' : '1px solid var(--color-border)', 
-            minHeight: isMobile ? '52px' : '105px', 
-            padding: isMobile ? '0.2rem' : '0.4rem', 
+            minHeight: isMobile ? '76px' : '105px', 
+            padding: isMobile ? '0.25rem 0.2rem' : '0.4rem', 
             backgroundColor: isFocused ? 'var(--color-mizuiro-light)' : '#ffffff', 
             display: 'flex', 
             flexDirection: 'column', 
@@ -464,10 +464,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           title="タップしてこの日の詳細（ご祈祷予約・行事）を表示"
         >
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.1rem' : '0.2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
               <span style={{ 
                 fontWeight: 700, 
-                fontSize: isMobile ? '0.78rem' : '0.9rem',
+                fontSize: isMobile ? '0.8rem' : '0.9rem',
                 color: isFocused ? 'var(--color-mizuiro-hover)' : 'var(--color-urushi)'
               }}>{day}</span>
               {(() => {
@@ -480,8 +480,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               })()}
             </div>
             
-            {/* Display shrine events inside cells */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: isMobile ? '0.1rem' : '0.25rem' }} className="no-print">
+            {/* Display shrine events inside cells (PC-matching visual style) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.15rem' }} className="no-print">
               {dayEvents.map(e => (
                 <div 
                   key={e.id} 
@@ -499,14 +499,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   style={{ 
                     backgroundColor: e.is_closed_slot ? 'rgba(50, 136, 163, 0.08)' : 'rgba(197, 160, 89, 0.08)', 
                     color: e.is_closed_slot ? 'var(--color-mizuiro)' : 'var(--color-gold)',
-                    border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.2)' : '1px solid rgba(197, 160, 89, 0.2)',
-                    fontSize: isMobile ? '0.55rem' : '0.6rem', 
-                    padding: isMobile ? '0.05rem 0.15rem' : '0.1rem 0.2rem', 
+                    border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.25)' : '1px solid rgba(197, 160, 89, 0.25)',
+                    fontSize: isMobile ? '0.55rem' : '0.62rem', 
+                    padding: '0.1rem 0.2rem', 
                     borderRadius: '2px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    lineHeight: '1.2'
                   }}
                 >
                   <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
@@ -517,22 +518,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
           </div>
 
-          {/* Aggregate booking counts */}
+          {/* Aggregate booking counts (PC-matching pink border & text badge) */}
           {dayBookings.length > 0 && (
             <div style={{
-              backgroundColor: 'rgba(216, 1, 0, 0.08)',
+              backgroundColor: 'rgba(216, 1, 0, 0.06)',
               border: '1px solid rgba(216, 1, 0, 0.25)',
               borderRadius: '2px',
-              padding: isMobile ? '0.1rem' : '0.15rem 0.25rem',
+              padding: isMobile ? '0.1rem 0.15rem' : '0.15rem 0.25rem',
               fontSize: isMobile ? '0.6rem' : '0.7rem',
               color: 'var(--color-mizuiro)',
               fontWeight: 'bold',
               textAlign: 'center',
               fontFamily: 'var(--font-serif)',
               whiteSpace: 'nowrap',
-              marginTop: '0.1rem'
+              marginTop: '0.2rem'
             }}>
-              {isMobile ? `🔴 ${getUniqueGroupStats(dayBookings).groupsCount}組` : `予約: ${getUniqueGroupStats(dayBookings).groupsCount} 組`}
+              予約: {getUniqueGroupStats(dayBookings).groupsCount} 組
             </div>
           )}
         </div>
