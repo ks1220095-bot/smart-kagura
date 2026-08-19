@@ -547,7 +547,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
       {/* Calendar container card */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: 0 }}>
+      <div className="card" style={{ padding: isMobile ? '0.75rem 0.25rem' : '1.5rem', marginBottom: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <button onClick={handlePrevMonth} className="btn btn-secondary" style={{ padding: '0.35rem 0.7rem', fontSize: '0.8rem' }}>先月</button>
@@ -692,13 +692,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {/* Days of week */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(7, 1fr)', 
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', 
               backgroundColor: 'var(--color-urushi)', 
               color: '#ffffff', 
               textAlign: 'center', 
               fontWeight: 'bold', 
-              fontSize: '0.8rem', 
-              padding: '0.4rem 0' 
+              fontSize: isMobile ? '0.75rem' : '0.85rem', 
+              padding: '0.35rem 0' 
             }}>
               <div style={{ color: '#ff4d4f' }}>日</div>
               <div>月</div>
@@ -710,7 +710,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
 
             {/* Days cells */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
               {renderCells()}
             </div>
           </div>
