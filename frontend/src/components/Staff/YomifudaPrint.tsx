@@ -503,13 +503,13 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               position: 'relative',
               width: '257mm',   // B5 Width
-              height: '182mm',  // B5 Height
-              padding: '7mm 8mm',
+              height: '180mm',  // B5 Height
+              padding: '5mm 6mm',
               boxSizing: 'border-box',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '5mm',
+              alignItems: 'stretch',
+              gap: '4mm',
               color: '#000000',
               overflow: 'hidden',
               marginBottom: idx < targetBookings.length - 1 ? '2rem' : 0
