@@ -669,23 +669,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </form>
         )}
 
-        {/* スマホ用のタップ案内 */}
-        {isMobile && (
-          <div style={{ 
-            fontSize: '0.72rem', 
-            color: 'var(--color-mizuiro)', 
-            marginBottom: '0.5rem', 
-            textAlign: 'center',
-            backgroundColor: 'var(--color-mizuiro-light)',
-            padding: '0.3rem 0.5rem',
-            borderRadius: '4px',
-            border: '1px solid rgba(216, 1, 0, 0.15)',
-            fontWeight: 'bold'
-          }}>
-            💡 日付をタップすると、その日のご祈祷内訳・行事の詳細が表示されます
-          </div>
-        )}
-
         {/* Calendar Grid (Full Width No Horizontal Scroll) */}
         <div style={{ border: '1px solid var(--color-border)', borderRadius: '2px', width: '100%', overflow: 'hidden' }}>
           <div style={{ width: '100%' }}>
@@ -719,32 +702,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* QUICK SLOT CONTROL PANEL (TRIGGERS PER FOCUSED DATE) */}
       {focusedDate && (
-        <div className="card kamidana-border" style={{ padding: '1.5rem' }}>
+        <div className="card kamidana-border" style={{ padding: isMobile ? '1rem 0.75rem' : '1.5rem' }}>
           <h4 style={{ 
-            fontSize: '1rem', 
+            fontSize: isMobile ? '0.9rem' : '1rem', 
             fontFamily: 'var(--font-serif)', 
             borderBottom: '1px solid var(--color-border)', 
-            paddingBottom: '0.5rem', 
-            marginBottom: '1rem',
+            paddingBottom: '0.4rem', 
+            marginBottom: '0.75rem', 
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '0.4rem',
             color: 'var(--color-mizuiro-hover)'
           }}>
-            <CalendarDays size={18} />
+            <CalendarDays size={16} />
             時間枠ごとの受付可否（ロック）設定　【 対象日: {focusedDate} 】
           </h4>
-          <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginBottom: '1.25rem' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginBottom: '0.85rem' }}>
             ※各時間枠をクリックして複数選択し、下の一括操作ボタンでまとめて「受付不可（ロック）」または「受付可能（解除）」に一括更新できます。
           </p>
 
           {/* 一括操作ツールバー */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', backgroundColor: 'var(--color-washi-dark)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', backgroundColor: 'var(--color-washi-dark)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
             <button
               type="button"
               onClick={handleSelectAllSlots}
               className="btn btn-secondary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
             >
               全て選択
             </button>
@@ -752,24 +735,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               type="button"
               onClick={handleClearSlotSelection}
               className="btn btn-secondary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
               disabled={selectedSlots.length === 0}
             >
               選択クリア ({selectedSlots.length})
             </button>
 
-            <div style={{ borderLeft: '1px solid var(--color-border)', height: '18px', margin: '0 0.25rem' }} />
+            <div style={{ borderLeft: '1px solid var(--color-border)', height: '16px', margin: '0 0.2rem' }} />
 
             <button
               type="button"
               onClick={handleBatchLock}
               className="btn btn-primary"
               style={{
-                padding: '0.4rem 0.9rem',
-                fontSize: '0.8rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.75rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                gap: '0.3rem',
                 backgroundColor: 'var(--color-urushi)',
                 borderColor: 'var(--color-urushi)',
                 color: '#ffffff'
@@ -783,11 +766,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               onClick={handleBatchUnlock}
               className="btn btn-primary"
               style={{
-                padding: '0.4rem 0.9rem',
-                fontSize: '0.8rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.75rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                gap: '0.3rem',
                 backgroundColor: 'var(--color-accent-green)',
                 borderColor: 'var(--color-accent-green)',
                 color: '#ffffff'
@@ -797,17 +780,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               🔓 選択枠をまとめて「受付可能」にする
             </button>
 
-            {loadingBatch && <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>一括処理中...</span>}
+            {loadingBatch && <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>一括処理中...</span>}
           </div>
 
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
-            gap: '0.75rem' 
+            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(130px, 1fr))', 
+            gap: isMobile ? '0.4rem' : '0.75rem' 
           }}>
             {TIME_SLOTS.map((slot) => {
-              // Check if there is an event locking this specific slot
-              // A slot is locked if an is_closed_slot event covers this hour (start_time <= slot && end_time > slot)
               const matchedLockEvent = events.find(e => 
                 e.event_date === focusedDate && 
                 e.is_closed_slot === 1 && 
@@ -827,10 +808,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '0.75rem 0.5rem',
+                    padding: isMobile ? '0.4rem 0.2rem' : '0.75rem 0.5rem',
                     borderRadius: '2px',
                     border: isSelected
-                      ? '2.5px solid var(--color-gold)'
+                      ? '2px solid var(--color-gold)'
                       : isLocked 
                         ? '1px solid var(--color-mizuiro)' 
                         : '1px solid var(--color-border)',
@@ -843,20 +824,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     fontWeight: 'bold',
-                    fontSize: '0.9rem',
-                    transform: isSelected ? 'scale(1.03)' : 'none',
-                    boxShadow: isSelected ? '0 2px 8px rgba(197, 160, 89, 0.2)' : 'none'
+                    fontSize: isMobile ? '0.75rem' : '0.9rem',
+                    transform: isSelected ? 'scale(1.02)' : 'none',
+                    boxShadow: isSelected ? '0 2px 6px rgba(197, 160, 89, 0.2)' : 'none'
                   }}
                 >
-                  <span style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{slot}</span>
+                  <span style={{ fontSize: isMobile ? '0.85rem' : '1rem', marginBottom: '0.15rem' }}>{slot}</span>
                   <span style={{ 
-                    fontSize: '0.7rem', 
+                    fontSize: isMobile ? '0.62rem' : '0.7rem', 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: '0.2rem',
+                    gap: '0.15rem',
                     color: isLocked ? 'var(--color-mizuiro)' : 'var(--color-accent-green)'
                   }}>
-                    {isLocked ? <Lock size={10} /> : <Unlock size={10} />}
+                    {isLocked ? <Lock size={9} /> : <Unlock size={9} />}
                     {isLocked ? '受付不可' : '受付可能'}
                   </span>
                 </button>
