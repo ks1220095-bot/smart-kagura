@@ -428,9 +428,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     for (let i = 0; i < firstDay; i++) {
       cells.push(
         <div key={`empty-${i}`} style={{ 
-          border: '1px solid var(--color-border)', 
           backgroundColor: 'var(--color-washi-dark)', 
-          minHeight: isMobile ? '76px' : '105px' 
+          minHeight: isMobile ? '76px' : '105px',
+          boxSizing: 'border-box'
         }} />
       );
     }
@@ -450,15 +450,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             setSelectedDayModalDate(dateStr);
           }}
           style={{ 
-            border: isFocused ? '2px solid var(--color-mizuiro)' : '1px solid var(--color-border)', 
+            outline: isFocused ? '2px solid var(--color-mizuiro)' : 'none', 
+            outlineOffset: '-1px',
             minHeight: isMobile ? '76px' : '105px', 
-            padding: isMobile ? '0.25rem 0.2rem' : '0.4rem', 
+            padding: isMobile ? '0.2rem 0.15rem' : '0.4rem', 
             backgroundColor: isFocused ? 'var(--color-mizuiro-light)' : '#ffffff', 
             display: 'flex', 
             flexDirection: 'column', 
             justifyContent: 'space-between',
             position: 'relative',
             cursor: 'pointer',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
             transition: 'all 0.15s ease'
           }}
           title="タップしてこの日の詳細（ご祈祷予約・行事）を表示"
@@ -693,7 +696,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
 
             {/* Days cells */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+              backgroundColor: 'var(--color-border)',
+              gap: '1px'
+            }}>
               {renderCells()}
             </div>
           </div>
