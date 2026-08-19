@@ -41,12 +41,12 @@ export function getRokuyoAndInu(dateString: string): { rokuyo: string; isInu: bo
   const target = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
   
   // 1. Calculate Inu no Hi (戌の日)
-  // Base date: 2026-01-01 is '申' (Index 8 in zodiac list)
+  // Base date: 2026-01-01 is '亥' (Index 11 in zodiac list: 子:0, 丑:1, 寅:2, 卯:3, 辰:4, 巳:5, 午:6, 未:7, 申:8, 酉:9, 戌:10, 亥:11)
   const baseDate = new Date(2026, 0, 1, 12, 0, 0);
   const diffTime = target.getTime() - baseDate.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
   
-  const zodiacIdx = (8 + (diffDays % 12) + 12) % 12;
+  const zodiacIdx = (((11 + (diffDays % 12)) % 12) + 12) % 12;
   const isInu = zodiacIdx === 10; // 10 is '戌'
 
   // 2. Calculate Rokuyo (六曜)
