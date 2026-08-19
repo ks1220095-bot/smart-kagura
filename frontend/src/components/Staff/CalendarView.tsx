@@ -441,6 +441,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const dayBookings = bookings.filter(b => b.booking_date === dateStr && b.is_cancelled !== 1);
       const dayEvents = events.filter(e => e.event_date === dateStr);
       const isFocused = focusedDate === dateStr;
+      const dayOfWeek = (firstDay + day - 1) % 7;
+      const dayNumberColor = isFocused 
+        ? 'var(--color-mizuiro-hover)' 
+        : dayOfWeek === 0 
+          ? '#d80100' 
+          : dayOfWeek === 6 
+            ? '#096dd9' 
+            : '#111111';
 
       cells.push(
         <div 
@@ -467,16 +475,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           title="タップしてこの日の詳細（ご祈祷予約・行事）を表示"
         >
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.15rem' }}>
               <span style={{ 
-                fontWeight: 700, 
-                fontSize: isMobile ? '0.8rem' : '0.9rem',
-                color: isFocused ? 'var(--color-mizuiro-hover)' : 'var(--color-urushi)'
+                fontWeight: 800, 
+                fontSize: isMobile ? '0.88rem' : '1.02rem',
+                color: dayNumberColor,
+                lineHeight: 1,
+                paddingLeft: '0.05rem'
               }}>{day}</span>
               {(() => {
                 const { rokuyo, isInu } = getRokuyoAndInu(dateStr);
                 return (
-                  <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', color: 'var(--color-accent-gray)', display: 'inline-flex', alignItems: 'center', gap: '0.1rem', whiteSpace: 'nowrap' }}>
+                  <span style={{ 
+                    fontSize: isMobile ? '0.52rem' : '0.62rem', 
+                    color: '#8c8c8c', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '0.05rem', 
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1,
+                    paddingTop: '0.05rem'
+                  }}>
                     {rokuyo} {isInu && '🐕'}
                   </span>
                 );
