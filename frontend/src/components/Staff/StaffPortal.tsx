@@ -333,10 +333,10 @@ export const StaffPortal: React.FC = () => {
       child_gender2: manualType === 'individual' && manualIsTwin ? manualChildGender2 || undefined : undefined,
       is_twin: manualIsTwin ? 1 : 0,
       yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
-      father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
-      father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherKana || undefined : undefined,
-      mother_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherName || undefined : undefined,
-      mother_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherKana || undefined : undefined,
+      father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipHusband)) ? manualFatherName || undefined : undefined,
+      father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipHusband)) ? manualFatherKana || undefined : undefined,
+      mother_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipWife)) ? manualMotherName || undefined : undefined,
+      mother_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipWife)) ? manualMotherKana || undefined : undefined,
       kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
       kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined,
       car_maker: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarMaker || undefined : undefined,
@@ -834,10 +834,10 @@ export const StaffPortal: React.FC = () => {
         car_model: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarModel || undefined : undefined,
         car_number: manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' ? manualCarNumber || undefined : undefined,
         yakudoshi_type: manualType === 'individual' && manualPrayer1 === '厄年のお祓い' ? manualYakudoshiType || undefined : undefined,
-        father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherName || undefined : undefined,
-        father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipHusband ? manualFatherKana || undefined : undefined,
-        mother_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherName || undefined : undefined,
-        mother_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '安産祈願') && !manualAnzanSkipWife ? manualMotherKana || undefined : undefined,
+        father_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipHusband)) ? manualFatherName || undefined : undefined,
+        father_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipHusband)) ? manualFatherKana || undefined : undefined,
+        mother_name: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipWife)) ? manualMotherName || undefined : undefined,
+        mother_kana: manualType === 'individual' && (manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り' || (manualPrayer1 === '安産祈願' && !manualAnzanSkipWife)) ? manualMotherKana || undefined : undefined,
         kotobuki_type: manualType === 'individual' && manualPrayer1 === '寿祝い' ? manualKotobukiType || undefined : undefined,
         kotobuki_other_text: manualType === 'individual' && manualPrayer1 === '寿祝い' && manualKotobukiType === 'その他' ? manualKotobukiOtherText || undefined : undefined
       };
@@ -1554,10 +1554,10 @@ export const StaffPortal: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* お子様情報入力欄 (初宮詣または七五三詣のみ) */}
-                    {(manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣') && (() => {
+                    {/* お子様情報入力欄 (初宮詣・七五三詣・十三参り) */}
+                    {(manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り') && (() => {
                       const currentYear = new Date().getFullYear();
-                      const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - i);
+                      const yearOptions = Array.from({ length: 16 }, (_, i) => currentYear - i);
                       return (
                         <div className="alert-warning" style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '2px' }}>
                           <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>お子様の登録情報 (手動登録)</h5>
@@ -1727,30 +1727,30 @@ export const StaffPortal: React.FC = () => {
                             </div>
                           )}
 
-                          {/* 初宮詣用のご両親のお名前入力欄 */}
-                          {manualPrayer1 === '初宮詣（お宮参り）' && (
+                          {/* 初宮詣・七五三詣・十三参り用のご両親のお名前入力欄 */}
+                          {(manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り') && (
                             <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)', marginTop: '0.5rem' }}>
                               <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
-                                ご両親のお名前 (お札にお名前を併記いたします)
+                                ご両親のお名前 <span className="required">*</span> (お札にお名前を併記いたします)
                               </span>
                               <div className="form-row" style={{ marginBottom: '0.5rem' }}>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>お父親の氏名</label>
-                                  <input type="text" className="form-control" placeholder="例：清瀧 一郎" value={manualFatherName} onChange={(e) => setManualFatherName(e.target.value)} />
+                                  <label>父親の氏名 <span className="required">*</span></label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 一郎" value={manualFatherName} onChange={(e) => setManualFatherName(e.target.value)} required />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>フリガナ</label>
-                                  <input type="text" className="form-control" placeholder="例：セイリュウ イチロウ" value={manualFatherKana} onChange={(e) => setManualFatherKana(e.target.value)} />
+                                  <label>父親氏名フリガナ <span className="required">*</span></label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ イチロウ" value={manualFatherKana} onChange={(e) => setManualFatherKana(e.target.value)} required />
                                 </div>
                               </div>
                               <div className="form-row">
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>お母親の氏名</label>
-                                  <input type="text" className="form-control" placeholder="例：清瀧 花子" value={manualMotherName} onChange={(e) => setManualMotherName(e.target.value)} />
+                                  <label>母親の氏名 <span className="required">*</span></label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 花子" value={manualMotherName} onChange={(e) => setManualMotherName(e.target.value)} required />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>フリガナ</label>
-                                  <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={manualMotherKana} onChange={(e) => setManualMotherKana(e.target.value)} />
+                                  <label>母親氏名フリガナ <span className="required">*</span></label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={manualMotherKana} onChange={(e) => setManualMotherKana(e.target.value)} required />
                                 </div>
                               </div>
                             </div>

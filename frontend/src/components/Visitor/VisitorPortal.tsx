@@ -903,6 +903,11 @@ export const VisitorPortal: React.FC = () => {
         if (item.hatsuhoryo < minPrice) {
           return `【${item.prayer1}（${item.name}様）】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${minPrice.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
         }
+        if (item.prayer1 === '初宮詣（お宮参り）' || item.prayer1 === '七五三詣' || item.prayer1 === '十三参り') {
+          if (!item.father_name?.trim() || !item.father_kana?.trim() || !item.mother_name?.trim() || !item.mother_kana?.trim()) {
+            return `【${item.prayer1}】では、ご両親（父親・母親）の氏名およびフリガナの入力が必須です。内容をご確認の上ご入力ください。`;
+          }
+        }
       }
       if (!name.trim() || !kana.trim() || !address.trim() || !addressKana.trim() || !phone.trim() || !email.trim()) {
         return '必須のご予約者様情報（お名前・フリガナ・ご住所・電話番号・メールアドレス）をご入力ください。';
@@ -1016,7 +1021,7 @@ export const VisitorPortal: React.FC = () => {
       alert('厄年区分を選択してください。');
       return;
     }
-    if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') {
+    if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り') {
       const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
       if (isCurrentTwin) {
         if (!childName.trim() || !childKana.trim() || !childBirthday || !childGender || !childName2.trim() || !childKana2.trim() || !childBirthday2 || !childGender2) {
@@ -1029,8 +1034,8 @@ export const VisitorPortal: React.FC = () => {
           return;
         }
       }
-      if (!fatherName.trim() && !motherName.trim()) {
-        alert('ご両親（父親または母親）のいずれか一方の氏名は入力してください。');
+      if (!fatherName.trim() || !fatherKana.trim() || !motherName.trim() || !motherKana.trim()) {
+        alert('初宮詣・七五三詣・十三参りでは、ご両親（父親・母親）の氏名およびフリガナの入力が必須です。');
         return;
       }
     }
@@ -1068,6 +1073,7 @@ export const VisitorPortal: React.FC = () => {
 
     // Add to prayerItems
     const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
+    const isChildPrayer = prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り';
     const newItem: PrayerItem = {
       id: Math.random().toString(36).substring(2, 9),
       prayer1,
@@ -1075,14 +1081,14 @@ export const VisitorPortal: React.FC = () => {
       name: resolvedName,
       kana: resolvedKana,
       yakudoshi_type: prayer1 === '厄年のお祓い' ? yakudoshiType : undefined,
-      child_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childName : undefined,
-      child_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childKana : undefined,
-      child_birthday: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? childBirthday : undefined,
-      child_gender: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? ((childGender === '男' || childGender === '女') ? childGender : undefined) : undefined,
-      father_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
-      father_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
-      mother_name: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
-      mother_kana: (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
+      child_name: isChildPrayer ? childName : undefined,
+      child_kana: isChildPrayer ? childKana : undefined,
+      child_birthday: isChildPrayer ? childBirthday : undefined,
+      child_gender: isChildPrayer ? ((childGender === '男' || childGender === '女') ? childGender : undefined) : undefined,
+      father_name: isChildPrayer ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
+      father_kana: isChildPrayer ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
+      mother_name: isChildPrayer ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
+      mother_kana: isChildPrayer ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
       kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
       kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
       is_twin: isCurrentTwin ? 1 : 0,
@@ -2225,9 +2231,9 @@ export const VisitorPortal: React.FC = () => {
                 </div>
               )}
 
-              {bookingType === 'individual' && (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣') && (() => {
+              {bookingType === 'individual' && (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り') && (() => {
                 const currentYear = new Date().getFullYear();
-                const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - i);
+                const yearOptions = Array.from({ length: 16 }, (_, i) => currentYear - i);
                 return (
                   <div className="alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>お子様およびご両親の登録情報</h5>
@@ -2404,27 +2410,27 @@ export const VisitorPortal: React.FC = () => {
                     )}
 
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', borderTop: '1px solid rgba(197, 160, 89, 0.3)', paddingTop: '0.5rem' }}>
-                      ※ご両親の氏名は片親のみの入力（いずれか一方のみ）でもご予約いただけます。
+                      ※ご両親（父親・母親）の氏名およびフリガナの入力が必須となります。
                     </div>
 
                     <div className="form-row">
                       <div className="form-group" style={{ margin: 0 }}>
-                        <label>父親の氏名</label>
+                        <label>父親の氏名 <span className="required">*</span></label>
                         <input type="text" className="form-control" placeholder="例：清瀧 健二" value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
                       </div>
                       <div className="form-group" style={{ margin: 0 }}>
-                        <label>父親氏名フリガナ</label>
+                        <label>父親氏名フリガナ <span className="required">*</span></label>
                         <input type="text" className="form-control" placeholder="例：セイリュウ ケンジ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
                       </div>
                     </div>
 
                     <div className="form-row">
                       <div className="form-group" style={{ margin: 0 }}>
-                        <label>母親の氏名</label>
+                        <label>母親の氏名 <span className="required">*</span></label>
                         <input type="text" className="form-control" placeholder="例：清瀧 花子" value={motherName} onChange={(e) => setMotherName(e.target.value)} />
                       </div>
                       <div className="form-group" style={{ margin: 0 }}>
-                        <label>母親氏名フリガナ</label>
+                        <label>母親氏名フリガナ <span className="required">*</span></label>
                         <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
                       </div>
                     </div>
