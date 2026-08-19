@@ -1436,10 +1436,11 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: printFontSize }}>
             <thead>
               <tr style={{ borderBottom: '2px solid black', textAlign: 'left' }}>
-                <th className="no-print" style={{ padding: printRowPadding, fontWeight: 'bold', width: '5%', textAlign: 'center', color: '#c5a059', backgroundColor: '#fcfaf5' }}>移動</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '10%' }}>時間</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '9%' }}>区分</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '36%' }}>氏名 / 会社・団体名</th>
+                <th className="no-print" style={{ padding: printRowPadding, fontWeight: 'bold', width: '4%', textAlign: 'center', color: '#c5a059', backgroundColor: '#fcfaf5' }}>移動</th>
+                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '5%', textAlign: 'center' }}>No.</th>
+                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '9%' }}>時間</th>
+                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '8%' }}>区分</th>
+                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '34%' }}>氏名 / 会社・団体名</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '23%' }}>願意</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '7%', textAlign: 'right' }}>人数</th>
                 <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '10%', textAlign: 'right' }}>初穂料</th>
@@ -1449,7 +1450,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
             <tbody>
               {orderedBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+                  <td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
                     ご祈祷の予約はありません。
                   </td>
                 </tr>
@@ -1513,8 +1514,16 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                       </td>
                       <td style={{ 
                         padding: printRowPadding, 
-                        fontWeight: 'bold',
+                        textAlign: 'center', 
+                        fontWeight: 'bold', 
+                        color: 'var(--color-urushi)',
                         borderLeft: `4px solid ${theme.badgeBg}`
+                      }}>
+                        {idx + 1}
+                      </td>
+                      <td style={{ 
+                        padding: printRowPadding, 
+                        fontWeight: 'bold'
                       }}>
                         <span style={{
                           backgroundColor: theme.badgeBg,
