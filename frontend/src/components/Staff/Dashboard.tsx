@@ -619,6 +619,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   </div>
 
+                  {/* Row Number badge */}
+                  <span style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 'bold',
+                    color: 'var(--color-urushi)',
+                    backgroundColor: 'rgba(197, 160, 89, 0.15)',
+                    border: '1px solid rgba(197, 160, 89, 0.3)',
+                    padding: '0.1rem 0.35rem',
+                    borderRadius: '2px',
+                    minWidth: '20px',
+                    textAlign: 'center',
+                    flexShrink: 0
+                  }}>
+                    {idx + 1}
+                  </span>
+
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ wordBreak: 'break-all' }}>
                       <strong style={{ fontFamily: 'var(--font-serif)', marginRight: '0.35rem' }}>{b.booking_time}</strong>
