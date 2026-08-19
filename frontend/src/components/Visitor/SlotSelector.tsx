@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import type { SlotAvailability } from '../../types';
 
-// 2026 & 2027 New moon (lunar month start) dates for Rokuyo calculation
+// 2025-2027 Exact National Astronomical Observatory of Japan New Moon (lunar month start) dates
 const NEW_MOONS = [
+  { date: '2025-11-20', lunarMonth: 10, lunarYear: 2025 },
   { date: '2025-12-20', lunarMonth: 11, lunarYear: 2025 },
   { date: '2026-01-19', lunarMonth: 12, lunarYear: 2025 },
   { date: '2026-02-17', lunarMonth: 1, lunarYear: 2026 },
   { date: '2026-03-19', lunarMonth: 2, lunarYear: 2026 },
   { date: '2026-04-17', lunarMonth: 3, lunarYear: 2026 },
-  { date: '2026-05-16', lunarMonth: 4, lunarYear: 2026 },
+  { date: '2026-05-17', lunarMonth: 4, lunarYear: 2026 },
   { date: '2026-06-15', lunarMonth: 5, lunarYear: 2026 },
   { date: '2026-07-14', lunarMonth: 6, lunarYear: 2026 },
-  { date: '2026-08-12', lunarMonth: 7, lunarYear: 2026 },
+  { date: '2026-08-13', lunarMonth: 7, lunarYear: 2026 },
   { date: '2026-09-11', lunarMonth: 8, lunarYear: 2026 },
   { date: '2026-10-11', lunarMonth: 9, lunarYear: 2026 },
   { date: '2026-11-09', lunarMonth: 10, lunarYear: 2026 },
@@ -22,14 +23,14 @@ const NEW_MOONS = [
   { date: '2027-03-08', lunarMonth: 2, lunarYear: 2027 },
   { date: '2027-04-07', lunarMonth: 3, lunarYear: 2027 },
   { date: '2027-05-06', lunarMonth: 4, lunarYear: 2027 },
-  { date: '2027-06-04', lunarMonth: 5, lunarYear: 2027 },
+  { date: '2027-06-05', lunarMonth: 5, lunarYear: 2027 },
   { date: '2027-07-04', lunarMonth: 6, lunarYear: 2027 },
   { date: '2027-08-02', lunarMonth: 7, lunarYear: 2027 },
-  { date: '2027-09-01', lunarMonth: 7, lunarYear: 2027, isLeap: true }, // Leap month
-  { date: '2027-10-01', lunarMonth: 8, lunarYear: 2027 },
-  { date: '2027-10-30', lunarMonth: 9, lunarYear: 2027 },
-  { date: '2027-11-29', lunarMonth: 10, lunarYear: 2027 },
-  { date: '2027-12-28', lunarMonth: 11, lunarYear: 2027 },
+  { date: '2027-09-01', lunarMonth: 8, lunarYear: 2027 },
+  { date: '2027-09-30', lunarMonth: 9, lunarYear: 2027 },
+  { date: '2027-10-29', lunarMonth: 10, lunarYear: 2027 },
+  { date: '2027-11-28', lunarMonth: 11, lunarYear: 2027 },
+  { date: '2027-12-28', lunarMonth: 12, lunarYear: 2027 },
 ];
 
 export function getRokuyoAndInu(dateString: string): { rokuyo: string; isInu: boolean } {
