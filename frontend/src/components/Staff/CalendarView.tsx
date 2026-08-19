@@ -785,8 +785,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(130px, 1fr))', 
-            gap: isMobile ? '0.4rem' : '0.75rem' 
+            gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', 
+            gap: isMobile ? '0.3rem' : '0.5rem' 
           }}>
             {TIME_SLOTS.map((slot) => {
               const matchedLockEvent = events.find(e => 
@@ -808,7 +808,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: isMobile ? '0.4rem 0.2rem' : '0.75rem 0.5rem',
+                    padding: isMobile ? '0.35rem 0.15rem' : '0.5rem 0.35rem',
                     borderRadius: '2px',
                     border: isSelected
                       ? '2px solid var(--color-gold)'
@@ -824,20 +824,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     fontWeight: 'bold',
-                    fontSize: isMobile ? '0.75rem' : '0.9rem',
+                    fontSize: isMobile ? '0.7rem' : '0.85rem',
                     transform: isSelected ? 'scale(1.02)' : 'none',
                     boxShadow: isSelected ? '0 2px 6px rgba(197, 160, 89, 0.2)' : 'none'
                   }}
                 >
-                  <span style={{ fontSize: isMobile ? '0.85rem' : '1rem', marginBottom: '0.15rem' }}>{slot}</span>
+                  <span style={{ fontSize: isMobile ? '0.75rem' : '0.9rem', marginBottom: '0.1rem' }}>{slot}</span>
                   <span style={{ 
-                    fontSize: isMobile ? '0.62rem' : '0.7rem', 
+                    fontSize: isMobile ? '0.55rem' : '0.65rem', 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: '0.15rem',
-                    color: isLocked ? 'var(--color-mizuiro)' : 'var(--color-accent-green)'
+                    gap: '0.1rem',
+                    color: isLocked ? 'var(--color-mizuiro)' : 'var(--color-accent-green)',
+                    whiteSpace: 'nowrap'
                   }}>
-                    {isLocked ? <Lock size={9} /> : <Unlock size={9} />}
+                    {isLocked ? <Lock size={8} /> : <Unlock size={8} />}
                     {isLocked ? '受付不可' : '受付可能'}
                   </span>
                 </button>
