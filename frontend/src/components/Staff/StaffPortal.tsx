@@ -1731,26 +1731,26 @@ export const StaffPortal: React.FC = () => {
                           {(manualPrayer1 === '初宮詣（お宮参り）' || manualPrayer1 === '七五三詣' || manualPrayer1 === '十三参り') && (
                             <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)', marginTop: '0.5rem' }}>
                               <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
-                                ご両親のお名前 <span className="required">*</span> (お札にお名前を併記いたします)
+                                ご両親のお名前 (お札にお名前を併記いたします・片親のみの入力も可)
                               </span>
                               <div className="form-row" style={{ marginBottom: '0.5rem' }}>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>父親の氏名 <span className="required">*</span></label>
-                                  <input type="text" className="form-control" placeholder="例：清瀧 一郎" value={manualFatherName} onChange={(e) => setManualFatherName(e.target.value)} required />
+                                  <label>父親の氏名</label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 一郎" value={manualFatherName} onChange={(e) => setManualFatherName(e.target.value)} />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>父親氏名フリガナ <span className="required">*</span></label>
-                                  <input type="text" className="form-control" placeholder="例：セイリュウ イチロウ" value={manualFatherKana} onChange={(e) => setManualFatherKana(e.target.value)} required />
+                                  <label>父親氏名フリガナ</label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ イチロウ" value={manualFatherKana} onChange={(e) => setManualFatherKana(e.target.value)} />
                                 </div>
                               </div>
                               <div className="form-row">
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>母親の氏名 <span className="required">*</span></label>
-                                  <input type="text" className="form-control" placeholder="例：清瀧 花子" value={manualMotherName} onChange={(e) => setManualMotherName(e.target.value)} required />
+                                  <label>母親の氏名</label>
+                                  <input type="text" className="form-control" placeholder="例：清瀧 花子" value={manualMotherName} onChange={(e) => setManualMotherName(e.target.value)} />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label>母親氏名フリガナ <span className="required">*</span></label>
-                                  <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={manualMotherKana} onChange={(e) => setManualMotherKana(e.target.value)} required />
+                                  <label>母親氏名フリガナ</label>
+                                  <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={manualMotherKana} onChange={(e) => setManualMotherKana(e.target.value)} />
                                 </div>
                               </div>
                             </div>

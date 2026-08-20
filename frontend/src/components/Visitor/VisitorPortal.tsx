@@ -245,6 +245,8 @@ export const VisitorPortal: React.FC = () => {
   const [fatherKana, setFatherKana] = useState(savedDraft?.fatherKana ?? '');
   const [motherName, setMotherName] = useState(savedDraft?.motherName ?? '');
   const [motherKana, setMotherKana] = useState(savedDraft?.motherKana ?? '');
+  const [childSkipFather, setChildSkipFather] = useState(savedDraft?.childSkipFather ?? false);
+  const [childSkipMother, setChildSkipMother] = useState(savedDraft?.childSkipMother ?? false);
   const [childName, setChildName] = useState(savedDraft?.childName ?? '');
   const [childKana, setChildKana] = useState(savedDraft?.childKana ?? '');
   const [childBirthday, setChildBirthday] = useState(savedDraft?.childBirthday ?? '');
@@ -642,6 +644,7 @@ export const VisitorPortal: React.FC = () => {
       userBirthYear, userBirthMonth, userBirthDay,
       activeMainTab, childName, childKana, childBirthday, childGender, childGender2,
       yakudoshiType, fatherName, fatherKana, motherName, motherKana,
+      childSkipFather, childSkipMother,
       kotobukiType, kotobukiOtherText,
       carMaker, carModel, carNumber,
       prayerName, prayerKana,
@@ -666,6 +669,7 @@ export const VisitorPortal: React.FC = () => {
     userBirthYear, userBirthMonth, userBirthDay,
     activeMainTab, childName, childKana, childBirthday,
     yakudoshiType, fatherName, fatherKana, motherName, motherKana,
+    childSkipFather, childSkipMother,
     kotobukiType, kotobukiOtherText,
     carMaker, carModel, carNumber,
     prayerName, prayerKana,
@@ -904,8 +908,16 @@ export const VisitorPortal: React.FC = () => {
           return `【${item.prayer1}（${item.name}様）】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${minPrice.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
         }
         if (item.prayer1 === '初宮詣（お宮参り）' || item.prayer1 === '七五三詣' || item.prayer1 === '十三参り') {
-          if (!item.father_name?.trim() || !item.father_kana?.trim() || !item.mother_name?.trim() || !item.mother_kana?.trim()) {
-            return `【${item.prayer1}】では、ご両親（父親・母親）の氏名およびフリガナの入力が必須です。内容をご確認の上ご入力ください。`;
+          const hasFather = Boolean(item.father_name?.trim() || item.father_kana?.trim());
+          const hasMother = Boolean(item.mother_name?.trim() || item.mother_kana?.trim());
+          if (!hasFather && !hasMother) {
+            return `【${item.prayer1}】では、ご両親（父親または母親）のいずれか一方の氏名およびフリガナの入力が必須です。`;
+          }
+          if (hasFather && (!item.father_name?.trim() || !item.father_kana?.trim())) {
+            return `【${item.prayer1}】父親のお名前を入力される場合は、氏名とフリガナの両方を入力してください。`;
+          }
+          if (hasMother && (!item.mother_name?.trim() || !item.mother_kana?.trim())) {
+            return `【${item.prayer1}】母親のお名前を入力される場合は、氏名とフリガナの両方を入力してください。`;
           }
         }
       }
@@ -1034,8 +1046,16 @@ export const VisitorPortal: React.FC = () => {
           return;
         }
       }
-      if (!fatherName.trim() || !fatherKana.trim() || !motherName.trim() || !motherKana.trim()) {
-        alert('初宮詣・七五三詣・十三参りでは、ご両親（父親・母親）の氏名およびフリガナの入力が必須です。');
+      if (childSkipFather && childSkipMother) {
+        alert('父親または母親のいずれか一方のお名前は必ずご登録ください。');
+        return;
+      }
+      if (!childSkipFather && (!fatherName.trim() || !fatherKana.trim())) {
+        alert('父親のお名前とフリガナを入力してください（片親のご家庭など登録されない場合は「父親のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+      if (!childSkipMother && (!motherName.trim() || !motherKana.trim())) {
+        alert('母親のお名前とフリガナを入力してください（片親のご家庭など登録されない場合は「母親のお名前を登録しない」にチェックを入れてください）。');
         return;
       }
     }
@@ -1085,10 +1105,10 @@ export const VisitorPortal: React.FC = () => {
       child_kana: isChildPrayer ? childKana : undefined,
       child_birthday: isChildPrayer ? childBirthday : undefined,
       child_gender: isChildPrayer ? ((childGender === '男' || childGender === '女') ? childGender : undefined) : undefined,
-      father_name: isChildPrayer ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
-      father_kana: isChildPrayer ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
-      mother_name: isChildPrayer ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
-      mother_kana: isChildPrayer ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
+      father_name: (isChildPrayer && !childSkipFather) ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
+      father_kana: (isChildPrayer && !childSkipFather) ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
+      mother_name: (isChildPrayer && !childSkipMother) ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
+      mother_kana: (isChildPrayer && !childSkipMother) ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
       kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
       kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
       is_twin: isCurrentTwin ? 1 : 0,
@@ -1151,7 +1171,12 @@ export const VisitorPortal: React.FC = () => {
     setBirthDay2('');
     setCarMaker('');
     setCarModel('');
-    setCarNumber('');
+    setFatherName('');
+    setFatherKana('');
+    setMotherName('');
+    setMotherKana('');
+    setChildSkipFather(false);
+    setChildSkipMother(false);
     setAnzanHusbandName('');
     setAnzanHusbandKana('');
     setAnzanSkipHusband(false);
@@ -2409,30 +2434,85 @@ export const VisitorPortal: React.FC = () => {
                       </div>
                     )}
 
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', borderTop: '1px solid rgba(197, 160, 89, 0.3)', paddingTop: '0.5rem' }}>
-                      ※ご両親（父親・母親）の氏名およびフリガナの入力が必須となります。
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', borderTop: '1px solid rgba(197, 160, 89, 0.3)', paddingTop: '0.6rem', lineHeight: '1.4' }}>
+                      ※ご両親のお名前・フリガナを入力してください。<br />
+                      <span style={{ color: 'var(--color-urushi)', fontWeight: 500 }}>
+                        💡 片親（ひとり親家庭等）の場合は、登録されない側の「お名前を登録しない」にチェックを入れていただくことで、片親のみでご予約いただけます。
+                      </span>
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label>父親の氏名 <span className="required">*</span></label>
-                        <input type="text" className="form-control" placeholder="例：清瀧 健二" value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
+                    {/* 父親セクション */}
+                    <div style={{ backgroundColor: childSkipFather ? '#fafafa' : 'transparent', padding: childSkipFather ? '0.5rem 0.75rem' : '0', borderRadius: '4px', border: childSkipFather ? '1px dashed #ccc' : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: childSkipFather ? '0' : '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 'bold', color: childSkipFather ? '#888' : 'var(--color-urushi)' }}>
+                          父親の情報 {!childSkipFather && <span className="required">*</span>}
+                        </span>
+                        <label style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', margin: 0, color: childSkipFather ? 'var(--color-gold)' : 'var(--color-accent-gray)' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={childSkipFather} 
+                            onChange={(e) => {
+                              setChildSkipFather(e.target.checked);
+                              if (e.target.checked) {
+                                setFatherName('');
+                                setFatherKana('');
+                              }
+                            }} 
+                            style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                          />
+                          <span>父親のお名前を登録しない（母子家庭等）</span>
+                        </label>
                       </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label>父親氏名フリガナ <span className="required">*</span></label>
-                        <input type="text" className="form-control" placeholder="例：セイリュウ ケンジ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
-                      </div>
+
+                      {!childSkipFather && (
+                        <div className="form-row">
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>父親の氏名 <span className="required">*</span></label>
+                            <input type="text" className="form-control" placeholder="例：清瀧 健二" value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>父親氏名フリガナ <span className="required">*</span></label>
+                            <input type="text" className="form-control" placeholder="例：セイリュウ ケンジ" value={fatherKana} onChange={(e) => setFatherKana(e.target.value)} />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label>母親の氏名 <span className="required">*</span></label>
-                        <input type="text" className="form-control" placeholder="例：清瀧 花子" value={motherName} onChange={(e) => setMotherName(e.target.value)} />
+                    {/* 母親セクション */}
+                    <div style={{ backgroundColor: childSkipMother ? '#fafafa' : 'transparent', padding: childSkipMother ? '0.5rem 0.75rem' : '0', borderRadius: '4px', border: childSkipMother ? '1px dashed #ccc' : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: childSkipMother ? '0' : '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 'bold', color: childSkipMother ? '#888' : 'var(--color-urushi)' }}>
+                          母親の情報 {!childSkipMother && <span className="required">*</span>}
+                        </span>
+                        <label style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', margin: 0, color: childSkipMother ? 'var(--color-gold)' : 'var(--color-accent-gray)' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={childSkipMother} 
+                            onChange={(e) => {
+                              setChildSkipMother(e.target.checked);
+                              if (e.target.checked) {
+                                setMotherName('');
+                                setMotherKana('');
+                              }
+                            }} 
+                            style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                          />
+                          <span>母親のお名前を登録しない（父子家庭等）</span>
+                        </label>
                       </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label>母親氏名フリガナ <span className="required">*</span></label>
-                        <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
-                      </div>
+
+                      {!childSkipMother && (
+                        <div className="form-row">
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>母親の氏名 <span className="required">*</span></label>
+                            <input type="text" className="form-control" placeholder="例：清瀧 花子" value={motherName} onChange={(e) => setMotherName(e.target.value)} />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>母親氏名フリガナ <span className="required">*</span></label>
+                            <input type="text" className="form-control" placeholder="例：セイリュウ ハナコ" value={motherKana} onChange={(e) => setMotherKana(e.target.value)} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
