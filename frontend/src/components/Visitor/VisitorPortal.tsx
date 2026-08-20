@@ -2014,7 +2014,7 @@ export const VisitorPortal: React.FC = () => {
 
                       {(() => {
                         const minPrice = getIndividualMinPrice(prayer1, isTwin);
-                        const isBelowMin = hatsuhoryo < minPrice;
+                        const isBelowMin = Boolean(prayer1 && hatsuhoryo < minPrice);
                         return (
                           <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2022,7 +2022,7 @@ export const VisitorPortal: React.FC = () => {
                                 初穂料 (目安自動設定) <span className="required">*</span>
                               </label>
                               {prayer1 && (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
+                                <span style={{ fontSize: '0.75rem', color: isBelowMin ? '#d3381c' : 'var(--color-accent-gray)', fontWeight: isBelowMin ? 'bold' : 'normal' }}>
                                   目安: {minPrice.toLocaleString()}円〜
                                 </span>
                               )}
@@ -2036,13 +2036,15 @@ export const VisitorPortal: React.FC = () => {
                               onChange={(e) => setHatsuhoryo(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
                               style={{
                                 marginTop: '0.25rem',
-                                border: isBelowMin ? '1.5px solid #d3381c' : undefined,
-                                backgroundColor: isBelowMin ? '#fff8f7' : undefined
+                                border: isBelowMin ? '2px solid #d3381c' : undefined,
+                                backgroundColor: isBelowMin ? '#fff2f0' : undefined,
+                                color: isBelowMin ? '#d3381c' : undefined,
+                                fontWeight: isBelowMin ? 'bold' : undefined
                               }}
                             />
                             {isBelowMin && (
-                              <div style={{ fontSize: '0.75rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 500 }}>
-                                ⚠️ 初穂料は目安金額（{minPrice.toLocaleString()}円）以上の金額をご入力ください。
+                              <div style={{ fontSize: '0.78rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <span>⚠️</span> 初穂料は目安金額（{minPrice.toLocaleString()}円以上）をご入力ください。
                               </div>
                             )}
                           </div>
