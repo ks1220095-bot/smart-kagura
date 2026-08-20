@@ -2179,57 +2179,95 @@ export const VisitorPortal: React.FC = () => {
                 </div>
               ) : (
                 // Organization willing select (Max 2 + custom text)
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label>主願意 <span className="required">*</span></label>
-                    <select
-                      className="form-control"
-                      value={prayer1}
-                      onChange={(e) => { setPrayer1(e.target.value); setOrgCustomPrayer1(''); }}
-                      style={{ border: '1px solid var(--color-gold)' }}
-                    >
-                      <option value="">-- 選択してください --</option>
-                      {ORGANIZATION_PRAYERS.map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                    {prayer1 === 'その他（自由入力）' && (
-                      <input
-                        type="text"
-                        placeholder="主願意を手入力してください"
+                <>
+                  <div className="grid-2">
+                    <div className="form-group">
+                      <label>主願意 <span className="required">*</span></label>
+                      <select
                         className="form-control"
-                        style={{ marginTop: '0.5rem' }}
-                        value={orgCustomPrayer1}
-                        onChange={(e) => setOrgCustomPrayer1(e.target.value)}
-                      />
-                    )}
+                        value={prayer1}
+                        onChange={(e) => { setPrayer1(e.target.value); setOrgCustomPrayer1(''); }}
+                        style={{ border: '1px solid var(--color-gold)' }}
+                      >
+                        <option value="">-- 選択してください --</option>
+                        {ORGANIZATION_PRAYERS.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      {prayer1 === 'その他（自由入力）' && (
+                        <input
+                          type="text"
+                          placeholder="主願意を手入力してください"
+                          className="form-control"
+                          style={{ marginTop: '0.5rem' }}
+                          value={orgCustomPrayer1}
+                          onChange={(e) => setOrgCustomPrayer1(e.target.value)}
+                        />
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label>副願意 （任意・2つ目）</label>
+                      <select
+                        className="form-control"
+                        value={prayer2}
+                        onChange={(e) => { setPrayer2(e.target.value); setOrgCustomPrayer2(''); }}
+                        style={{ border: '1px solid var(--color-gold)' }}
+                      >
+                        <option value="">-- なし --</option>
+                        {ORGANIZATION_PRAYERS.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      {prayer2 === 'その他（自由入力）' && (
+                        <input
+                          type="text"
+                          placeholder="副願意を手入力してください"
+                          className="form-control"
+                          style={{ marginTop: '0.5rem' }}
+                          value={orgCustomPrayer2}
+                          onChange={(e) => setOrgCustomPrayer2(e.target.value)}
+                        />
+                      )}
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>副願意 （任意・2つ目）</label>
-                    <select
-                      className="form-control"
-                      value={prayer2}
-                      onChange={(e) => { setPrayer2(e.target.value); setOrgCustomPrayer2(''); }}
-                      style={{ border: '1px solid var(--color-gold)' }}
-                    >
-                      <option value="">-- なし --</option>
-                      {ORGANIZATION_PRAYERS.map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                    {prayer2 === 'その他（自由入力）' && (
-                      <input
-                        type="text"
-                        placeholder="副願意を手入力してください"
-                        className="form-control"
-                        style={{ marginTop: '0.5rem' }}
-                        value={orgCustomPrayer2}
-                        onChange={(e) => setOrgCustomPrayer2(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </div>
+                  {/* Organization Hatsuhoryo Input */}
+                  {(() => {
+                    const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
+                    const isBelowMin = hatsuhoryo < orgMinPrice;
+                    return (
+                      <div className="form-group" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label style={{ margin: 0 }}>
+                            初穂料 (目安自動設定) <span className="required">*</span>
+                          </label>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
+                            目安: {orgMinPrice.toLocaleString()}円〜（参列{attendingCount || 1}名）
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min={orgMinPrice}
+                          step="5000"
+                          value={hatsuhoryo || ''}
+                          onChange={(e) => setHatsuhoryo(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                          style={{
+                            marginTop: '0.25rem',
+                            border: isBelowMin ? '1.5px solid #d3381c' : undefined,
+                            backgroundColor: isBelowMin ? '#fff8f7' : undefined
+                          }}
+                        />
+                        {isBelowMin && (
+                          <div style={{ fontSize: '0.75rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 500 }}>
+                            ⚠️ 団体参拝の初穂料は目安金額（{orgMinPrice.toLocaleString()}円以上）をご入力ください。
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
               )}
 
               {/* Dynamic Sub-forms for Individual willing */}
@@ -2683,11 +2721,15 @@ export const VisitorPortal: React.FC = () => {
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--color-accent-gray)', fontWeight: 500 }}>お初穂料のご案内</span>
                 <div style={{ fontSize: '1.25rem', color: 'var(--color-mizuiro)', fontWeight: 'bold', fontFamily: 'var(--font-serif)', marginTop: '0.25rem' }}>
-                  {hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）
+                  {bookingType === 'individual' 
+                    ? (prayerItems.length > 0 
+                        ? `${prayerItems.reduce((sum, item) => sum + item.hatsuhoryo, 0).toLocaleString()} 円（合計 ${prayerItems.length}件）より お気持ち（当日現金納め）`
+                        : `${hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）`)
+                    : `${hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）`}
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.25rem' }}>
                   {bookingType === 'individual' 
-                    ? '※選択された願意の基準額です。のし袋か封筒などに包み、ご持参ください。' 
+                    ? '※選択された願意の目安金額です。のし袋か封筒などに包み、ご持参ください。' 
                     : '※団体参拝は5名未満は20,000円より、5名以上は30,000円よりのお気持ち（当日現金納め）とさせていただいております。'}
                 </p>
               </div>
