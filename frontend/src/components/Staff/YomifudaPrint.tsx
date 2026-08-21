@@ -329,7 +329,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               );
             })()}
 
-            {/* 車祓（お車のお祓い）用 metadata (ハイライト表示) */}
+            {/* 車祓（お車のお祓い）用 metadata (ハイライト表示・祝詞奏上用最適化) */}
             {(booking.prayer1 === '車祓（お車のお祓い）' || booking.prayer2 === '車祓（お車のお祓い）') && (() => {
               const carInfo = parseNotesCarInfo(booking.notes || '');
               const maker = booking.car_maker || carInfo?.maker || '';
@@ -338,20 +338,29 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               if (!maker && !model && !number) return null;
               return (
                 <div style={{ 
-                  marginTop: '0.3rem', 
-                  padding: '0.45rem 0.55rem', 
-                  backgroundColor: 'rgba(197, 160, 89, 0.03)', 
-                  border: '1.5px solid rgba(197, 160, 89, 0.25)', 
-                  borderRadius: '4px',
-                  fontSize: '0.8rem', 
-                  lineHeight: '1.35' 
+                  marginTop: '0.25rem', 
+                  padding: '0.35rem 0.5rem', 
+                  backgroundColor: 'rgba(197, 160, 89, 0.04)', 
+                  border: '1.5px solid rgba(197, 160, 89, 0.35)', 
+                  borderRadius: '3px',
+                  fontSize: '0.78rem', 
+                  lineHeight: '1.3' 
                 }}>
-                  <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お祓い車両情報</span>
-                  <div style={{ marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                    <div><strong>メーカー:</strong> <strong style={{ fontSize: '1.0rem', color: '#d80100' }}>{maker}</strong></div>
-                    <div><strong>車種名:</strong> <strong style={{ fontSize: '1.0rem', color: '#d80100' }}>{model}</strong></div>
-                    <div><strong>車両ナンバー:</strong> <strong style={{ fontSize: '1.0rem', color: '#d80100' }}>{number}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>🚗 お祓い車両情報</span>
+                    {(maker || model) && (
+                      <span style={{ fontSize: '0.75rem', color: '#444' }}>
+                        {maker && <span>{maker} </span>}
+                        {model && <strong>{model}</strong>}
+                      </span>
+                    )}
                   </div>
+                  {number && (
+                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #d80100', padding: '0.2rem 0.4rem', borderRadius: '2px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.6rem', color: '#888', marginRight: '0.4rem' }}>車両ナンバー:</span>
+                      <strong style={{ fontSize: '1.15rem', color: '#d80100', letterSpacing: '0.05em' }}>{number}</strong>
+                    </div>
+                  )}
                 </div>
               );
             })()}

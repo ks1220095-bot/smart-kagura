@@ -322,8 +322,9 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -340,12 +341,12 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   .print-modal-overlay {
     position: static !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     display: block !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     z-index: auto !important;
   }
 
@@ -358,7 +359,8 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     gap: 0 !important;
     display: block !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
   
   .yomifuda-sheet {
