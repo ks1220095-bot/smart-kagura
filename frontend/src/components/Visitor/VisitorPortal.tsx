@@ -309,6 +309,7 @@ export const VisitorPortal: React.FC = () => {
   const [carMaker, setCarMaker] = useState(savedDraft?.carMaker ?? '');
   const [carModel, setCarModel] = useState(savedDraft?.carModel ?? '');
   const [carNumber, setCarNumber] = useState(savedDraft?.carNumber ?? '');
+  const [carInfoPending, setCarInfoPending] = useState(savedDraft?.carInfoPending ?? false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [anzanHusbandName, setAnzanHusbandName] = useState(savedDraft?.anzanHusbandName ?? '');
   const [anzanHusbandKana, setAnzanHusbandKana] = useState(savedDraft?.anzanHusbandKana ?? '');
@@ -646,7 +647,7 @@ export const VisitorPortal: React.FC = () => {
       yakudoshiType, fatherName, fatherKana, motherName, motherKana,
       childSkipFather, childSkipMother,
       kotobukiType, kotobukiOtherText,
-      carMaker, carModel, carNumber,
+      carMaker, carModel, carNumber, carInfoPending,
       prayerName, prayerKana,
       anzanHusbandName, anzanHusbandKana, anzanSkipHusband,
       anzanWifeName, anzanWifeKana, anzanSkipWife
@@ -671,7 +672,7 @@ export const VisitorPortal: React.FC = () => {
     yakudoshiType, fatherName, fatherKana, motherName, motherKana,
     childSkipFather, childSkipMother,
     kotobukiType, kotobukiOtherText,
-    carMaker, carModel, carNumber,
+    carMaker, carModel, carNumber, carInfoPending,
     prayerName, prayerKana,
     anzanHusbandName, anzanHusbandKana, anzanSkipHusband,
     anzanWifeName, anzanWifeKana, anzanSkipWife
@@ -748,6 +749,7 @@ export const VisitorPortal: React.FC = () => {
         if (state.carMaker) setCarMaker(state.carMaker);
         if (state.carModel) setCarModel(state.carModel);
         if (state.carNumber) setCarNumber(state.carNumber);
+        if (state.carInfoPending !== undefined) setCarInfoPending(state.carInfoPending);
 
         if (state.prayerName) setPrayerName(state.prayerName);
         if (state.prayerKana) setPrayerKana(state.prayerKana);
@@ -1067,8 +1069,8 @@ export const VisitorPortal: React.FC = () => {
       alert('長寿祝いの内容を入力してください。');
       return;
     }
-    if (prayer1 === '車祓（お車のお祓い）' && (!carMaker.trim() || !carModel.trim() || !carNumber.trim())) {
-      alert('お車のメーカー、車種、ナンバーは必須です。');
+    if (prayer1 === '車祓（お車のお祓い）' && !carInfoPending && (!carMaker.trim() || !carModel.trim() || !carNumber.trim())) {
+      alert('お車のメーカー、車種、ナンバーをご入力ください（未定の場合は「納車前などでお車情報が未定」にチェックを入れてください）。');
       return;
     }
 
@@ -1116,9 +1118,9 @@ export const VisitorPortal: React.FC = () => {
       child_kana2: isCurrentTwin ? childKana2 : undefined,
       child_birthday2: isCurrentTwin ? childBirthday2 : undefined,
       child_gender2: isCurrentTwin ? ((childGender2 === '男' || childGender2 === '女') ? childGender2 : undefined) : undefined,
-      car_maker: prayer1 === '車祓（お車のお祓い）' ? carMaker : undefined,
-      car_model: prayer1 === '車祓（お車のお祓い）' ? carModel : undefined,
-      car_number: prayer1 === '車祓（お車のお祓い）' ? carNumber : undefined
+      car_maker: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定（手書き記入）' : (carMaker.trim() || '未定')) : undefined,
+      car_model: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carModel.trim() || '未定')) : undefined,
+      car_number: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carNumber.trim() || '未定')) : undefined
     };
 
     setPrayerItems([...prayerItems, newItem]);
@@ -2587,39 +2589,65 @@ export const VisitorPortal: React.FC = () => {
 
               {bookingType === 'individual' && prayer1 === '車祓（お車のお祓い）' && (
                 <div className="form-group alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0, color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報をご入力ください</h5>
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>メーカー名 <span className="required">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="例：トヨタ、ホンダなど"
-                        value={carMaker}
-                        onChange={(e) => setCarMaker(e.target.value)}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0, color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報をご入力ください</h5>
+                    <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 'bold', color: 'var(--color-mizuiro-hover)', cursor: 'pointer', margin: 0, backgroundColor: '#ffffff', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid #ffd2cb' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={carInfoPending} 
+                        onChange={(e) => {
+                          setCarInfoPending(e.target.checked);
+                          if (e.target.checked) {
+                            setCarMaker('');
+                            setCarModel('');
+                            setCarNumber('');
+                          }
+                        }} 
                       />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>車種名 <span className="required">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="例：プリウス、フィットなど"
-                        value={carModel}
-                        onChange={(e) => setCarModel(e.target.value)}
-                      />
-                    </div>
+                      納車前などでお車情報（ナンバー等）が未定
+                    </label>
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>車両ナンバー <span className="required">*</span></label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="例：習志野330 さ 12-34"
-                      value={carNumber}
-                      onChange={(e) => setCarNumber(e.target.value)}
-                    />
-                  </div>
+                  {carInfoPending ? (
+                    <div style={{ padding: '0.6rem 0.8rem', backgroundColor: '#ffffff', border: '1px dashed #d3381c', borderRadius: '4px', fontSize: '0.85rem', color: '#666', lineHeight: 1.4 }}>
+                      💡 <strong>お車情報未定のご予約：</strong><br />
+                      メーカー名・車種名・ナンバーは空欄のままご予約いただけます。参拝当日に社務所受付にて直接お伺い・確認させていただきます。
+                    </div>
+                  ) : (
+                    <>
+                      <div className="form-row">
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>メーカー名 <span className="required">*</span></label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="例：トヨタ、ホンダなど"
+                            value={carMaker}
+                            onChange={(e) => setCarMaker(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>車種名 <span className="required">*</span></label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="例：プリウス、フィットなど"
+                            value={carModel}
+                            onChange={(e) => setCarModel(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>車両ナンバー <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="例：習志野330 さ 12-34"
+                          value={carNumber}
+                          onChange={(e) => setCarNumber(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

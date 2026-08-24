@@ -329,13 +329,18 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               );
             })()}
 
-            {/* 車祓（お車のお祓い）用 metadata (ハイライト表示・祝詞奏上用最適化) */}
+            {/* 車祓（お車のお祓い）用 metadata (ハイライト表示・未定時手書き記入枠対応・祝詞奏上用最適化) */}
             {(booking.prayer1 === '車祓（お車のお祓い）' || booking.prayer2 === '車祓（お車のお祓い）') && (() => {
               const carInfo = parseNotesCarInfo(booking.notes || '');
-              const maker = booking.car_maker || carInfo?.maker || '';
-              const model = booking.car_model || carInfo?.model || '';
-              const number = booking.car_number || carInfo?.number || '';
-              if (!maker && !model && !number) return null;
+              const rawMaker = booking.car_maker || carInfo?.maker || '';
+              const rawModel = booking.car_model || carInfo?.model || '';
+              const rawNumber = booking.car_number || carInfo?.number || '';
+
+              const isMakerPending = !rawMaker || rawMaker.includes('未定');
+              const isModelPending = !rawModel || rawModel.includes('未定');
+              const isNumberPending = !rawNumber || rawNumber.includes('未定');
+              const isAllPending = isMakerPending && isModelPending && isNumberPending;
+
               return (
                 <div style={{ 
                   marginTop: '0.25rem', 
@@ -347,18 +352,40 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                   lineHeight: '1.3' 
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.62rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>🚗 お祓い車両情報</span>
-                    {(maker || model) && (
+                    <span style={{ fontSize: '0.62rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>
+                      🚗 お祓い車両情報 {isAllPending && <span style={{ color: '#d80100', fontWeight: 'normal' }}>（当日手書き記入）</span>}
+                    </span>
+                    {!isMakerPending || !isModelPending ? (
                       <span style={{ fontSize: '0.75rem', color: '#444' }}>
-                        {maker && <span>{maker} </span>}
-                        {model && <strong>{model}</strong>}
+                        {!isMakerPending && <span>{rawMaker} </span>}
+                        {!isModelPending && <strong>{rawModel}</strong>}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.7rem', color: '#666' }}>
+                        車種: <span style={{ display: 'inline-block', width: '90px', borderBottom: '1px solid #777' }}>&nbsp;</span>
                       </span>
                     )}
                   </div>
-                  {number && (
-                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #d80100', padding: '0.2rem 0.4rem', borderRadius: '2px', textAlign: 'center' }}>
+
+                  {/* ナンバープレート表示部 (確定時は太字印字 / 未定時は手書き用記入枠) */}
+                  {!isNumberPending ? (
+                    <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #d80100', padding: '0.2rem 0.4rem', borderRadius: '2px', textAlign: 'center' }}>
                       <span style={{ fontSize: '0.6rem', color: '#888', marginRight: '0.4rem' }}>車両ナンバー:</span>
-                      <strong style={{ fontSize: '1.15rem', color: '#d80100', letterSpacing: '0.05em' }}>{number}</strong>
+                      <strong style={{ fontSize: '1.15rem', color: '#d80100', letterSpacing: '0.05em' }}>{rawNumber}</strong>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      backgroundColor: '#ffffff', 
+                      border: '1.5px dashed #d80100', 
+                      padding: '0.25rem 0.4rem', 
+                      borderRadius: '2px', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      minHeight: '26px'
+                    }}>
+                      <span style={{ fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>車両ナンバー:</span>
+                      <span style={{ fontSize: '0.65rem', color: '#aaa', fontStyle: 'italic', paddingRight: '0.3rem' }}>［　当日手書き記入枠　］</span>
                     </div>
                   )}
                 </div>
