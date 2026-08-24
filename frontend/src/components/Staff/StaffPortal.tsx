@@ -1430,22 +1430,45 @@ export const StaffPortal: React.FC = () => {
 
                 {/* 個人祈祷で「車祓（お車のお祓い）」が選択された場合 */}
                 {manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' && (
-                  <div className="form-group" style={{ backgroundColor: 'rgba(50, 136, 163, 0.03)', padding: '0.75rem', borderRadius: '4px', border: '1px solid rgba(50, 136, 163, 0.15)', marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報 <span className="required">*</span></label>
-                    <div className="grid-3">
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.75rem' }}>メーカー名</label>
-                        <input type="text" className="form-control" placeholder="例：トヨタなど" value={manualCarMaker} onChange={(e) => setManualCarMaker(e.target.value)} required />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.75rem' }}>車種名</label>
-                        <input type="text" className="form-control" placeholder="例：プリウスなど" value={manualCarModel} onChange={(e) => setManualCarModel(e.target.value)} required />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.75rem' }}>車両ナンバー</label>
-                        <input type="text" className="form-control" placeholder="例：習志野330さ1234" value={manualCarNumber} onChange={(e) => setManualCarNumber(e.target.value)} required />
-                      </div>
+                  <div className="form-group alert-warning" style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <label style={{ margin: 0, fontWeight: 'bold', color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報 {!manualCarPending && <span className="required">*</span>}</label>
+                      <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, color: 'var(--color-mizuiro-hover)', fontWeight: 'bold' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={manualCarPending} 
+                          onChange={(e) => {
+                            setManualCarPending(e.target.checked);
+                            if (e.target.checked) {
+                              setManualCarMaker('');
+                              setManualCarModel('');
+                              setManualCarNumber('');
+                            }
+                          }} 
+                        />
+                        納車前などでお車情報未定（当日手書き受付）
+                      </label>
                     </div>
+                    {manualCarPending ? (
+                      <div style={{ padding: '0.5rem', backgroundColor: '#fff', border: '1px dashed #d3381c', borderRadius: '2px', fontSize: '0.8rem', color: '#666' }}>
+                        ※お車情報は空欄で登録されます。読み札には当日手書き記入用の枠が出力されます。
+                      </div>
+                    ) : (
+                      <div className="grid-3">
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>メーカー名 <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：トヨタなど" value={manualCarMaker} onChange={(e) => setManualCarMaker(e.target.value)} required={!manualCarPending} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>車種名 <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：プリウスなど" value={manualCarModel} onChange={(e) => setManualCarModel(e.target.value)} required={!manualCarPending} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>車両ナンバー <span className="required">*</span></label>
+                          <input type="text" className="form-control" placeholder="例：習志野330さ1234" value={manualCarNumber} onChange={(e) => setManualCarNumber(e.target.value)} required={!manualCarPending} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1857,52 +1880,6 @@ export const StaffPortal: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* 車祓（お車のお祓い）用の車両情報入力欄 */}
-                    {manualPrayer1 === '車祓（お車のお祓い）' && (
-                      <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>🚗 お祓い車両情報</span>
-                          <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, color: 'var(--color-mizuiro-hover)', fontWeight: 'bold' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={manualCarPending} 
-                              onChange={(e) => {
-                                setManualCarPending(e.target.checked);
-                                if (e.target.checked) {
-                                  setManualCarMaker('');
-                                  setManualCarModel('');
-                                  setManualCarNumber('');
-                                }
-                              }} 
-                            />
-                            納車前などでお車情報未定（当日手書き受付）
-                          </label>
-                        </div>
-                        {manualCarPending ? (
-                          <div style={{ padding: '0.5rem', backgroundColor: '#fff', border: '1px dashed #d3381c', borderRadius: '2px', fontSize: '0.8rem', color: '#666' }}>
-                            ※お車情報は空欄で登録されます。読み札には当日手書き記入用の枠が出力されます。
-                          </div>
-                        ) : (
-                          <>
-                            <div className="form-row" style={{ margin: 0 }}>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label>メーカー名 <span className="required">*</span></label>
-                                <input type="text" className="form-control" placeholder="例：トヨタ、ホンダなど" value={manualCarMaker} onChange={(e) => setManualCarMaker(e.target.value)} required={!manualCarPending} />
-                              </div>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label>車種名 <span className="required">*</span></label>
-                                <input type="text" className="form-control" placeholder="例：プリウス、クラウンなど" value={manualCarModel} onChange={(e) => setManualCarModel(e.target.value)} required={!manualCarPending} />
-                              </div>
-                            </div>
-                            <div className="form-group" style={{ margin: 0 }}>
-                              <label>車両ナンバー <span className="required">*</span></label>
-                              <input type="text" className="form-control" placeholder="例：習志野330 さ 12-34" value={manualCarNumber} onChange={(e) => setManualCarNumber(e.target.value)} required={!manualCarPending} />
-                            </div>
-                          </>
-                        )}
                       </div>
                     )}
                   </>
