@@ -2588,10 +2588,26 @@ export const VisitorPortal: React.FC = () => {
               )}
 
               {bookingType === 'individual' && prayer1 === '車祓（お車のお祓い）' && (
-                <div className="form-group alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0, color: 'var(--color-mizuiro-hover)' }}>🚗 お祓いするお車の情報をご入力ください</h5>
-                    <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 'bold', color: 'var(--color-mizuiro-hover)', cursor: 'pointer', margin: 0, backgroundColor: '#ffffff', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid #ffd2cb' }}>
+                <div className="form-group alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1.5px solid rgba(197, 160, 89, 0.4)', borderRadius: '4px', backgroundColor: '#fffcf7' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', borderBottom: '1px dashed rgba(197, 160, 89, 0.3)', paddingBottom: '0.6rem' }}>
+                    <h5 style={{ fontSize: '0.95rem', fontWeight: 'bold', margin: 0, color: 'var(--color-urushi)' }}>
+                      🚗 お祓いするお車の情報
+                    </h5>
+                    <label style={{ 
+                      fontSize: '0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.45rem', 
+                      fontWeight: 'bold', 
+                      color: carInfoPending ? '#d3381c' : 'var(--color-mizuiro-hover)', 
+                      cursor: 'pointer', 
+                      margin: 0, 
+                      backgroundColor: '#ffffff', 
+                      padding: '0.35rem 0.75rem', 
+                      borderRadius: '4px', 
+                      border: carInfoPending ? '2px solid #d3381c' : '1.5px solid var(--color-mizuiro-hover)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
                       <input 
                         type="checkbox" 
                         checked={carInfoPending} 
@@ -2603,14 +2619,16 @@ export const VisitorPortal: React.FC = () => {
                             setCarNumber('');
                           }
                         }} 
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                       />
-                      納車前などでお車情報（ナンバー等）が未定
+                      <span>納車前などでお車情報（ナンバー等）が未定</span>
                     </label>
                   </div>
                   {carInfoPending ? (
-                    <div style={{ padding: '0.6rem 0.8rem', backgroundColor: '#ffffff', border: '1px dashed #d3381c', borderRadius: '4px', fontSize: '0.85rem', color: '#666', lineHeight: 1.4 }}>
-                      💡 <strong>お車情報未定のご予約：</strong><br />
-                      メーカー名・車種名・ナンバーは空欄のままご予約いただけます。参拝当日に社務所受付にて直接お伺い・確認させていただきます。
+                    <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1.5px dashed #d3381c', borderRadius: '4px', fontSize: '0.88rem', color: '#444', lineHeight: 1.5 }}>
+                      💡 <strong>【お車情報未定のご予約】</strong><br />
+                      メーカー名・車種名・ナンバーは空欄のままでご予約を完了いただけます。<br />
+                      読み札には手書き用の記入枠が出力され、参拝当日に社務所受付にて直接お伺い・確認させていただきます。
                     </div>
                   ) : (
                     <>
