@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <link rel="stylesheet" href="style.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <!-- ヘッダー -->
@@ -34,7 +37,10 @@
 
   <!-- ナビゲーションタブ -->
   <nav class="nav-tabs" aria-label="メインナビゲーション">
-    <button id="tab-register" class="tab-button active" role="tab" aria-selected="true" aria-controls="panel-register">
+    <button id="tab-dashboard" class="tab-button active" role="tab" aria-selected="true" aria-controls="panel-dashboard">
+      <i class="fa-solid fa-chart-line"></i> ダッシュボード
+    </button>
+    <button id="tab-register" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-register">
       <i class="fa-solid fa-cash-register"></i> 授与レジ
     </button>
     <button id="tab-history" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-history">
@@ -51,8 +57,102 @@
   <!-- メインコンテンツ -->
   <main class="main-content">
     
+    <!-- 0. 総合ダッシュボードパネル -->
+    <section id="panel-dashboard" class="tab-panel active" role="tabpanel">
+      <div class="dashboard-container">
+        
+        <!-- KPI指標カード -->
+        <div class="dashboard-kpis">
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-day"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">本日の売上</span>
+              <span class="kpi-value" id="kpi-today-sales">¥0</span>
+              <span class="kpi-sub" id="kpi-today-count">0 件の取引</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-week"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">今週の売上 (直近7日間)</span>
+              <span class="kpi-value" id="kpi-weekly-sales">¥0</span>
+              <span class="kpi-sub" id="kpi-weekly-count">0 件の取引</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-days"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">今月の売上</span>
+              <span class="kpi-value" id="kpi-monthly-sales">¥0</span>
+              <span class="kpi-sub" id="kpi-monthly-count">0 件の取引</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- グラフ ＆ カテゴリ比率セクション -->
+        <div class="dashboard-charts-row">
+          <div class="dashboard-card chart-main-card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fa-solid fa-chart-column"></i> 売上推移</h3>
+              <div class="chart-controls">
+                <button class="btn-chart-range active" id="btn-chart-week">週間</button>
+                <button class="btn-chart-range" id="btn-chart-month">月間</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="chart-container" style="position: relative; height:280px; width:100%;">
+                <canvas id="sales-trend-chart"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <div class="dashboard-card chart-pie-card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fa-solid fa-chart-pie"></i> カテゴリ別売上割合</h3>
+            </div>
+            <div class="card-body">
+              <div class="chart-container" style="position: relative; height:200px; width:100%;">
+                <canvas id="sales-category-chart"></canvas>
+              </div>
+              <div class="chart-pie-legend" id="pie-legend-list">
+                <!-- 凡例をJSから出力 -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- アラート ＆ 履歴セクション -->
+        <div class="dashboard-details-row">
+          <div class="dashboard-card alert-card">
+            <div class="card-header">
+              <h3 class="card-title alert-title"><i class="fa-solid fa-circle-exclamation"></i> 在庫不足アラート</h3>
+            </div>
+            <div class="card-body scrollable-body">
+              <ul class="alert-list" id="dashboard-stock-alerts">
+                <!-- 在庫不足商品がJSから出力される -->
+                <li class="alert-empty-msg">在庫不足の授与品はありません。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="dashboard-card timeline-card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fa-solid fa-clock"></i> 直近の取引履歴 (本日)</h3>
+            </div>
+            <div class="card-body scrollable-body">
+              <ul class="timeline-list" id="dashboard-timeline">
+                <!-- 本日のタイムラインがJSから出力される -->
+                <li class="timeline-empty-msg">本日の取引はまだありません。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
     <!-- 1. 授与レジパネル -->
-    <section id="panel-register" class="tab-panel active" role="tabpanel">
+    <section id="panel-register" class="tab-panel" role="tabpanel">
       <div class="register-container">
         
         <!-- 授与品一覧エリア -->

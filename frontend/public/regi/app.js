@@ -42,7 +42,13 @@ const state = {
   items: [],
   cart: [],
   transactions: [],
-  currentTab: 'register',
+  dashboard: {
+    rangeTransactions: [],
+    trendChart: null,
+    categoryChart: null,
+    activeRange: 'week' // 'week' | 'month'
+  },
+  currentTab: 'dashboard', // 初期タブをダッシュボードに変更
   selectedCategory: 'all',
   searchQuery: '',
   selectedDate: '',
@@ -62,12 +68,14 @@ const DOM = {
   currentDate: document.getElementById('current-date'),
   btnSync: document.getElementById('btn-sync'),
   tabs: {
+    dashboard: document.getElementById('tab-dashboard'),
     register: document.getElementById('tab-register'),
     history: document.getElementById('tab-history'),
     report: document.getElementById('tab-report'),
     master: document.getElementById('tab-master')
   },
   panels: {
+    dashboard: document.getElementById('panel-dashboard'),
     register: document.getElementById('panel-register'),
     history: document.getElementById('panel-history'),
     report: document.getElementById('panel-report'),
@@ -540,6 +548,24 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       handleImageFile(fileInput.files[0], previewImg, callback);
     }
   });
+
+  // ダッシュボード・グラフ期間切り替えイベント
+  const btnWeek = document.getElementById('btn-chart-week');
+  const btnMonth = document.getElementById('btn-chart-month');
+  if (btnWeek && btnMonth) {
+    btnWeek.addEventListener('click', () => {
+      btnWeek.classList.add('active');
+      btnMonth.classList.remove('active');
+      state.dashboard.activeRange = 'week';
+      renderDashboardCharts();
+    });
+    btnMonth.addEventListener('click', () => {
+      btnMonth.classList.add('active');
+      btnWeek.classList.remove('active');
+      state.dashboard.activeRange = 'month';
+      renderDashboardCharts();
+    });
+  }
 }
 
 function handleImageFile(file, previewImg, callback) {
@@ -580,7 +606,9 @@ function switchTab(tabKey) {
     DOM.panels[key].classList.toggle('active', key === tabKey);
   });
 
-  if (tabKey === 'register') {
+  if (tabKey === 'dashboard') {
+    loadDashboardData();
+  } else if (tabKey === 'register') {
     renderItems();
   } else if (tabKey === 'history') {
     fetchTransactions();
@@ -842,6 +870,9 @@ async function loadMasterData(forceReload = false) {
     }
   } finally {
     showLoader(false);
+    if (state.currentTab === 'dashboard') {
+      loadDashboardData();
+    }
   }
 }
 
@@ -3021,3 +3052,373 @@ function setupOfflineMonitoring() {
   // 初期状態の設定
   updateNetworkStatusUI(navigator.onLine);
 }
+
+// ==========================================
+// 総合ダッシュボードの制御ロジック
+// ==========================================
+async function loadDashboardData() {
+  const now = new Date();
+  
+  // 今月1日（今月売上用）
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfMonthStr = firstDayOfMonth.toISOString().split('T')[0];
+  
+  // 直近7日前（週売上用・週グラフ用）
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6);
+  const startOfWeekStr = sevenDaysAgo.toISOString().split('T')[0];
+  
+  // 本日
+  const todayStr = now.toISOString().split('T')[0];
+  
+  // 一番過去の日付をベースに一発で期間内の全取引データを取得する
+  const minStartDate = startOfWeekStr < startOfMonthStr ? startOfWeekStr : startOfMonthStr;
+  
+  if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
+    // デモ用モックモード
+    state.dashboard.rangeTransactions = getMockRangeTransactions(minStartDate, todayStr);
+    renderDashboard();
+    return;
+  }
+  
+  showLoader(true);
+  try {
+    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${minStartDate}&endDate=${todayStr}`);
+    const data = await res.json();
+    
+    if (data.status === 'success') {
+      state.dashboard.rangeTransactions = data.transactions;
+      renderDashboard();
+    } else {
+      throw new Error(data.message);
+    }
+  } catch (err) {
+    console.error('Failed to load dashboard data:', err);
+    showToast('ダッシュボードデータの読み込みに失敗しました。ローカルデータで代用します。', 'warning');
+    // エラー時はローカルの当日分だけで代用
+    state.dashboard.rangeTransactions = state.transactions.map(tx => {
+      // transactions はカートに入っていた形式なので、フラットな明細レコードに変換
+      return tx.items.map(item => ({
+        transactionId: tx.transactionId,
+        timestamp: tx.timestamp,
+        date: tx.timestamp.split(' ')[0],
+        itemId: item.id,
+        itemName: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity,
+        status: tx.status || '有効'
+      }));
+    }).flat();
+    renderDashboard();
+  } finally {
+    showLoader(false);
+  }
+}
+
+function renderDashboard() {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  
+  // 今週（直近7日前〜本日）の範囲
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6);
+  const startOfWeekStr = sevenDaysAgo.toISOString().split('T')[0];
+  
+  // 今月（当月1日〜本日）の範囲
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfMonthStr = firstDayOfMonth.toISOString().split('T')[0];
+
+  // 1. KPIの計算
+  let todaySales = 0, todayCount = 0;
+  let weeklySales = 0, weeklyCount = 0;
+  let monthlySales = 0, monthlyCount = 0;
+  
+  const txCounted = { today: new Set(), week: new Set(), month: new Set() };
+  
+  state.dashboard.rangeTransactions.forEach(tx => {
+    if (tx.status !== '有効') return;
+    
+    // 本日
+    if (tx.date === todayStr) {
+      todaySales += tx.subtotal;
+      txCounted.today.add(tx.transactionId);
+    }
+    // 今週
+    if (tx.date >= startOfWeekStr && tx.date <= todayStr) {
+      weeklySales += tx.subtotal;
+      txCounted.week.add(tx.transactionId);
+    }
+    // 今月
+    if (tx.date >= startOfMonthStr && tx.date <= todayStr) {
+      monthlySales += tx.subtotal;
+      txCounted.month.add(tx.transactionId);
+    }
+  });
+  
+  document.getElementById('kpi-today-sales').textContent = `¥${todaySales.toLocaleString()}`;
+  document.getElementById('kpi-today-count').textContent = `${txCounted.today.size} 件の取引`;
+  
+  document.getElementById('kpi-weekly-sales').textContent = `¥${weeklySales.toLocaleString()}`;
+  document.getElementById('kpi-weekly-count').textContent = `${txCounted.week.size} 件の取引`;
+  
+  document.getElementById('kpi-monthly-sales').textContent = `¥${monthlySales.toLocaleString()}`;
+  document.getElementById('kpi-monthly-count').textContent = `${txCounted.month.size} 件の取引`;
+
+  // 2. 在庫不足アラートの描画
+  const alertsList = document.getElementById('dashboard-stock-alerts');
+  const alertItems = state.items.filter(item => item.display && item.stock <= 10);
+  
+  if (alertItems.length === 0) {
+    alertsList.innerHTML = '<li class="alert-empty-msg">在庫不足の授与品はありません。</li>';
+  } else {
+    alertsList.innerHTML = alertItems.map(item => `
+      <li class="alert-item ${item.stock === 0 ? 'out-of-stock' : ''}">
+        <div class="alert-item-info">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--color-vermilion);"></i>
+          <span>${item.name} <small style="color:var(--color-text-muted);">(${item.id})</small></span>
+        </div>
+        <span class="alert-item-stock">${item.stock === 0 ? '在庫切れ' : `残り ${item.stock} 体`}</span>
+      </li>
+    `).join('');
+  }
+
+  // 3. 直近の取引履歴 (本日) の描画
+  const timeline = document.getElementById('dashboard-timeline');
+  const todayTxs = state.dashboard.rangeTransactions.filter(tx => tx.date === todayStr && tx.status === '有効');
+  
+  if (todayTxs.length === 0) {
+    timeline.innerHTML = '<li class="timeline-empty-msg">本日の取引はまだありません。</li>';
+  } else {
+    // 取引ID単位でまとめて、最新5件を表示
+    const groupedTxs = {};
+    todayTxs.forEach(tx => {
+      if (!groupedTxs[tx.transactionId]) {
+        groupedTxs[tx.transactionId] = {
+          time: tx.timestamp.split(' ')[1].substring(0, 5),
+          items: [],
+          total: 0
+        };
+      }
+      groupedTxs[tx.transactionId].items.push(`${tx.itemName}×${tx.quantity}`);
+      groupedTxs[tx.transactionId].total += tx.subtotal;
+    });
+    
+    const sortedTimeline = Object.values(groupedTxs).reverse().slice(0, 5);
+    timeline.innerHTML = sortedTimeline.map(tx => `
+      <li class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div>
+            <span class="timeline-time">${tx.time}</span>
+            <span class="timeline-item-name">${tx.items.join(', ')}</span>
+          </div>
+          <span class="timeline-item-price">¥${tx.total.toLocaleString()}</span>
+        </div>
+      </li>
+    `).join('');
+  }
+
+  // 4. グラフの描画
+  renderDashboardCharts();
+}
+
+function renderDashboardCharts() {
+  const now = new Date();
+  const range = state.dashboard.activeRange; // 'week' | 'month'
+  
+  // チャート描画先のCanvas
+  const trendCtx = document.getElementById('sales-trend-chart').getContext('2d');
+  const categoryCtx = document.getElementById('sales-category-chart').getContext('2d');
+  
+  // 二重描画バグ防止のため既存チャートがあれば破棄
+  if (state.dashboard.trendChart) state.dashboard.trendChart.destroy();
+  if (state.dashboard.categoryChart) state.dashboard.categoryChart.destroy();
+
+  // 期間に合わせた売上データの抽出
+  let filteredTxs = [];
+  let labels = [];
+  let salesData = [];
+  
+  if (range === 'week') {
+    // 直近7日間の日別
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+      labels.push(label);
+      
+      const daySales = state.dashboard.rangeTransactions
+        .filter(tx => tx.date === dateStr && tx.status === '有効')
+        .reduce((sum, tx) => sum + tx.subtotal, 0);
+      salesData.push(daySales);
+    }
+    filteredTxs = state.dashboard.rangeTransactions.filter(tx => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 6);
+      return tx.date >= sevenDaysAgo.toISOString().split('T')[0] && tx.status === 'true';
+    });
+  } else {
+    // 今月（週別推移：第1週〜第5週）
+    const tempLabels = ['第1週 (1~7日)', '第2週 (8~14日)', '第3週 (15~21日)', '第4週 (22~28日)', '第5週 (29日~)'];
+    const tempSales = [0, 0, 0, 0, 0];
+    
+    state.dashboard.rangeTransactions.forEach(tx => {
+      if (tx.status !== '有効') return;
+      const txDate = new Date(tx.date.replace(/-/g, "/"));
+      if (txDate.getFullYear() === now.getFullYear() && txDate.getMonth() === now.getMonth()) {
+        const day = txDate.getDate();
+        if (day <= 7) tempSales[0] += tx.subtotal;
+        else if (day <= 14) tempSales[1] += tx.subtotal;
+        else if (day <= 21) tempSales[2] += tx.subtotal;
+        else if (day <= 28) tempSales[3] += tx.subtotal;
+        else tempSales[4] += tx.subtotal;
+      }
+    });
+    labels = tempLabels;
+    salesData = tempSales;
+  }
+
+  // 1. 売上推移グラフ (縦棒)
+  state.dashboard.trendChart = new Chart(trendCtx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '売上金額',
+        data: salesData,
+        backgroundColor: '#3f5145', // 深緑（神社の木々）
+        borderColor: '#c4a264', // 金茶
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (val) => `¥${val.toLocaleString()}`
+          }
+        }
+      }
+    }
+  });
+
+  // 2. カテゴリ別売上比率の集計 (本日または期間中)
+  const categorySales = { ofuda: 0, omamori: 0, goshuin: 0, engimono: 0, other: 0 };
+  const targetTxs = range === 'week' ? 
+    state.dashboard.rangeTransactions.filter(tx => {
+      const d = new Date();
+      d.setDate(now.getDate() - 6);
+      return tx.date >= d.toISOString().split('T')[0] && tx.status === '有効';
+    }) :
+    state.dashboard.rangeTransactions.filter(tx => {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      return tx.date >= firstDay.toISOString().split('T')[0] && tx.status === '有効';
+    });
+
+  targetTxs.forEach(tx => {
+    const item = state.items.find(i => i.id === tx.itemId);
+    const cat = item ? item.category : 'other';
+    if (categorySales[cat] !== undefined) {
+      categorySales[cat] += tx.subtotal;
+    } else {
+      categorySales.other += tx.subtotal;
+    }
+  });
+
+  const categoryLabels = ['お札', 'お守り', '御朱印', '縁起物', 'その他'];
+  const categoryValues = [categorySales.ofuda, categorySales.omamori, categorySales.goshuin, categorySales.engimono, categorySales.other];
+  const categoryColors = ['#3f5145', '#d94b34', '#c4a264', '#e8cf97', '#7a7a7a'];
+
+  state.dashboard.categoryChart = new Chart(categoryCtx, {
+    type: 'doughnut',
+    data: {
+      labels: categoryLabels,
+      datasets: [{
+        data: categoryValues,
+        backgroundColor: categoryColors,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      cutout: '65%'
+    }
+  });
+
+  // 凡例の描画
+  const legendList = document.getElementById('pie-legend-list');
+  const totalSales = categoryValues.reduce((a, b) => a + b, 0);
+  
+  legendList.innerHTML = categoryLabels.map((lbl, idx) => {
+    const val = categoryValues[idx];
+    const pct = totalSales > 0 ? Math.round((val / totalSales) * 100) : 0;
+    return `
+      <div class="legend-item">
+        <div class="legend-color" style="background-color:${categoryColors[idx]};"></div>
+        <span>${lbl}: ${pct}% (¥${val.toLocaleString()})</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// 動作確認用モックダミー売上データを生成する関数
+function getMockRangeTransactions(startDate, endDate) {
+  const list = [];
+  const categories = ['ofuda', 'omamori', 'goshuin', 'engimono', 'other'];
+  const names = {
+    'ofuda': ['家内安全御札', '商売繁盛御札'],
+    'omamori': ['交通安全お守り', '厄除けお守り'],
+    'goshuin': ['授与用通常御朱印', '限定金字御朱印'],
+    'engimono': ['吉祥干支置物', '破魔矢'],
+    'other': ['御朱印帳 (和柄)', '祈願絵馬']
+  };
+  const prices = {
+    '家内安全御札': 1500, '商売繁盛御札': 1500,
+    '交通安全お守り': 800, '厄除けお守り': 800,
+    '授与用通常御朱印': 500, '限定金字御朱印': 1000,
+    '吉祥干支置物': 1200, '破魔矢': 1500,
+    '御朱印帳 (和柄)': 2000, '祈願絵馬': 700
+  };
+  
+  let current = new Date(startDate.replace(/-/g, "/"));
+  const end = new Date(endDate.replace(/-/g, "/"));
+  
+  while (current <= end) {
+    const dateStr = current.toISOString().split('T')[0];
+    const count = Math.floor(Math.random() * 4) + 2; // 1日あたり2〜5件
+    for (let i = 0; i < count; i++) {
+      const cat = categories[Math.floor(Math.random() * categories.length)];
+      const name = names[cat][Math.floor(Math.random() * names[cat].length)];
+      const price = prices[name];
+      const qty = Math.floor(Math.random() * 2) + 1;
+      
+      list.push({
+        transactionId: `TX-MOCK-${current.getTime()}-${i}`,
+        timestamp: `${dateStr} ${String(9 + Math.floor(Math.random() * 8)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:00`,
+        date: dateStr,
+        itemId: `M-0${Math.floor(Math.random() * 9) + 1}`,
+        itemName: name,
+        quantity: qty,
+        price: price,
+        subtotal: price * qty,
+        status: '有効'
+      });
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return list;
+}
+
