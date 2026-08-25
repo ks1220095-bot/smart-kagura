@@ -1451,7 +1451,7 @@ export const StaffPortal: React.FC = () => {
                     </div>
                     {manualCarPending ? (
                       <div style={{ padding: '0.5rem', backgroundColor: '#fff', border: '1px dashed #d3381c', borderRadius: '2px', fontSize: '0.8rem', color: '#666' }}>
-                        ※お車情報は空欄で登録されます。読み札には当日手書き記入用の枠が出力されます。
+                        ※お車情報は空欄で登録されます（参拝当日に直接ご確認いただけます）。
                       </div>
                     ) : (
                       <div className="grid-3">

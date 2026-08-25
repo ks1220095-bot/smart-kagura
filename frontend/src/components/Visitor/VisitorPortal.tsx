@@ -2628,7 +2628,7 @@ export const VisitorPortal: React.FC = () => {
                     <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1.5px dashed #d3381c', borderRadius: '4px', fontSize: '0.88rem', color: '#444', lineHeight: 1.5 }}>
                       💡 <strong>【お車情報未定のご予約】</strong><br />
                       メーカー名・車種名・ナンバーは空欄のままでご予約を完了いただけます。<br />
-                      読み札には手書き用の記入枠が出力され、参拝当日に社務所受付にて直接お伺い・確認させていただきます。
+                      参拝当日に社務所受付にて直接お伺い・確認させていただきます。
                     </div>
                   ) : (
                     <>
