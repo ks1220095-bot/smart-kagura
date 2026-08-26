@@ -556,6 +556,7 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
   const btnWeek = document.getElementById('btn-chart-week');
   const btnMonth = document.getElementById('btn-chart-month');
   const btnYear = document.getElementById('btn-chart-year');
+  const btnAll = document.getElementById('btn-chart-all');
   const btnCustom = document.getElementById('btn-chart-custom');
   const customInputs = document.getElementById('custom-range-inputs');
   const btnApplyCustom = document.getElementById('btn-apply-custom-range');
@@ -564,7 +565,7 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
   const inputEnd = document.getElementById('input-custom-end');
   
   function setRangeActiveButton(activeBtn) {
-    [btnWeek, btnMonth, btnYear, btnCustom].forEach(btn => {
+    [btnWeek, btnMonth, btnYear, btnAll, btnCustom].forEach(btn => {
       if (btn) btn.classList.remove('active');
     });
     if (activeBtn) activeBtn.classList.add('active');
@@ -575,7 +576,7 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
     }
   }
 
-  if (btnWeek && btnMonth && btnYear && btnCustom) {
+  if (btnWeek && btnMonth && btnYear && btnAll && btnCustom) {
     btnWeek.addEventListener('click', () => {
       setRangeActiveButton(btnWeek);
       state.dashboard.activeRange = 'week';
@@ -590,6 +591,11 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       setRangeActiveButton(btnYear);
       state.dashboard.activeRange = 'year';
       loadDashboardData(); // 年間のデータ範囲で読み込み直す
+    });
+    btnAll.addEventListener('click', () => {
+      setRangeActiveButton(btnAll);
+      state.dashboard.activeRange = 'all';
+      loadDashboardData(); // 全期間のデータを読み込む
     });
     btnCustom.addEventListener('click', () => {
       setRangeActiveButton(btnCustom);
@@ -3154,6 +3160,8 @@ async function loadDashboardData() {
     startDate = startOfMonthStr;
   } else if (range === 'year') {
     startDate = `${now.getFullYear()}-01-01`;
+  } else if (range === 'all') {
+    startDate = '2025-01-01'; // システム稼働初期の十分に古い日付を設定
   } else if (range === 'custom') {
     startDate = state.dashboard.customStart || startOfWeekStr;
     endDate = state.dashboard.customEnd || todayStr;
@@ -3430,6 +3438,37 @@ function renderDashboardCharts() {
         salesData = labels.map(lbl => monthSales[lbl]);
       }
     }
+  } else if (range === 'all') {
+    // 全期間（すべての年月の月別集計）
+    if (state.dashboard.rangeTransactions.length === 0) {
+      labels = ['データ無し'];
+      salesData = [0];
+    } else {
+      const dates = state.dashboard.rangeTransactions.map(tx => new Date(tx.date.replace(/-/g, "/")));
+      const start = new Date(Math.min(...dates));
+      const end = new Date(Math.max(...dates));
+      
+      let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+      
+      const monthSales = {};
+      while (cur <= endMonth) {
+        const yyyymmLabel = `${cur.getFullYear()}/${String(cur.getMonth() + 1).padStart(2, '0')}`;
+        labels.push(yyyymmLabel);
+        monthSales[yyyymmLabel] = 0;
+        cur.setMonth(cur.getMonth() + 1);
+      }
+      
+      state.dashboard.rangeTransactions.forEach(tx => {
+        if (tx.status !== '有効' && tx.status !== 'true') return;
+        const txDate = new Date(tx.date.replace(/-/g, "/"));
+        const yyyymm = `${txDate.getFullYear()}/${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+        if (monthSales[yyyymm] !== undefined) {
+          monthSales[yyyymm] += tx.subtotal;
+        }
+      });
+      salesData = labels.map(lbl => monthSales[lbl]);
+    }
   }
 
   // 1. 授与料推移グラフ (縦棒)
@@ -3480,6 +3519,8 @@ function renderDashboardCharts() {
       const startStr = `${now.getFullYear()}-01-01`;
       const endStr = `${now.getFullYear()}-12-31`;
       return tx.date >= startStr && tx.date <= endStr;
+    } else if (range === 'all') {
+      return true; // 全期間はすべての有効取引を対象
     } else if (range === 'custom') {
       return tx.date >= state.dashboard.customStart && tx.date <= state.dashboard.customEnd;
     }
@@ -3540,6 +3581,7 @@ function renderDashboardCharts() {
   if (range === 'week') subtitleText = '今週の授与品別統計（多い順）';
   else if (range === 'month') subtitleText = '今月の授与品別統計（多い順）';
   else if (range === 'year') subtitleText = '今年の授与品別統計（多い順）';
+  else if (range === 'all') subtitleText = '全期間の授与品別統計（多い順）';
   else if (range === 'custom') subtitleText = `指定期間 (${state.dashboard.customStart} 〜 ${state.dashboard.customEnd}) の授与品別統計（多い順）`;
   
   const subtitleEl = document.getElementById('dashboard-stats-subtitle');
