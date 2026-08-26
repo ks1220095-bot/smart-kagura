@@ -3284,13 +3284,13 @@ function renderDashboardCharts() {
     salesData = tempSales;
   }
 
-  // 1. 売上推移グラフ (縦棒)
+  // 1. 授与料推移グラフ (縦棒)
   state.dashboard.trendChart = new Chart(trendCtx, {
     type: 'bar',
     data: {
       labels: labels,
       datasets: [{
-        label: '売上金額',
+        label: '初穂料合計（授与料）',
         data: salesData,
         backgroundColor: '#3f5145', // 深緑（神社の木々）
         borderColor: '#c4a264', // 金茶
@@ -3315,7 +3315,7 @@ function renderDashboardCharts() {
     }
   });
 
-  // 2. カテゴリ別売上比率の集計 (本日または期間中)
+  // 2. カテゴリ別授与料比率の集計 (本日または期間中)
   const categorySales = { ofuda: 0, omamori: 0, goshuin: 0, engimono: 0, other: 0 };
   const targetTxs = range === 'week' ? 
     state.dashboard.rangeTransactions.filter(tx => {
@@ -3376,6 +3376,71 @@ function renderDashboardCharts() {
       </div>
     `;
   }).join('');
+
+  // 3. 🎁 授与品別統計の集計と出力
+  const subtitleText = range === 'week' ? '今週の授与品別統計（多い順）' : '今月の授与品別統計（多い順）';
+  const subtitleEl = document.getElementById('dashboard-stats-subtitle');
+  if (subtitleEl) {
+    subtitleEl.textContent = subtitleText;
+  }
+
+  const itemStats = {};
+  targetTxs.forEach(tx => {
+    if (!itemStats[tx.itemId]) {
+      const item = state.items.find(i => i.id === tx.itemId);
+      const categoryNameMap = {
+        'ofuda': 'お札',
+        'omamori': 'お守り',
+        'goshuin': '御朱印',
+        'engimono': '縁起物',
+        'other': 'その他'
+      };
+      const rawCat = item ? item.category : 'other';
+      const categoryName = categoryNameMap[rawCat] || 'その他';
+      
+      itemStats[tx.itemId] = {
+        name: tx.itemName,
+        category: categoryName,
+        quantity: 0,
+        total: 0
+      };
+    }
+    itemStats[tx.itemId].quantity += tx.quantity;
+    itemStats[tx.itemId].total += tx.subtotal;
+  });
+
+  const sortedStats = Object.values(itemStats).sort((a, b) => {
+    if (b.quantity !== a.quantity) {
+      return b.quantity - a.quantity;
+    }
+    return b.total - a.total;
+  });
+
+  const statsTableBody = document.getElementById('dashboard-item-stats');
+  if (statsTableBody) {
+    if (sortedStats.length === 0) {
+      statsTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-text-muted);">この期間の授与履歴はありません。</td></tr>`;
+    } else {
+      statsTableBody.innerHTML = sortedStats.map(stat => {
+        let badgeClass = 'badge-other';
+        if (stat.category === 'お札') badgeClass = 'category-badge badge-ofuda';
+        else if (stat.category === 'お守り') badgeClass = 'category-badge badge-omamori';
+        else if (stat.category === '御朱印') badgeClass = 'category-badge badge-goshuin';
+        else if (stat.category === '縁起物') badgeClass = 'category-badge badge-engimono';
+        
+        return `
+          <tr style="border-bottom: 1px solid var(--color-border);">
+            <td style="padding: 0.75rem; font-weight: 500; color: var(--color-text);">${stat.name}</td>
+            <td style="padding: 0.75rem; text-align: center;">
+              <span class="${badgeClass}" style="font-size:0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight:700;">${stat.category}</span>
+            </td>
+            <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: var(--color-text);">${stat.quantity.toLocaleString()} 体</td>
+            <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: var(--color-vermilion);">¥${stat.total.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
 }
 
 // 動作確認用モックダミー売上データを生成する関数
