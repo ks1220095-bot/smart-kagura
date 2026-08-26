@@ -46,7 +46,10 @@ const state = {
     rangeTransactions: [],
     trendChart: null,
     categoryChart: null,
-    activeRange: 'week' // 'week' | 'month'
+    activeRange: 'week', // 'week' | 'month' | 'year' | 'custom'
+    alertThreshold: 10,
+    customStart: '',
+    customEnd: ''
   },
   currentTab: 'dashboard', // 初期タブをダッシュボードに変更
   selectedCategory: 'all',
@@ -549,21 +552,90 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
     }
   });
 
-  // ダッシュボード・グラフ期間切り替えイベント
+  // ダッシュボード・コントロール関連のイベント設定
   const btnWeek = document.getElementById('btn-chart-week');
   const btnMonth = document.getElementById('btn-chart-month');
-  if (btnWeek && btnMonth) {
+  const btnYear = document.getElementById('btn-chart-year');
+  const btnCustom = document.getElementById('btn-chart-custom');
+  const customInputs = document.getElementById('custom-range-inputs');
+  const btnApplyCustom = document.getElementById('btn-apply-custom-range');
+  
+  const inputStart = document.getElementById('input-custom-start');
+  const inputEnd = document.getElementById('input-custom-end');
+  
+  function setRangeActiveButton(activeBtn) {
+    [btnWeek, btnMonth, btnYear, btnCustom].forEach(btn => {
+      if (btn) btn.classList.remove('active');
+    });
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    // 期間指定カレンダーの表示制御
+    if (customInputs) {
+      customInputs.style.display = (activeBtn === btnCustom) ? 'flex' : 'none';
+    }
+  }
+
+  if (btnWeek && btnMonth && btnYear && btnCustom) {
     btnWeek.addEventListener('click', () => {
-      btnWeek.classList.add('active');
-      btnMonth.classList.remove('active');
+      setRangeActiveButton(btnWeek);
       state.dashboard.activeRange = 'week';
-      renderDashboardCharts();
+      loadDashboardData(); // 週間のデータ範囲で読み込み直す
     });
     btnMonth.addEventListener('click', () => {
-      btnMonth.classList.add('active');
-      btnWeek.classList.remove('active');
+      setRangeActiveButton(btnMonth);
       state.dashboard.activeRange = 'month';
-      renderDashboardCharts();
+      loadDashboardData(); // 月間のデータ範囲で読み込み直す
+    });
+    btnYear.addEventListener('click', () => {
+      setRangeActiveButton(btnYear);
+      state.dashboard.activeRange = 'year';
+      loadDashboardData(); // 年間のデータ範囲で読み込み直す
+    });
+    btnCustom.addEventListener('click', () => {
+      setRangeActiveButton(btnCustom);
+      state.dashboard.activeRange = 'custom';
+      
+      // カレンダーの初期値（今日〜30日前）をセット
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      
+      if (inputStart && !inputStart.value) {
+        inputStart.value = thirtyDaysAgo.toISOString().split('T')[0];
+      }
+      if (inputEnd && !inputEnd.value) {
+        inputEnd.value = today.toISOString().split('T')[0];
+      }
+      
+      state.dashboard.customStart = inputStart.value;
+      state.dashboard.customEnd = inputEnd.value;
+      loadDashboardData();
+    });
+
+    if (btnApplyCustom && inputStart && inputEnd) {
+      btnApplyCustom.addEventListener('click', () => {
+        if (!inputStart.value || !inputEnd.value) {
+          showToast('開始日と終了日を両方指定してください。', 'error');
+          return;
+        }
+        if (inputStart.value > inputEnd.value) {
+          showToast('開始日は終了日より前の日付にしてください。', 'error');
+          return;
+        }
+        state.dashboard.customStart = inputStart.value;
+        state.dashboard.customEnd = inputEnd.value;
+        loadDashboardData();
+      });
+    }
+  }
+
+  // 在庫しきい値の動的変更イベント
+  const inputThreshold = document.getElementById('input-alert-threshold');
+  if (inputThreshold) {
+    inputThreshold.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      state.dashboard.alertThreshold = isNaN(val) ? 0 : Math.max(0, val);
+      renderDashboard(); // ダッシュボードを再描画して在庫警告リストを動的に更新
     });
   }
 }
@@ -3059,11 +3131,11 @@ function setupOfflineMonitoring() {
 async function loadDashboardData() {
   const now = new Date();
   
-  // 今月1日（今月売上用）
+  // 今月1日
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfMonthStr = firstDayOfMonth.toISOString().split('T')[0];
   
-  // 直近7日前（週売上用・週グラフ用）
+  // 直近7日前
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(now.getDate() - 6);
   const startOfWeekStr = sevenDaysAgo.toISOString().split('T')[0];
@@ -3071,19 +3143,32 @@ async function loadDashboardData() {
   // 本日
   const todayStr = now.toISOString().split('T')[0];
   
-  // 一番過去の日付をベースに一発で期間内の全取引データを取得する
-  const minStartDate = startOfWeekStr < startOfMonthStr ? startOfWeekStr : startOfMonthStr;
+  // 選択された範囲に応じた開始日・終了日を設定
+  const range = state.dashboard.activeRange;
+  let startDate = '';
+  let endDate = todayStr;
+  
+  if (range === 'week') {
+    startDate = startOfWeekStr;
+  } else if (range === 'month') {
+    startDate = startOfMonthStr;
+  } else if (range === 'year') {
+    startDate = `${now.getFullYear()}-01-01`;
+  } else if (range === 'custom') {
+    startDate = state.dashboard.customStart || startOfWeekStr;
+    endDate = state.dashboard.customEnd || todayStr;
+  }
   
   if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
     // デモ用モックモード
-    state.dashboard.rangeTransactions = getMockRangeTransactions(minStartDate, todayStr);
+    state.dashboard.rangeTransactions = getMockRangeTransactions(startDate, endDate);
     renderDashboard();
     return;
   }
   
   showLoader(true);
   try {
-    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${minStartDate}&endDate=${todayStr}`);
+    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${startDate}&endDate=${endDate}`);
     const data = await res.json();
     
     if (data.status === 'success') {
@@ -3097,7 +3182,6 @@ async function loadDashboardData() {
     showToast('ダッシュボードデータの読み込みに失敗しました。ローカルデータで代用します。', 'warning');
     // エラー時はローカルの当日分だけで代用
     state.dashboard.rangeTransactions = state.transactions.map(tx => {
-      // transactions はカートに入っていた形式なので、フラットな明細レコードに変換
       return tx.items.map(item => ({
         transactionId: tx.transactionId,
         timestamp: tx.timestamp,
@@ -3166,8 +3250,13 @@ function renderDashboard() {
   document.getElementById('kpi-monthly-count').textContent = `${txCounted.month.size} 件の取引`;
 
   // 2. 在庫不足アラートの描画
+  const inputThreshold = document.getElementById('input-alert-threshold');
+  if (inputThreshold && inputThreshold.value != state.dashboard.alertThreshold) {
+    inputThreshold.value = state.dashboard.alertThreshold;
+  }
+
   const alertsList = document.getElementById('dashboard-stock-alerts');
-  const alertItems = state.items.filter(item => item.display && item.stock <= 10);
+  const alertItems = state.items.filter(item => item.display && item.stock <= state.dashboard.alertThreshold);
   
   if (alertItems.length === 0) {
     alertsList.innerHTML = '<li class="alert-empty-msg">在庫不足の授与品はありません。</li>';
@@ -3254,22 +3343,17 @@ function renderDashboardCharts() {
       labels.push(label);
       
       const daySales = state.dashboard.rangeTransactions
-        .filter(tx => tx.date === dateStr && tx.status === '有効')
+        .filter(tx => tx.date === dateStr && (tx.status === '有効' || tx.status === 'true'))
         .reduce((sum, tx) => sum + tx.subtotal, 0);
       salesData.push(daySales);
     }
-    filteredTxs = state.dashboard.rangeTransactions.filter(tx => {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(now.getDate() - 6);
-      return tx.date >= sevenDaysAgo.toISOString().split('T')[0] && tx.status === 'true';
-    });
-  } else {
+  } else if (range === 'month') {
     // 今月（週別推移：第1週〜第5週）
     const tempLabels = ['第1週 (1~7日)', '第2週 (8~14日)', '第3週 (15~21日)', '第4週 (22~28日)', '第5週 (29日~)'];
     const tempSales = [0, 0, 0, 0, 0];
     
     state.dashboard.rangeTransactions.forEach(tx => {
-      if (tx.status !== '有効') return;
+      if (tx.status !== '有効' && tx.status !== 'true') return;
       const txDate = new Date(tx.date.replace(/-/g, "/"));
       if (txDate.getFullYear() === now.getFullYear() && txDate.getMonth() === now.getMonth()) {
         const day = txDate.getDate();
@@ -3282,6 +3366,70 @@ function renderDashboardCharts() {
     });
     labels = tempLabels;
     salesData = tempSales;
+  } else if (range === 'year') {
+    // 年間（今年1月〜12月の月別）
+    labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const tempSales = Array(12).fill(0);
+    
+    state.dashboard.rangeTransactions.forEach(tx => {
+      if (tx.status !== '有効' && tx.status !== 'true') return;
+      const txDate = new Date(tx.date.replace(/-/g, "/"));
+      if (txDate.getFullYear() === now.getFullYear()) {
+        const m = txDate.getMonth(); // 0〜11
+        tempSales[m] += tx.subtotal;
+      }
+    });
+    salesData = tempSales;
+  } else if (range === 'custom') {
+    // 期間指定（31日以下なら日別、それ以上なら月別）
+    const start = new Date((state.dashboard.customStart || '').replace(/-/g, "/"));
+    const end = new Date((state.dashboard.customEnd || '').replace(/-/g, "/"));
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      labels = ['範囲無効'];
+      salesData = [0];
+    } else {
+      const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 31) {
+        // 日別
+        let cur = new Date(start);
+        while (cur <= end) {
+          const dateStr = cur.toISOString().split('T')[0];
+          const label = `${cur.getMonth() + 1}/${cur.getDate()}`;
+          labels.push(label);
+          
+          const daySales = state.dashboard.rangeTransactions
+            .filter(tx => tx.date === dateStr && (tx.status === '有効' || tx.status === 'true'))
+            .reduce((sum, tx) => sum + tx.subtotal, 0);
+          salesData.push(daySales);
+          
+          cur.setDate(cur.getDate() + 1);
+        }
+      } else {
+        // 月別
+        let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+        const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+        
+        const monthSales = {};
+        while (cur <= endMonth) {
+          const yyyymmLabel = `${cur.getFullYear()}/${String(cur.getMonth() + 1).padStart(2, '0')}`;
+          labels.push(yyyymmLabel);
+          monthSales[yyyymmLabel] = 0;
+          cur.setMonth(cur.getMonth() + 1);
+        }
+        
+        state.dashboard.rangeTransactions.forEach(tx => {
+          if (tx.status !== '有効' && tx.status !== 'true') return;
+          const txDate = new Date(tx.date.replace(/-/g, "/"));
+          const yyyymm = `${txDate.getFullYear()}/${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+          if (monthSales[yyyymm] !== undefined) {
+            monthSales[yyyymm] += tx.subtotal;
+          }
+        });
+        salesData = labels.map(lbl => monthSales[lbl]);
+      }
+    }
   }
 
   // 1. 授与料推移グラフ (縦棒)
@@ -3316,17 +3464,27 @@ function renderDashboardCharts() {
   });
 
   // 2. カテゴリ別授与料比率の集計 (本日または期間中)
+  const todayStr = now.toISOString().split('T')[0];
   const categorySales = { ofuda: 0, omamori: 0, goshuin: 0, engimono: 0, other: 0 };
-  const targetTxs = range === 'week' ? 
-    state.dashboard.rangeTransactions.filter(tx => {
+  const targetTxs = state.dashboard.rangeTransactions.filter(tx => {
+    if (tx.status !== '有効' && tx.status !== 'true') return false;
+    
+    if (range === 'week') {
       const d = new Date();
       d.setDate(now.getDate() - 6);
-      return tx.date >= d.toISOString().split('T')[0] && tx.status === '有効';
-    }) :
-    state.dashboard.rangeTransactions.filter(tx => {
+      return tx.date >= d.toISOString().split('T')[0] && tx.date <= todayStr;
+    } else if (range === 'month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      return tx.date >= firstDay.toISOString().split('T')[0] && tx.status === '有効';
-    });
+      return tx.date >= firstDay.toISOString().split('T')[0] && tx.date <= todayStr;
+    } else if (range === 'year') {
+      const startStr = `${now.getFullYear()}-01-01`;
+      const endStr = `${now.getFullYear()}-12-31`;
+      return tx.date >= startStr && tx.date <= endStr;
+    } else if (range === 'custom') {
+      return tx.date >= state.dashboard.customStart && tx.date <= state.dashboard.customEnd;
+    }
+    return false;
+  });
 
   targetTxs.forEach(tx => {
     const item = state.items.find(i => i.id === tx.itemId);
@@ -3378,7 +3536,12 @@ function renderDashboardCharts() {
   }).join('');
 
   // 3. 🎁 授与品別統計の集計と出力
-  const subtitleText = range === 'week' ? '今週の授与品別統計（多い順）' : '今月の授与品別統計（多い順）';
+  let subtitleText = '授与品別統計（多い順）';
+  if (range === 'week') subtitleText = '今週の授与品別統計（多い順）';
+  else if (range === 'month') subtitleText = '今月の授与品別統計（多い順）';
+  else if (range === 'year') subtitleText = '今年の授与品別統計（多い順）';
+  else if (range === 'custom') subtitleText = `指定期間 (${state.dashboard.customStart} 〜 ${state.dashboard.customEnd}) の授与品別統計（多い順）`;
+  
   const subtitleEl = document.getElementById('dashboard-stats-subtitle');
   if (subtitleEl) {
     subtitleEl.textContent = subtitleText;

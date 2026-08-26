@@ -92,11 +92,21 @@
         <!-- グラフ ＆ カテゴリ比率セクション -->
         <div class="dashboard-charts-row">
           <div class="dashboard-card chart-main-card">
-            <div class="card-header">
-              <h3 class="card-title"><i class="fa-solid fa-chart-column"></i> 授与料推移</h3>
-              <div class="chart-controls">
+            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+              <h3 class="card-title" style="margin-right: auto;"><i class="fa-solid fa-chart-column"></i> 授与料推移</h3>
+              <div class="chart-controls" style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                 <button class="btn-chart-range active" id="btn-chart-week">週間</button>
                 <button class="btn-chart-range" id="btn-chart-month">月間</button>
+                <button class="btn-chart-range" id="btn-chart-year">年間</button>
+                <button class="btn-chart-range" id="btn-chart-custom">期間指定</button>
+                
+                <!-- 期間指定用のカレンダー入力（初期は非表示） -->
+                <div id="custom-range-inputs" style="display: none; align-items: center; gap: 0.25rem; font-size: 0.8rem; margin-left: 0.5rem; background: rgba(0,0,0,0.03); padding: 0.15rem 0.4rem; border-radius: 4px;">
+                  <input type="date" id="input-custom-start" style="border: 1px solid var(--color-border); border-radius:3px; padding: 0.1rem 0.2rem; font-size: 0.8rem; background: white; color: var(--color-text);">
+                  <span>〜</span>
+                  <input type="date" id="input-custom-end" style="border: 1px solid var(--color-border); border-radius:3px; padding: 0.1rem 0.2rem; font-size: 0.8rem; background: white; color: var(--color-text);">
+                  <button id="btn-apply-custom-range" class="btn-primary" style="padding: 0.15rem 0.4rem; font-size: 0.75rem; border-radius:3px; height: auto; min-width: auto; line-height: 1;"><i class="fa-solid fa-play"></i> 適用</button>
+                </div>
               </div>
             </div>
             <div class="card-body">
@@ -124,8 +134,12 @@
         <!-- アラート ＆ 履歴セクション -->
         <div class="dashboard-details-row">
           <div class="dashboard-card alert-card">
-            <div class="card-header">
-              <h3 class="card-title alert-title"><i class="fa-solid fa-circle-exclamation"></i> 在庫不足アラート</h3>
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <h3 class="card-title alert-title" style="margin: 0;"><i class="fa-solid fa-circle-exclamation"></i> 在庫不足アラート</h3>
+              <div style="font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem; color: var(--color-text);">
+                <input type="number" id="input-alert-threshold" value="10" min="0" max="99" style="width: 42px; text-align: center; border: 1px solid var(--color-border); border-radius: 4px; padding: 0.15rem 0.2rem; font-size: 0.8rem; background: white; color: var(--color-text);">
+                <span>体以下</span>
+              </div>
             </div>
             <div class="card-body scrollable-body">
               <ul class="alert-list" id="dashboard-stock-alerts">
@@ -623,6 +637,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.0.7"></script>
+  <script src="app.js?v=2.0.8"></script>
 </body>
 </html>
