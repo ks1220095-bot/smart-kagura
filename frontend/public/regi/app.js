@@ -3194,8 +3194,12 @@ function renderDashboard() {
     const groupedTxs = {};
     todayTxs.forEach(tx => {
       if (!groupedTxs[tx.transactionId]) {
+        // ISOフォーマット "2026-08-26T06:02:23.000Z" とスペース区切り "2026-08-26 15:30:00" の双方に対応する安全な時刻抽出
+        const match = tx.timestamp ? tx.timestamp.match(/(\d{2}):(\d{2})/) : null;
+        const timeStr = match ? `${match[1]}:${match[2]}` : '00:00';
+        
         groupedTxs[tx.transactionId] = {
-          time: tx.timestamp.split(' ')[1].substring(0, 5),
+          time: timeStr,
           items: [],
           total: 0
         };
