@@ -8,6 +8,20 @@
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbylCO8dnFeWjCRIFaZ2XFyXj1uJvTu5ib0VUy9ditp_FC2nHEFnbywk4r0WY7J3bGT7/exec';
 
 // ==========================================
+// ユーティリティ
+// ==========================================
+// 日本時間（JST）基準で YYYY-MM-DD 形式の日付文字列を取得する
+function getJstDateString(dateObj = new Date()) {
+  const formatter = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(dateObj).replace(/\//g, '-');
+}
+
+// ==========================================
 // ローカルモックデータ (ふりがな初期設定あり)
 // ==========================================
 const MOCK_ITEMS = [
@@ -607,10 +621,10 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       thirtyDaysAgo.setDate(today.getDate() - 30);
       
       if (inputStart && !inputStart.value) {
-        inputStart.value = thirtyDaysAgo.toISOString().split('T')[0];
+        inputStart.value = getJstDateString(thirtyDaysAgo);
       }
       if (inputEnd && !inputEnd.value) {
-        inputEnd.value = today.toISOString().split('T')[0];
+        inputEnd.value = getJstDateString(today);
       }
       
       state.dashboard.customStart = inputStart.value;
@@ -3187,15 +3201,15 @@ async function loadDashboardData() {
   
   // 今月1日
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfMonthStr = firstDayOfMonth.toISOString().split('T')[0];
+  const startOfMonthStr = getJstDateString(firstDayOfMonth);
   
   // 直近7日前
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(now.getDate() - 6);
-  const startOfWeekStr = sevenDaysAgo.toISOString().split('T')[0];
+  const startOfWeekStr = getJstDateString(sevenDaysAgo);
   
   // 本日
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getJstDateString(now);
   
   // 選択された範囲に応じた開始日・終了日を設定
   const range = state.dashboard.activeRange;
@@ -3258,16 +3272,16 @@ async function loadDashboardData() {
 
 function renderDashboard() {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getJstDateString(now);
   
   // 今週（直近7日前〜本日）の範囲
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(now.getDate() - 6);
-  const startOfWeekStr = sevenDaysAgo.toISOString().split('T')[0];
+  const startOfWeekStr = getJstDateString(sevenDaysAgo);
   
   // 今月（当月1日〜本日）の範囲
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfMonthStr = firstDayOfMonth.toISOString().split('T')[0];
+  const startOfMonthStr = getJstDateString(firstDayOfMonth);
 
   // 1. KPIの計算
   let todaySales = 0, todayCount = 0;
@@ -3404,7 +3418,7 @@ function renderDashboardCharts() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(now.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getJstDateString(d);
       const label = `${d.getMonth() + 1}/${d.getDate()}`;
       labels.push(label);
       
@@ -3461,7 +3475,7 @@ function renderDashboardCharts() {
         // 日別
         let cur = new Date(start);
         while (cur <= end) {
-          const dateStr = cur.toISOString().split('T')[0];
+          const dateStr = getJstDateString(cur);
           const label = `${cur.getMonth() + 1}/${cur.getDate()}`;
           labels.push(label);
           
@@ -3561,7 +3575,7 @@ function renderDashboardCharts() {
   });
 
   // 2. カテゴリ別授与料比率の集計 (本日または期間中)
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getJstDateString(now);
   const categorySales = { ofuda: 0, omamori: 0, goshuin: 0, engimono: 0, other: 0 };
   const targetTxs = state.dashboard.rangeTransactions.filter(tx => {
     if (tx.status !== '有効' && tx.status !== 'true') return false;
@@ -3569,10 +3583,10 @@ function renderDashboardCharts() {
     if (range === 'week') {
       const d = new Date();
       d.setDate(now.getDate() - 6);
-      return tx.date >= d.toISOString().split('T')[0] && tx.date <= todayStr;
+      return tx.date >= getJstDateString(d) && tx.date <= todayStr;
     } else if (range === 'month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      return tx.date >= firstDay.toISOString().split('T')[0] && tx.date <= todayStr;
+      return tx.date >= getJstDateString(firstDay) && tx.date <= todayStr;
     } else if (range === 'year') {
       const startStr = `${now.getFullYear()}-01-01`;
       const endStr = `${now.getFullYear()}-12-31`;
@@ -3769,7 +3783,7 @@ function showDashboardDetail(type) {
   if (type.startsWith('kpi-')) {
     // KPIカード詳細
     let filtered = [];
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getJstDateString(now);
     
     if (type === 'kpi-today') {
       title = '本日（今日）の授与取引明細';
@@ -3778,12 +3792,12 @@ function showDashboardDetail(type) {
       title = '今週（直近7日間）の授与取引明細';
       const d = new Date();
       d.setDate(now.getDate() - 6);
-      const startStr = d.toISOString().split('T')[0];
+      const startStr = getJstDateString(d);
       filtered = state.dashboard.rangeTransactions.filter(tx => tx.date >= startStr && tx.date <= todayStr);
     } else if (type === 'kpi-month') {
       title = '今月の授与取引明細';
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startStr = firstDay.toISOString().split('T')[0];
+      const startStr = getJstDateString(firstDay);
       filtered = state.dashboard.rangeTransactions.filter(tx => tx.date >= startStr && tx.date <= todayStr);
     }
     
@@ -3877,17 +3891,17 @@ function showDashboardDetail(type) {
   } else if (type === 'category') {
     title = 'カテゴリ別・授与品ごとの内訳';
     const range = state.dashboard.activeRange;
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getJstDateString(now);
     
     const targetTxs = state.dashboard.rangeTransactions.filter(tx => {
       if (tx.status !== '有効' && tx.status !== 'true') return false;
       if (range === 'week') {
         const d = new Date();
         d.setDate(now.getDate() - 6);
-        return tx.date >= d.toISOString().split('T')[0] && tx.date <= todayStr;
+        return tx.date >= getJstDateString(d) && tx.date <= todayStr;
       } else if (range === 'month') {
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        return tx.date >= firstDay.toISOString().split('T')[0] && tx.date <= todayStr;
+        return tx.date >= getJstDateString(firstDay) && tx.date <= todayStr;
       } else if (range === 'year') {
         const startStr = `${now.getFullYear()}-01-01`;
         return tx.date >= startStr && tx.date <= `${now.getFullYear()}-12-31`;
@@ -3997,7 +4011,7 @@ function showDashboardDetail(type) {
     
   } else if (type === 'timeline') {
     title = '本日の取引明細一覧 (全件)';
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getJstDateString(now);
     const todayTxs = state.dashboard.rangeTransactions.filter(tx => tx.date === todayStr);
     
     const grouped = {};
