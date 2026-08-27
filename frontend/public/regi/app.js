@@ -3291,9 +3291,19 @@ function renderDashboard() {
     const groupedTxs = {};
     todayTxs.forEach(tx => {
       if (!groupedTxs[tx.transactionId]) {
-        // ISOフォーマット "2026-08-26T06:02:23.000Z" とスペース区切り "2026-08-26 15:30:00" の双方に対応する安全な時刻抽出
-        const match = tx.timestamp ? tx.timestamp.match(/(\d{2}):(\d{2})/) : null;
-        const timeStr = match ? `${match[1]}:${match[2]}` : '00:00';
+        // UTCのタイムスタンプを日本時間（ローカル時間）に変換して時・分を安全に抽出
+        let timeStr = '00:00';
+        if (tx.timestamp) {
+          const dateObj = new Date(tx.timestamp);
+          if (!isNaN(dateObj.getTime())) {
+            const hh = String(dateObj.getHours()).padStart(2, '0');
+            const mm = String(dateObj.getMinutes()).padStart(2, '0');
+            timeStr = `${hh}:${mm}`;
+          } else {
+            const match = tx.timestamp.match(/(\d{2}):(\d{2})/);
+            timeStr = match ? `${match[1]}:${match[2]}` : '00:00';
+          }
+        }
         
         groupedTxs[tx.transactionId] = {
           time: timeStr,
