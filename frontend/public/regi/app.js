@@ -644,6 +644,54 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       renderDashboard(); // ダッシュボードを再描画して在庫警告リストを動的に更新
     });
   }
+
+  // ダッシュボード詳細表示モーダルイベント
+  const modalDetail = document.getElementById('modal-dashboard-detail');
+  const btnCloseDetail = document.getElementById('btn-close-dashboard-detail');
+  const btnCloseDetailFooter = document.getElementById('btn-close-dashboard-detail-footer');
+
+  if (modalDetail && btnCloseDetail && btnCloseDetailFooter) {
+    const closeFunc = () => { modalDetail.style.display = 'none'; };
+    btnCloseDetail.addEventListener('click', closeFunc);
+    btnCloseDetailFooter.addEventListener('click', closeFunc);
+    modalDetail.addEventListener('click', (e) => {
+      if (e.target === modalDetail) closeFunc();
+    });
+  }
+
+  // 各カードへのクリックイベント紐付け
+  const kpiCards = document.querySelectorAll('.kpi-card');
+  if (kpiCards.length >= 3) {
+    kpiCards[0].addEventListener('click', () => showDashboardDetail('kpi-today'));
+    kpiCards[1].addEventListener('click', () => showDashboardDetail('kpi-week'));
+    kpiCards[2].addEventListener('click', () => showDashboardDetail('kpi-month'));
+  }
+
+  const trendCard = document.querySelector('.dashboard-card.chart-main-card');
+  if (trendCard) {
+    trendCard.addEventListener('click', (e) => {
+      if (e.target.closest('.chart-controls')) return;
+      showDashboardDetail('trend');
+    });
+  }
+
+  const pieCard = document.querySelector('.dashboard-card.chart-pie-card');
+  if (pieCard) {
+    pieCard.addEventListener('click', () => showDashboardDetail('category'));
+  }
+
+  const alertCard = document.querySelector('.dashboard-card.alert-card');
+  if (alertCard) {
+    alertCard.addEventListener('click', (e) => {
+      if (e.target.closest('#input-alert-threshold')) return;
+      showDashboardDetail('stock-alert');
+    });
+  }
+
+  const timelineCard = document.querySelector('.dashboard-card.timeline-card');
+  if (timelineCard) {
+    timelineCard.addEventListener('click', () => showDashboardDetail('timeline'));
+  }
 }
 
 function handleImageFile(file, previewImg, callback) {
@@ -3704,5 +3752,318 @@ function getMockRangeTransactions(startDate, endDate) {
     current.setDate(current.getDate() + 1);
   }
   return list;
+}
+
+// ダッシュボード各パーツのクリック時詳細ポップアップ表示関数
+function showDashboardDetail(type) {
+  const modal = document.getElementById('modal-dashboard-detail');
+  const titleEl = document.getElementById('dashboard-detail-title');
+  const contentEl = document.getElementById('dashboard-detail-content');
+  
+  if (!modal || !titleEl || !contentEl) return;
+  
+  let title = '詳細情報';
+  let html = '';
+  const now = new Date();
+  
+  if (type.startsWith('kpi-')) {
+    // KPIカード詳細
+    let filtered = [];
+    const todayStr = now.toISOString().split('T')[0];
+    
+    if (type === 'kpi-today') {
+      title = '本日（今日）の授与取引明細';
+      filtered = state.dashboard.rangeTransactions.filter(tx => tx.date === todayStr);
+    } else if (type === 'kpi-week') {
+      title = '今週（直近7日間）の授与取引明細';
+      const d = new Date();
+      d.setDate(now.getDate() - 6);
+      const startStr = d.toISOString().split('T')[0];
+      filtered = state.dashboard.rangeTransactions.filter(tx => tx.date >= startStr && tx.date <= todayStr);
+    } else if (type === 'kpi-month') {
+      title = '今月の授与取引明細';
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startStr = firstDay.toISOString().split('T')[0];
+      filtered = state.dashboard.rangeTransactions.filter(tx => tx.date >= startStr && tx.date <= todayStr);
+    }
+    
+    const activeTxs = filtered.filter(tx => tx.status === '有効' || tx.status === 'true');
+    const grouped = {};
+    
+    activeTxs.forEach(tx => {
+      if (!grouped[tx.transactionId]) {
+        let timeStr = tx.timestamp;
+        const dateObj = new Date(tx.timestamp);
+        if (!isNaN(dateObj.getTime())) {
+          timeStr = `${dateObj.getFullYear()}/${dateObj.getMonth()+1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+        grouped[tx.transactionId] = {
+          id: tx.transactionId,
+          time: timeStr,
+          items: [],
+          total: 0
+        };
+      }
+      grouped[tx.transactionId].items.push(`${tx.itemName} × ${tx.quantity}`);
+      grouped[tx.transactionId].total += tx.subtotal;
+    });
+    
+    const list = Object.values(grouped).sort((a,b) => b.id.localeCompare(a.id));
+    
+    if (list.length === 0) {
+      html = '<p style="text-align:center; padding:2rem; color:var(--color-text-muted);">期間中の取引データはありません。</p>';
+    } else {
+      html = `
+        <table class="detail-modal-table">
+          <thead>
+            <tr>
+              <th>取引日時</th>
+              <th>取引ID</th>
+              <th>授与内容</th>
+              <th style="text-align:right;">初穂料合計</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(tx => `
+              <tr>
+                <td>${tx.time}</td>
+                <td style="font-family:monospace; font-size:0.8rem;">${tx.id}</td>
+                <td>${tx.items.join('<br>')}</td>
+                <td style="text-align:right; font-weight:700; color:var(--color-green);">¥${tx.total.toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+    
+  } else if (type === 'trend') {
+    const range = state.dashboard.activeRange;
+    let rangeName = '週間';
+    if (range === 'month') rangeName = '月間';
+    else if (range === 'year') rangeName = '年間';
+    else if (range === 'all') rangeName = '全期間';
+    else if (range === 'custom') rangeName = '期間指定';
+    
+    title = `${rangeName}・授与料推移の明細`;
+    
+    const chart = state.dashboard.trendChart;
+    if (chart && chart.data && chart.data.labels) {
+      const labels = chart.data.labels;
+      const data = chart.data.datasets[0].data;
+      
+      html = `
+        <table class="detail-modal-table">
+          <thead>
+            <tr>
+              <th>期間・日付</th>
+              <th style="text-align:right;">合計初穂料 (授与料)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${labels.map((lbl, idx) => `
+              <tr>
+                <td style="font-weight:700; color:var(--color-text);">${lbl}</td>
+                <td style="text-align:right; font-weight:700; color:var(--color-vermilion);">¥${(data[idx] || 0).toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } else {
+      html = '<p>データがありません。</p>';
+    }
+    
+  } else if (type === 'category') {
+    title = 'カテゴリ別・授与品ごとの内訳';
+    const range = state.dashboard.activeRange;
+    const todayStr = now.toISOString().split('T')[0];
+    
+    const targetTxs = state.dashboard.rangeTransactions.filter(tx => {
+      if (tx.status !== '有効' && tx.status !== 'true') return false;
+      if (range === 'week') {
+        const d = new Date();
+        d.setDate(now.getDate() - 6);
+        return tx.date >= d.toISOString().split('T')[0] && tx.date <= todayStr;
+      } else if (range === 'month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        return tx.date >= firstDay.toISOString().split('T')[0] && tx.date <= todayStr;
+      } else if (range === 'year') {
+        const startStr = `${now.getFullYear()}-01-01`;
+        return tx.date >= startStr && tx.date <= `${now.getFullYear()}-12-31`;
+      } else if (range === 'all') {
+        return true;
+      } else if (range === 'custom') {
+        return tx.date >= state.dashboard.customStart && tx.date <= state.dashboard.customEnd;
+      }
+      return false;
+    });
+
+    const catDetails = {};
+    const catNameMap = { ofuda: 'お札', omamori: 'お守り', goshuin: '御朱印', engimono: '縁起物', other: 'その他' };
+    
+    targetTxs.forEach(tx => {
+      const item = state.items.find(i => i.id === tx.itemId);
+      const catKey = item ? item.category : 'other';
+      const catName = catNameMap[catKey] || 'その他';
+      
+      if (!catDetails[catName]) {
+        catDetails[catName] = { total: 0, items: {} };
+      }
+      
+      if (!catDetails[catName].items[tx.itemName]) {
+        catDetails[catName].items[tx.itemName] = { quantity: 0, total: 0 };
+      }
+      
+      catDetails[catName].items[tx.itemName].quantity += tx.quantity;
+      catDetails[catName].items[tx.itemName].total += tx.subtotal;
+      catDetails[catName].total += tx.subtotal;
+    });
+    
+    if (Object.keys(catDetails).length === 0) {
+      html = '<p style="text-align:center; padding:2rem; color:var(--color-text-muted);">期間中のカテゴリ集計データはありません。</p>';
+    } else {
+      html = Object.entries(catDetails).map(([catName, data]) => {
+        const itemsList = Object.entries(data.items).sort((a,b) => b[1].quantity - a[1].quantity);
+        return `
+          <div style="margin-bottom:1.5rem; border:1px solid var(--color-border); border-radius:8px; overflow:hidden;">
+            <div style="background-color:rgba(63, 81, 69, 0.05); padding:0.6rem 1rem; display:flex; justify-content:space-between; font-weight:700; border-bottom:1px solid var(--color-border);">
+              <span style="color:var(--color-green);"><i class="fa-solid fa-folder-open"></i> ${catName}</span>
+              <span style="color:var(--color-vermilion);">合計: ¥${data.total.toLocaleString()}</span>
+            </div>
+            <table class="detail-modal-table" style="margin:0; font-size:0.82rem;">
+              <thead>
+                <tr style="background:transparent;">
+                  <th style="border-bottom:1px solid var(--color-border); background:none; padding:0.5rem 1rem;">授与品名</th>
+                  <th style="border-bottom:1px solid var(--color-border); background:none; padding:0.5rem 1rem; text-align:right;">数量</th>
+                  <th style="border-bottom:1px solid var(--color-border); background:none; padding:0.5rem 1rem; text-align:right;">初穂料合計</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsList.map(([name, stats]) => `
+                  <tr>
+                    <td style="padding:0.5rem 1rem;">${name}</td>
+                    <td style="padding:0.5rem 1rem; text-align:right;">${stats.quantity} 体</td>
+                    <td style="padding:0.5rem 1rem; text-align:right; font-weight:700;">¥${stats.total.toLocaleString()}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }).join('');
+    }
+    
+  } else if (type === 'stock-alert') {
+    title = '全授与品 在庫状況一覧（在庫の少ない順）';
+    const sortedItems = [...state.items].filter(i => i.display).sort((a,b) => a.stock - b.stock);
+    
+    html = `
+      <table class="detail-modal-table">
+        <thead>
+          <tr>
+            <th>授与品名 (ID)</th>
+            <th style="text-align:center;">カテゴリ</th>
+            <th style="text-align:right;">初穂料</th>
+            <th style="text-align:right; width: 120px;">現在の在庫数</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sortedItems.map(item => {
+            const catNameMap = { ofuda: 'お札', omamori: 'お守り', goshuin: '御朱印', engimono: '縁起物', other: 'その他' };
+            const catName = catNameMap[item.category] || 'その他';
+            let badgeClass = 'badge-other';
+            if (catName === 'お札') badgeClass = 'category-badge badge-ofuda';
+            else if (catName === 'お守り') badgeClass = 'category-badge badge-omamori';
+            else if (catName === '御朱印') badgeClass = 'category-badge badge-goshuin';
+            else if (catName === '縁起物') badgeClass = 'category-badge badge-engimono';
+            
+            let stockStyle = 'font-weight:700; color:var(--color-green);';
+            if (item.stock === 0) stockStyle = 'font-weight:700; color:var(--color-vermilion); background-color:rgba(217,75,52,0.1); padding: 0.2rem 0.4rem; border-radius:4px;';
+            else if (item.stock <= state.dashboard.alertThreshold) stockStyle = 'font-weight:700; color:var(--color-vermilion);';
+            
+            return `
+              <tr>
+                <td><strong>${item.name}</strong> <small style="color:var(--color-text-muted);">(${item.id})</small></td>
+                <td style="text-align:center;"><span class="${badgeClass}" style="font-size:0.75rem; padding: 0.15rem 0.4rem; border-radius:4px; font-weight:700;">${catName}</span></td>
+                <td style="text-align:right;">¥${item.price.toLocaleString()}</td>
+                <td style="text-align:right;"><span style="${stockStyle}">${item.stock.toLocaleString()} 体</span></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+    
+  } else if (type === 'timeline') {
+    title = '本日の取引明細一覧 (全件)';
+    const todayStr = now.toISOString().split('T')[0];
+    const todayTxs = state.dashboard.rangeTransactions.filter(tx => tx.date === todayStr);
+    
+    const grouped = {};
+    todayTxs.forEach(tx => {
+      if (!grouped[tx.transactionId]) {
+        let timeStr = tx.timestamp;
+        const dateObj = new Date(tx.timestamp);
+        if (!isNaN(dateObj.getTime())) {
+          timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+        grouped[tx.transactionId] = {
+          id: tx.transactionId,
+          time: timeStr,
+          items: [],
+          total: 0,
+          status: tx.status || '有効'
+        };
+      }
+      grouped[tx.transactionId].items.push(`${tx.itemName} × ${tx.quantity}`);
+      if (tx.status === '有効' || tx.status === 'true') {
+        grouped[tx.transactionId].total += tx.subtotal;
+      }
+    });
+    
+    const list = Object.values(grouped).sort((a,b) => b.id.localeCompare(a.id));
+    
+    if (list.length === 0) {
+      html = '<p style="text-align:center; padding:2rem; color:var(--color-text-muted);">本日の取引履歴はまだありません。</p>';
+    } else {
+      html = `
+        <table class="detail-modal-table">
+          <thead>
+            <tr>
+              <th>時刻</th>
+              <th>取引ID</th>
+              <th>内訳</th>
+              <th style="text-align:right;">合計初穂料</th>
+              <th style="text-align:center;">状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(tx => {
+              const isCanceled = tx.status === '取消';
+              const rowStyle = isCanceled ? 'opacity: 0.6; text-decoration: line-through; background-color: rgba(0,0,0,0.02);' : '';
+              const statusBadge = isCanceled ? 
+                '<span style="background-color:rgba(217,75,52,0.1); color:var(--color-vermilion); font-size:0.75rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:700;">取消済</span>' : 
+                '<span style="background-color:rgba(63,81,69,0.1); color:var(--color-green); font-size:0.75rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:700;">有効</span>';
+                
+              return `
+                <tr style="${rowStyle}">
+                  <td style="font-weight:700;">${tx.time}</td>
+                  <td style="font-family:monospace; font-size:0.8rem;">${tx.id}</td>
+                  <td>${tx.items.join(', ')}</td>
+                  <td style="text-align:right; font-weight:700; color:${isCanceled ? 'var(--color-text-muted)' : 'var(--color-green)'};">¥${tx.total.toLocaleString()}</td>
+                  <td style="text-align:center;">${statusBadge}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+  }
+  
+  titleEl.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart" style="color:var(--color-green); margin-right:0.5rem;"></i> ${title}`;
+  contentEl.innerHTML = html;
+  modal.style.display = 'flex';
 }
 

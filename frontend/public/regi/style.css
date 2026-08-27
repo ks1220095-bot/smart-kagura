@@ -2743,3 +2743,56 @@ body.loading-state {
     gap: 1rem;
   }
 }
+
+/* ==========================================
+   ダッシュボード詳細表示ホバー ＆ インタラクティブUI
+   ========================================== */
+.kpi-card, 
+.dashboard-card.chart-main-card, 
+.dashboard-card.chart-pie-card, 
+.dashboard-card.alert-card, 
+.dashboard-card.timeline-card, 
+.dashboard-card.full-width {
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+
+.kpi-card:hover, 
+.dashboard-card.chart-main-card:hover, 
+.dashboard-card.chart-pie-card:hover, 
+.dashboard-card.alert-card:hover, 
+.dashboard-card.timeline-card:hover, 
+.dashboard-card.full-width:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(196, 162, 100, 0.15) !important;
+  border-color: var(--color-gold) !important;
+}
+
+/* ポップアップ詳細モーダルのスクロールテーブル */
+.detail-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-top: 0.5rem;
+}
+
+.detail-modal-table th, 
+.detail-modal-table td {
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detail-modal-table th {
+  background-color: rgba(63, 81, 69, 0.04);
+  font-weight: 700;
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-gold);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.detail-modal-table tr:hover {
+  background-color: rgba(196, 162, 100, 0.02);
+}
