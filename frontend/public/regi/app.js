@@ -60,10 +60,13 @@ const state = {
     rangeTransactions: [],
     trendChart: null,
     categoryChart: null,
-    activeRange: 'week', // 'week' | 'month' | 'year' | 'custom'
+    activeRange: 'week', // 'week' | 'month' | 'year' | 'all' | 'custom'
     alertThreshold: 10,
     customStart: '',
-    customEnd: ''
+    customEnd: '',
+    statsRange: 'week', // 'week' | 'month' | 'year' | 'all' | 'custom'
+    statsCustomStart: '',
+    statsCustomEnd: ''
   },
   currentTab: 'dashboard', // 初期タブをダッシュボードに変更
   selectedCategory: 'all',
@@ -657,6 +660,86 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       state.dashboard.alertThreshold = isNaN(val) ? 0 : Math.max(0, val);
       renderDashboard(); // ダッシュボードを再描画して在庫警告リストを動的に更新
     });
+  }
+
+  // 統計カード独自の期間指定イベント設定
+  const btnStatsWeek = document.getElementById('btn-stats-week');
+  const btnStatsMonth = document.getElementById('btn-stats-month');
+  const btnStatsYear = document.getElementById('btn-stats-year');
+  const btnStatsAll = document.getElementById('btn-stats-all');
+  const btnStatsCustom = document.getElementById('btn-stats-custom');
+  const statsCustomInputs = document.getElementById('stats-range-inputs');
+  const btnApplyStats = document.getElementById('btn-apply-stats-range');
+  
+  const inputStatsStart = document.getElementById('input-stats-start');
+  const inputStatsEnd = document.getElementById('input-stats-end');
+  
+  function setStatsRangeActiveButton(activeBtn) {
+    [btnStatsWeek, btnStatsMonth, btnStatsYear, btnStatsAll, btnStatsCustom].forEach(btn => {
+      if (btn) btn.classList.remove('active');
+    });
+    if (activeBtn) activeBtn.classList.add('active');
+    if (statsCustomInputs) {
+      statsCustomInputs.style.display = (activeBtn === btnStatsCustom) ? 'flex' : 'none';
+    }
+  }
+
+  if (btnStatsWeek && btnStatsMonth && btnStatsYear && btnStatsAll && btnStatsCustom) {
+    btnStatsWeek.addEventListener('click', () => {
+      setStatsRangeActiveButton(btnStatsWeek);
+      state.dashboard.statsRange = 'week';
+      loadDashboardData();
+    });
+    btnStatsMonth.addEventListener('click', () => {
+      setStatsRangeActiveButton(btnStatsMonth);
+      state.dashboard.statsRange = 'month';
+      loadDashboardData();
+    });
+    btnStatsYear.addEventListener('click', () => {
+      setStatsRangeActiveButton(btnStatsYear);
+      state.dashboard.statsRange = 'year';
+      loadDashboardData();
+    });
+    btnStatsAll.addEventListener('click', () => {
+      setStatsRangeActiveButton(btnStatsAll);
+      state.dashboard.statsRange = 'all';
+      loadDashboardData();
+    });
+    btnStatsCustom.addEventListener('click', () => {
+      setStatsRangeActiveButton(btnStatsCustom);
+      state.dashboard.statsRange = 'custom';
+      
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      
+      if (inputStatsStart && !inputStatsStart.value) {
+        inputStatsStart.value = getJstDateString(thirtyDaysAgo);
+      }
+      if (inputStatsEnd && !inputStatsEnd.value) {
+        inputStatsEnd.value = getJstDateString(today);
+      }
+      
+      state.dashboard.statsCustomStart = inputStatsStart.value;
+      state.dashboard.statsCustomEnd = inputStatsEnd.value;
+      loadDashboardData();
+    });
+
+    if (btnApplyStats && inputStatsStart && inputStatsEnd) {
+      btnApplyStats.addEventListener('click', () => {
+        if (!inputStatsStart.value || !inputStatsEnd.value) {
+          showToast('開始日と終了日を両方指定してください。', 'error');
+          return;
+        }
+        if (inputStatsStart.value > inputStatsEnd.value) {
+          showToast('開始日は終了日より前の日付にしてください。', 'error');
+          return;
+        }
+        state.dashboard.statsCustomStart = inputStatsStart.value;
+        state.dashboard.statsCustomEnd = inputStatsEnd.value;
+        loadDashboardData();
+      });
+    }
   }
 
   // ダッシュボード詳細表示モーダルイベント
@@ -3228,7 +3311,6 @@ async function loadDashboardData(isBackground = false) {
   // 選択された範囲に応じた開始日・終了日を設定
   const range = state.dashboard.activeRange;
   let startDate = '';
-  let endDate = todayStr;
   
   if (range === 'week') {
     startDate = startOfWeekStr;
@@ -3240,23 +3322,48 @@ async function loadDashboardData(isBackground = false) {
     startDate = '2025-01-01'; // システム稼働初期の十分に古い日付を設定
   } else if (range === 'custom') {
     startDate = state.dashboard.customStart || startOfWeekStr;
-    endDate = state.dashboard.customEnd || todayStr;
   }
+
+  // 統計テーブル専用の範囲に応じた開始日を設定
+  const statsRange = state.dashboard.statsRange;
+  let statsStartDate = '';
   
-  // KPIカード（本日・今週・今月）を常に正確に集計するため、
-  // 実際にフェッチする開始日は「選択した範囲の開始日」と「今月の開始日」のより過去の方を採用する
-  const fetchStartDate = (startDate < startOfMonthStr) ? startDate : startOfMonthStr;
+  if (statsRange === 'week') {
+    statsStartDate = startOfWeekStr;
+  } else if (statsRange === 'month') {
+    statsStartDate = startOfMonthStr;
+  } else if (statsRange === 'year') {
+    statsStartDate = `${now.getFullYear()}-01-01`;
+  } else if (statsRange === 'all') {
+    statsStartDate = '2025-01-01';
+  } else if (statsRange === 'custom') {
+    statsStartDate = state.dashboard.statsCustomStart || startOfWeekStr;
+  }
+
+  // 表示に必要な全範囲をカバーするために「推移表示開始日」「統計表示開始日」「今月開始日」の中で最も過去の日付を採用
+  let fetchStartDate = startOfMonthStr;
+  if (startDate < fetchStartDate) fetchStartDate = startDate;
+  if (statsStartDate < fetchStartDate) fetchStartDate = statsStartDate;
+
+  // 終了日も同様に「本日」「推移終了日」「統計終了日」の中で最も未来の日付を採用
+  let fetchEndDate = todayStr;
+  if (range === 'custom' && state.dashboard.customEnd && state.dashboard.customEnd > fetchEndDate) {
+    fetchEndDate = state.dashboard.customEnd;
+  }
+  if (statsRange === 'custom' && state.dashboard.statsCustomEnd && state.dashboard.statsCustomEnd > fetchEndDate) {
+    fetchEndDate = state.dashboard.statsCustomEnd;
+  }
   
   if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
     // デモ用モックモード
-    state.dashboard.rangeTransactions = getMockRangeTransactions(fetchStartDate, endDate);
+    state.dashboard.rangeTransactions = getMockRangeTransactions(fetchStartDate, fetchEndDate);
     renderDashboard();
     return;
   }
   
   if (!isBackground) showLoader(true);
   try {
-    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${fetchStartDate}&endDate=${endDate}`);
+    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${fetchStartDate}&endDate=${fetchEndDate}`);
     const data = await res.json();
     
     if (data.status === 'success') {
@@ -3670,20 +3777,44 @@ function renderDashboardCharts() {
   }).join('');
 
   // 3. 🎁 授与品別統計の集計と出力
+  const stRange = state.dashboard.statsRange;
   let subtitleText = '授与品別統計（多い順）';
-  if (range === 'week') subtitleText = '今週の授与品別統計（多い順）';
-  else if (range === 'month') subtitleText = '今月の授与品別統計（多い順）';
-  else if (range === 'year') subtitleText = '今年の授与品別統計（多い順）';
-  else if (range === 'all') subtitleText = '全期間の授与品別統計（多い順）';
-  else if (range === 'custom') subtitleText = `指定期間 (${state.dashboard.customStart} 〜 ${state.dashboard.customEnd}) の授与品別統計（多い順）`;
+  if (stRange === 'week') subtitleText = '今週の授与品別統計（多い順）';
+  else if (stRange === 'month') subtitleText = '今月の授与品別統計（多い順）';
+  else if (stRange === 'year') subtitleText = '今年の授与品別統計（多い順）';
+  else if (stRange === 'all') subtitleText = '全期間の授与品別統計（多い順）';
+  else if (stRange === 'custom') subtitleText = `指定期間 (${state.dashboard.statsCustomStart} 〜 ${state.dashboard.statsCustomEnd}) の授与品別統計（多い順）`;
   
   const subtitleEl = document.getElementById('dashboard-stats-subtitle');
   if (subtitleEl) {
     subtitleEl.textContent = subtitleText;
   }
 
+  // 統計テーブル用の対象取引を statsRange の条件に従って絞り込む
+  const statsTargetTxs = state.dashboard.rangeTransactions.filter(tx => {
+    if (tx.status !== '有効' && tx.status !== 'true') return false;
+    
+    if (stRange === 'week') {
+      const d = new Date();
+      d.setDate(now.getDate() - 6);
+      return tx.date >= getJstDateString(d) && tx.date <= todayStr;
+    } else if (stRange === 'month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      return tx.date >= getJstDateString(firstDay) && tx.date <= todayStr;
+    } else if (stRange === 'year') {
+      const startStr = `${now.getFullYear()}-01-01`;
+      const endStr = `${now.getFullYear()}-12-31`;
+      return tx.date >= startStr && tx.date <= endStr;
+    } else if (stRange === 'all') {
+      return true; // 全有効レコードを対象
+    } else if (stRange === 'custom') {
+      return tx.date >= state.dashboard.statsCustomStart && tx.date <= state.dashboard.statsCustomEnd;
+    }
+    return false;
+  });
+
   const itemStats = {};
-  targetTxs.forEach(tx => {
+  statsTargetTxs.forEach(tx => {
     if (!itemStats[tx.itemId]) {
       const item = state.items.find(i => i.id === tx.itemId);
       const categoryNameMap = {
