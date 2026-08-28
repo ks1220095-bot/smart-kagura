@@ -1,6 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { Booking } from '../../types';
 
 interface YomifudaPrintProps {
@@ -11,6 +13,7 @@ interface YomifudaPrintProps {
 
 export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const targetBookings = bookings || (booking ? [booking] : []);
 
   // 満年齢の計算
@@ -492,6 +495,52 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     );
   };
 
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setIsGeneratingPdf(true);
+
+    try {
+      const sheets = printRef.current.querySelectorAll<HTMLElement>('.yomifuda-sheet');
+      if (sheets.length === 0) return;
+
+      // B5 landscape: width 257mm, height 182mm
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [257, 182]
+      });
+
+      for (let i = 0; i < sheets.length; i++) {
+        const sheet = sheets[i];
+        if (i > 0) {
+          pdf.addPage([257, 182], 'landscape');
+        }
+
+        const canvas = await html2canvas(sheet, {
+          scale: 2.5, // High resolution
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        // Fit precisely in B5 landscape (250mm x 170mm centered on 257mm x 182mm)
+        pdf.addImage(imgData, 'PNG', 3.5, 6, 250, 170);
+      }
+
+      const fileName = targetBookings.length === 1 
+        ? `清瀧神社_読み札_${targetBookings[0].name || targetBookings[0].company_name || 'ご祈祷'}.pdf`
+        : `清瀧神社_読み札一括_${targetBookings.length}件.pdf`;
+
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('PDFの生成中にエラーが発生しました。');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   return createPortal(
     <div className="print-modal-overlay">
       {/* Control bar */}
@@ -502,12 +551,14 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         justifyContent: 'space-between',
         alignItems: 'center',
         color: 'white',
-        borderBottom: '2px solid var(--color-gold)'
+        borderBottom: '2px solid var(--color-gold)',
+        flexWrap: 'wrap',
+        gap: '0.5rem'
       }}>
         <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
           ご祈祷受付票・読み札 印刷プレビュー（B5横置き・左右二分割）
         </h4>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <button 
             onClick={() => window.print()} 
             className="btn btn-primary" 
@@ -515,6 +566,25 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           >
             <Printer size={16} />
             印刷する（横向き）
+          </button>
+          <button 
+            onClick={handleDownloadPdf} 
+            disabled={isGeneratingPdf}
+            className="btn" 
+            style={{ 
+              padding: '0.4rem 1.1rem', 
+              fontSize: '0.9rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.4rem',
+              backgroundColor: '#1890ff',
+              color: '#ffffff',
+              border: '1px solid #1890ff',
+              cursor: isGeneratingPdf ? 'wait' : 'pointer'
+            }}
+          >
+            {isGeneratingPdf ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={16} />}
+            {isGeneratingPdf ? 'PDF生成中...' : '📥 PDF保存 / ダウンロード'}
           </button>
           <button 
             onClick={onClose} 

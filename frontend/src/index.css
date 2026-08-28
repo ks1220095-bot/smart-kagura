@@ -305,12 +305,16 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 }
 
 /* Print Layouts */
+@page {
+  size: landscape;
+  margin: 0;
+}
+
 @media print {
   #root {
+    display: none !important;
     visibility: hidden !important;
-    position: absolute !important;
-    left: -99999px !important;
-    top: -99999px !important;
+    position: static !important;
     width: 0 !important;
     height: 0 !important;
     overflow: hidden !important;
@@ -342,6 +346,7 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     position: static !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
