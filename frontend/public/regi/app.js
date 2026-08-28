@@ -746,8 +746,18 @@ function switchTab(tabKey) {
     DOM.panels[key].classList.toggle('active', key === tabKey);
   });
 
+  // ポーリングタイマーのクリア
+  if (window.dashboardPollingTimer) {
+    clearInterval(window.dashboardPollingTimer);
+    window.dashboardPollingTimer = null;
+  }
+
   if (tabKey === 'dashboard') {
     loadDashboardData();
+    // 30秒（30000ms）ごとに自動でダッシュボードデータを裏でリロードする
+    window.dashboardPollingTimer = setInterval(() => {
+      loadDashboardData(true); // isBackground = true で呼び出す
+    }, 30000);
   } else if (tabKey === 'register') {
     renderItems();
   } else if (tabKey === 'history') {
@@ -1222,6 +1232,8 @@ async function processCheckout() {
   } finally {
     showLoader(false);
     state.isCheckingOut = false;
+    // 会計が成功・またはオフライン記録された段階で、ダッシュボードの表示を裏で最新化する
+    loadDashboardData(true);
   }
 }
 
@@ -1275,6 +1287,7 @@ async function executeCancelTransaction() {
       renderItems();
       renderMasterGrid();
       renderHistoryTable();
+      loadDashboardData(true);
     }
     return;
   }
@@ -1314,6 +1327,7 @@ async function executeCancelTransaction() {
     showToast(`取引取消エラー: ${err.message}`, 'error');
   } finally {
     showLoader(false);
+    loadDashboardData(true);
   }
 }
 
@@ -3196,7 +3210,7 @@ function setupOfflineMonitoring() {
 // ==========================================
 // 総合ダッシュボードの制御ロジック
 // ==========================================
-async function loadDashboardData() {
+async function loadDashboardData(isBackground = false) {
   const now = new Date();
   
   // 今月1日
@@ -3240,7 +3254,7 @@ async function loadDashboardData() {
     return;
   }
   
-  showLoader(true);
+  if (!isBackground) showLoader(true);
   try {
     const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${fetchStartDate}&endDate=${endDate}`);
     const data = await res.json();
@@ -3253,7 +3267,10 @@ async function loadDashboardData() {
     }
   } catch (err) {
     console.error('Failed to load dashboard data:', err);
-    showToast('ダッシュボードデータの読み込みに失敗しました。ローカルデータで代用します。', 'warning');
+    // エラー時のフォールバックはバックグラウンド時以外にトースト表示
+    if (!isBackground) {
+      showToast('ダッシュボードデータの読み込みに失敗しました。ローカルデータで代用します。', 'warning');
+    }
     // エラー時はローカルの当日分だけで代用
     state.dashboard.rangeTransactions = state.transactions.map(tx => {
       return tx.items.map(item => ({
@@ -3270,7 +3287,7 @@ async function loadDashboardData() {
     }).flat();
     renderDashboard();
   } finally {
-    showLoader(false);
+    if (!isBackground) showLoader(false);
   }
 }
 
