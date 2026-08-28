@@ -365,11 +365,12 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   
   .yomifuda-sheet {
     width: 250mm !important; 
-    height: 172mm !important; 
+    height: 170mm !important; 
     max-width: 98vw !important;
     max-height: 98vh !important;
-    padding: 4mm 5mm !important;
+    padding: 0 !important;
     margin: 0 auto !important;
+    position: relative !important;
     box-sizing: border-box !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -377,7 +378,6 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     border: none !important;
     background: #ffffff !important;
     display: flex !important;
-    justify-content: space-between !important;
     align-items: stretch !important;
     overflow: hidden !important;
   }

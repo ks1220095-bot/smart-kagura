@@ -134,11 +134,10 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     
     return (
       <div style={{
-        width: 'calc(50% - 3mm)',
-        flex: 1,
+        width: '100%',
         height: '100%',
         border: '3px double #d80100',
-        padding: '5mm 6mm',
+        padding: '4.5mm 5.5mm',
         boxSizing: 'border-box',
         position: 'relative',
         backgroundColor: '#ffffff',
@@ -538,33 +537,83 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               backgroundColor: '#ffffff',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               position: 'relative',
-              width: '257mm',   // B5 Width
-              height: '180mm',  // B5 Height
-              padding: '5mm 6mm',
+              width: '250mm',   // B5 Width with safety margins
+              height: '170mm',  // B5 Height with top/bottom margin
+              padding: 0,
               boxSizing: 'border-box',
               display: 'flex',
-              justifyContent: 'space-between',
               alignItems: 'stretch',
-              gap: '4mm',
               color: '#000000',
               overflow: 'hidden',
               marginBottom: idx < targetBookings.length - 1 ? '2rem' : 0
             }}
           >
-            {/* Right half: 神社控 */}
-            {renderHalfSheet(b, '神社控')}
-
-            {/* Center cutting dashed divider */}
+            {/* Left half: 神社控 (50%幅・均等余白) */}
             <div style={{
+              width: '50%',
               height: '100%',
-              borderLeft: '2px dashed #999',
-              width: '1px',
-              position: 'relative',
-              zIndex: 10
-            }} className="no-print" />
+              padding: '4mm 5mm',
+              boxSizing: 'border-box',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              position: 'relative'
+            }}>
+              {renderHalfSheet(b, '神社控')}
+            </div>
 
-            {/* Left half: 祈祷控 */}
-            {renderHalfSheet(b, '祈祷控')}
+            {/* Center cutting dashed divider (中央の切り取り破線・印刷時も常時出力) */}
+            <div style={{
+              position: 'absolute',
+              top: '2mm',
+              bottom: '2mm',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '0px',
+              borderLeft: '1.5px dashed #888888',
+              zIndex: 20,
+              pointerEvents: 'none'
+            }}>
+              {/* 控えめな切り取りハサミマーク */}
+              <div style={{
+                position: 'absolute',
+                top: '2mm',
+                left: '-7px',
+                fontSize: '11px',
+                color: '#888888',
+                lineHeight: 1,
+                backgroundColor: '#ffffff',
+                padding: '1px 0'
+              }}>
+                ✂
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: '2mm',
+                left: '-7px',
+                fontSize: '11px',
+                color: '#888888',
+                lineHeight: 1,
+                backgroundColor: '#ffffff',
+                padding: '1px 0'
+              }}>
+                ✂
+              </div>
+            </div>
+
+            {/* Right half: 祈祷控 (50%幅・均等余白) */}
+            <div style={{
+              width: '50%',
+              height: '100%',
+              padding: '4mm 5mm',
+              boxSizing: 'border-box',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              position: 'relative'
+            }}>
+              {renderHalfSheet(b, '祈祷控')}
+            </div>
           </div>
         ))}
       </div>
