@@ -3229,16 +3229,20 @@ async function loadDashboardData() {
     endDate = state.dashboard.customEnd || todayStr;
   }
   
+  // KPIカード（本日・今週・今月）を常に正確に集計するため、
+  // 実際にフェッチする開始日は「選択した範囲の開始日」と「今月の開始日」のより過去の方を採用する
+  const fetchStartDate = (startDate < startOfMonthStr) ? startDate : startOfMonthStr;
+  
   if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
     // デモ用モックモード
-    state.dashboard.rangeTransactions = getMockRangeTransactions(startDate, endDate);
+    state.dashboard.rangeTransactions = getMockRangeTransactions(fetchStartDate, endDate);
     renderDashboard();
     return;
   }
   
   showLoader(true);
   try {
-    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${startDate}&endDate=${endDate}`);
+    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${fetchStartDate}&endDate=${endDate}`);
     const data = await res.json();
     
     if (data.status === 'success') {
