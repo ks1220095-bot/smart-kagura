@@ -405,6 +405,13 @@ function setupEventListeners() {
     });
   });
 
+  DOM.masterColsBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.gridCols = parseInt(btn.dataset.cols) || 2;
+      updateGridColsUI();
+    });
+  });
+
   // マスタ表示形式切り替えイベントの登録
   if (DOM.btnViewCard && DOM.btnViewList) {
     // 初期表示設定
