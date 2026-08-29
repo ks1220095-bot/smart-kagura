@@ -1428,6 +1428,43 @@ export const StaffPortal: React.FC = () => {
                   </div>
                 )}
 
+                {/* 個人祈祷で「交通安全」が選択された場合のお車お祓い案内 */}
+                {manualType === 'individual' && manualPrayer1 === '交通安全' && (
+                  <div className="form-group alert-warning" style={{ margin: '0.75rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', border: '1.5px solid rgba(50, 136, 163, 0.35)', borderRadius: '4px', backgroundColor: '#f5fafc' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '1rem' }}>🚗</span>
+                      <strong style={{ fontSize: '0.85rem', color: 'var(--color-mizuiro-hover)' }}>
+                        お車本体のお祓い（新車・中古車購入等）の受付ですか？
+                      </strong>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#555', lineHeight: '1.5' }}>
+                      お車本体のお祓い・お清めをご希望の場合は、願意で<strong>「車祓（お車のお祓い）」</strong>を選択してください（初穂料目安: 10,000円）。
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualPrayer1('車祓（お車のお祓い）');
+                          setManualHatsuhoryo(10000);
+                        }}
+                        className="btn btn-primary"
+                        style={{
+                          padding: '0.3rem 0.8rem',
+                          fontSize: '0.8rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          backgroundColor: 'var(--color-mizuiro)',
+                          borderColor: 'var(--color-mizuiro)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🚗「車祓（お車のお祓い）」に変更
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* 個人祈祷で「車祓（お車のお祓い）」が選択された場合 */}
                 {manualType === 'individual' && manualPrayer1 === '車祓（お車のお祓い）' && (
                   <div className="form-group alert-warning" style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '2px' }}>

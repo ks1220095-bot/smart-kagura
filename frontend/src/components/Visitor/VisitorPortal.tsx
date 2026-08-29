@@ -25,7 +25,7 @@ const INDIVIDUAL_PRAYERS = [
   { value: '神棚のお祓い（御霊入れ）', price: 5000 },
   { value: '成人祝い', price: 5000 },
   { value: '寿祝い', price: 5000 },
-  { value: '交通安全', price: 5000 },
+  { value: '交通安全', label: '交通安全（※お車本体のお祓いは「車祓」をお選びください）', price: 5000 },
   { value: '良縁祈願（縁結び）', price: 5000 },
   { value: '子授け（子宝）祈願', price: 5000 },
   { value: '留学安全', price: 5000 },
@@ -96,6 +96,10 @@ const FAQ_ITEMS = [
   {
     q: 'Q. 車のお祓いをするときは、どこに車を停めたら良いですか？',
     a: 'A. 清瀧神社 正面にてお祓いしております。正面の鳥居をくぐって参道中央付近でお停めください（社務の都合上により、停める場所が変更となる場合がございます）。'
+  },
+  {
+    q: 'Q. 車を購入したのでお祓いをしてほしいのですが、「交通安全」と「車祓」のどちらを選べばいいですか？',
+    a: 'A. 新車・中古車を問わず、お車本体のお祓い・お清めをご希望の場合は、願意で【車祓（お車のお祓い）】をお選びください。（「交通安全」は、ドライバー様やご家族ご自身の身の安全をご祈願する願意となります）。'
   },
   {
     q: 'Q. 初宮詣（お宮参り）の授与品に”歯固め石”はありますか？',
@@ -2009,7 +2013,7 @@ export const VisitorPortal: React.FC = () => {
                         >
                           <option value="">-- 選択してください --</option>
                           {INDIVIDUAL_PRAYERS.map(p => (
-                            <option key={p.value} value={p.value}>{p.value}</option>
+                            <option key={p.value} value={p.value}>{(p as any).label || p.value}</option>
                           ))}
                         </select>
                       </div>
@@ -2584,6 +2588,56 @@ export const VisitorPortal: React.FC = () => {
                       onChange={(e) => setKotobukiOtherText(e.target.value)}
                     />
                   )}
+                </div>
+              )}
+
+              {/* 個人祈祷で「交通安全」が選択された場合のお車お祓い案内ブロック */}
+              {bookingType === 'individual' && prayer1 === '交通安全' && (
+                <div className="form-group alert-warning" style={{ 
+                  margin: '1rem 0 0 0', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.75rem', 
+                  padding: '1rem', 
+                  border: '1.5px solid rgba(50, 136, 163, 0.35)', 
+                  borderRadius: '4px', 
+                  backgroundColor: '#f5fafc' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px dashed rgba(50, 136, 163, 0.25)', paddingBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.1rem' }}>🚗</span>
+                    <h5 style={{ fontSize: '0.92rem', fontWeight: 'bold', margin: 0, color: 'var(--color-mizuiro-hover)' }}>
+                      お車本体のお祓い（新車・中古車購入等）をご希望の方へ
+                    </h5>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#444', lineHeight: '1.6' }}>
+                    新車・中古車のご購入など、<strong>お車自体のお祓い・お清めをご希望の場合は、願意で【車祓（お車のお祓い）】をご選択ください。</strong><br />
+                    <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                      ※「交通安全」は、お車本体ではなく、ご参拝者様ご自身の身の安全（ドライバー・ご家族様の交通安全）をご祈祷する願意となります。
+                    </span>
+                  </div>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrayer1('車祓（お車のお祓い）');
+                        setHatsuhoryo(10000);
+                      }}
+                      className="btn btn-primary"
+                      style={{
+                        padding: '0.45rem 1.1rem',
+                        fontSize: '0.85rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: 'var(--color-mizuiro)',
+                        borderColor: 'var(--color-mizuiro)',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      🚗「車祓（お車のお祓い）」に変更する
+                    </button>
+                  </div>
                 </div>
               )}
 
