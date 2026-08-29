@@ -140,7 +140,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         width: '100%',
         height: '100%',
         border: '3px double #d80100',
-        padding: '4.5mm 5.5mm',
+        padding: '3.5mm 4.5mm',
         boxSizing: 'border-box',
         position: 'relative',
         backgroundColor: '#ffffff',
@@ -524,8 +524,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         });
 
         const imgData = canvas.toDataURL('image/png');
-        // Fit precisely in B5 landscape (250mm x 170mm centered on 257mm x 182mm)
-        pdf.addImage(imgData, 'PNG', 3.5, 6, 250, 170);
+        // Fit precisely in B5 landscape (236mm x 156mm centered on 257mm x 182mm)
+        pdf.addImage(imgData, 'PNG', 10.5, 13, 236, 156);
       }
 
       const fileName = targetBookings.length === 1 
@@ -607,8 +607,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               backgroundColor: '#ffffff',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               position: 'relative',
-              width: '250mm',   // B5 Width with safety margins
-              height: '170mm',  // B5 Height with top/bottom margin
+              width: '236mm',   // B5 Width with safe printable margin
+              height: '156mm',  // B5 Height with safe printable margin (no cutoff)
               padding: 0,
               boxSizing: 'border-box',
               display: 'flex',
@@ -622,7 +622,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             <div style={{
               width: '50%',
               height: '100%',
-              padding: '4mm 5mm',
+              padding: '3.5mm 4.5mm',
               boxSizing: 'border-box',
               display: 'flex',
               justifyContent: 'center',
@@ -675,7 +675,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             <div style={{
               width: '50%',
               height: '100%',
-              padding: '4mm 5mm',
+              padding: '3.5mm 4.5mm',
               boxSizing: 'border-box',
               display: 'flex',
               justifyContent: 'center',
