@@ -597,6 +597,22 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         </div>
       </div>
 
+      {/* Print settings tip bar */}
+      <div className="no-print" style={{
+        backgroundColor: '#fff9e6',
+        padding: '0.45rem 1.5rem',
+        borderBottom: '1px solid #ffd591',
+        fontSize: '0.85rem',
+        color: '#ad6800',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.5rem',
+        textAlign: 'center'
+      }}>
+        💡 <strong>印刷時の設定ポイント：</strong> 印刷ダイアログで【<strong>用紙の向き：横（横向き）</strong>】および【<strong>余白：なし（または最小）</strong>】をお選びいただくと、見切れず完璧に中央印刷されます。
+      </div>
+
       {/* Yomifuda Body (Horizontal A4 page with 2 half-sheets) */}
       <div ref={printRef} className="yomifuda-print-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center', padding: '2rem' }}>
         {targetBookings.map((b, idx) => (
@@ -607,9 +623,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               backgroundColor: '#ffffff',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               position: 'relative',
-              width: '236mm',   // B5 Width with safe printable margin
-              height: '156mm',  // B5 Height with safe printable margin (no cutoff)
-              padding: 0,
+              width: '257mm',   // B5 Width for screen preview
+              height: '182mm',  // B5 Height for screen preview
+              padding: '8mm 10mm',
               boxSizing: 'border-box',
               display: 'flex',
               alignItems: 'stretch',
@@ -635,8 +651,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             {/* Center cutting dashed divider (中央の切り取り破線・印刷時も常時出力) */}
             <div style={{
               position: 'absolute',
-              top: '2mm',
-              bottom: '2mm',
+              top: '8mm',
+              bottom: '8mm',
               left: '50%',
               transform: 'translateX(-50%)',
               width: '0px',
