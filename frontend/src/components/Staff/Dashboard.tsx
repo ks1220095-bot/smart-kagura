@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle } from 'lucide-react';
+import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter } from 'lucide-react';
 import type { Booking } from '../../types';
 import { printElement } from '../../utils/printUtils';
 
@@ -299,6 +299,167 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const reiwaYear = year - 2018;
     const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
     return `令和${eraStr}年${month}月度`;
+  };
+
+  // --- 願意別 予約統計分析 (週/月/年/全期間/指定期間) ---
+  type AnalyticsPeriodType = 'week' | 'month' | 'year' | 'all' | 'custom';
+  const [analyticsPeriodType, setAnalyticsPeriodType] = useState<AnalyticsPeriodType>('month');
+  const [analyticsDate, setAnalyticsDate] = useState(today);
+  const [analyticsMonth, setAnalyticsMonth] = useState(getCurrentMonthString());
+  const [analyticsYear, setAnalyticsYear] = useState(String(new Date().getFullYear()));
+  const [analyticsStartDate, setAnalyticsStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [analyticsEndDate, setAnalyticsEndDate] = useState(today);
+  const [analyticsBookingType, setAnalyticsBookingType] = useState<'all' | 'individual' | 'organization'>('all');
+  const [analyticsSortBy, setAnalyticsSortBy] = useState<'count' | 'fee'>('count');
+
+  // 指定日が属する週（月曜〜日曜）の算出
+  const getWeekRange = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const day = d.getDay(); // 0(日) 〜 6(土)
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return {
+      start: monday.toISOString().split('T')[0],
+      end: sunday.toISOString().split('T')[0]
+    };
+  };
+
+  // 選択された期間のタイトルと日付範囲
+  const getAnalyticsRangeInfo = () => {
+    if (analyticsPeriodType === 'week') {
+      const { start, end } = getWeekRange(analyticsDate);
+      return {
+        title: `週次集計 (${start} 〜 ${end})`,
+        start,
+        end
+      };
+    }
+    if (analyticsPeriodType === 'month') {
+      const parts = analyticsMonth.split('-');
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      const lastDay = new Date(y, m, 0).getDate();
+      const start = `${analyticsMonth}-01`;
+      const end = `${analyticsMonth}-${String(lastDay).padStart(2, '0')}`;
+      return {
+        title: `月次集計 (${analyticsMonth}月 / ${getWarekiMonthString(analyticsMonth)})`,
+        start,
+        end
+      };
+    }
+    if (analyticsPeriodType === 'year') {
+      const start = `${analyticsYear}-01-01`;
+      const end = `${analyticsYear}-12-31`;
+      const yNum = Number(analyticsYear);
+      const reiwa = yNum - 2018;
+      const eraStr = reiwa === 1 ? '元' : reiwa;
+      return {
+        title: `年次集計 (${analyticsYear}年 / 令和${eraStr}年)`,
+        start,
+        end
+      };
+    }
+    if (analyticsPeriodType === 'all') {
+      return {
+        title: '全期間累計集計',
+        start: '1900-01-01',
+        end: '2099-12-31'
+      };
+    }
+    // custom
+    return {
+      title: `指定期間集計 (${analyticsStartDate} 〜 ${analyticsEndDate})`,
+      start: analyticsStartDate,
+      end: analyticsEndDate
+    };
+  };
+
+  const currentRange = getAnalyticsRangeInfo();
+
+  // 期間内＆区分でフィルタリングされた予約リスト
+  const filteredAnalyticsBookings = activeBookings.filter(b => {
+    if (b.booking_date < currentRange.start || b.booking_date > currentRange.end) return false;
+    if (analyticsBookingType !== 'all' && b.booking_type !== analyticsBookingType) return false;
+    return true;
+  });
+
+  const analyticsTotalCount = filteredAnalyticsBookings.length;
+  const analyticsTotalRevenue = filteredAnalyticsBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const analyticsIndivCount = filteredAnalyticsBookings.filter(b => b.booking_type === 'individual').length;
+  const analyticsOrgCount = filteredAnalyticsBookings.filter(b => b.booking_type === 'organization').length;
+
+  // 願意ごとの集計
+  interface PrayerStatItem {
+    name: string;
+    count: number;
+    fee: number;
+    percentage: number;
+    avgFee: number;
+  }
+
+  const prayerStatsMap: { [key: string]: { count: number; fee: number } } = {};
+  filteredAnalyticsBookings.forEach(b => {
+    let pName = b.prayer1 ? b.prayer1.trim() : 'その他';
+    if (pName === '寿祝い' && b.kotobuki_type) {
+      pName = `寿祝い（${b.kotobuki_type}）`;
+    }
+    const fee = b.hatsuhoryo || 0;
+    if (!prayerStatsMap[pName]) {
+      prayerStatsMap[pName] = { count: 0, fee: 0 };
+    }
+    prayerStatsMap[pName].count++;
+    prayerStatsMap[pName].fee += fee;
+  });
+
+  const prayerStatsList: PrayerStatItem[] = Object.keys(prayerStatsMap).map(name => {
+    const item = prayerStatsMap[name];
+    return {
+      name,
+      count: item.count,
+      fee: item.fee,
+      percentage: analyticsTotalCount > 0 ? (item.count / analyticsTotalCount) * 100 : 0,
+      avgFee: item.count > 0 ? Math.round(item.fee / item.count) : 0
+    };
+  }).sort((a, b) => {
+    if (analyticsSortBy === 'count') {
+      return b.count - a.count || b.fee - a.fee;
+    }
+    return b.fee - a.fee || b.count - a.count;
+  });
+
+  const topPrayer = prayerStatsList.length > 0 ? prayerStatsList[0] : null;
+
+  // CSVエクスポート
+  const handleExportAnalyticsCsv = () => {
+    if (prayerStatsList.length === 0) {
+      alert('エクスポートする集計データがありません。');
+      return;
+    }
+    let csv = '\uFEFF'; // UTF-8 BOM
+    csv += `集計期間,${currentRange.title}\n`;
+    csv += `対象区分,${analyticsBookingType === 'all' ? '全体' : analyticsBookingType === 'individual' ? '個人のご祈祷' : '団体の祈祷'}\n`;
+    csv += `総予約数,${analyticsTotalCount}件\n`;
+    csv += `初穂料総額,${analyticsTotalRevenue}円\n\n`;
+    csv += '順位,願意名,予約件数,構成比(%),初穂料合計(円),平均初穂料(円)\n';
+    
+    prayerStatsList.forEach((item, idx) => {
+      csv += `${idx + 1},"${item.name}",${item.count},${item.percentage.toFixed(1)}%,${item.fee},${item.avgFee}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `願意別予約統計_${analyticsPeriodType}_${currentRange.start}_${currentRange.end}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
 
@@ -699,6 +860,362 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Comprehensive Prayer Analytics Section (Week / Month / Year / All / Custom) */}
+      <div className="card" style={{ marginTop: '1.5rem', backgroundColor: '#ffffff', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden' }}>
+        {/* Analytics Header */}
+        <div style={{ 
+          backgroundColor: 'var(--color-washi-dark)', 
+          padding: '0.85rem 1.25rem', 
+          borderBottom: '1px solid var(--color-border)', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: '0.75rem' 
+        }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', margin: 0, fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <BarChart2 size={18} color="var(--color-mizuiro)" />
+              願意別 予約統計分析
+            </h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-accent-gray)', marginTop: '0.15rem', display: 'block' }}>
+              {currentRange.title}（{analyticsBookingType === 'all' ? '全体' : analyticsBookingType === 'individual' ? '個人のご祈祷のみ' : '団体の祈祷のみ'}）
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {/* Booking Type Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#ffffff', padding: '0.2rem 0.35rem', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+              <Filter size={13} color="var(--color-accent-gray)" />
+              <select
+                value={analyticsBookingType}
+                onChange={(e) => setAnalyticsBookingType(e.target.value as any)}
+                style={{ border: 'none', fontSize: '0.78rem', outline: 'none', cursor: 'pointer', backgroundColor: 'transparent' }}
+              >
+                <option value="all">全区分（個人＋団体）</option>
+                <option value="individual">個人のご祈祷のみ</option>
+                <option value="organization">団体の祈祷のみ</option>
+              </select>
+            </div>
+
+            {/* CSV Export Button */}
+            <button
+              onClick={handleExportAnalyticsCsv}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.3rem 0.65rem',
+                fontSize: '0.78rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                borderColor: 'var(--color-border)',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={13} />
+              CSVエクスポート
+            </button>
+          </div>
+        </div>
+
+        {/* Period Selector Tabs & Date Controls */}
+        <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--color-border)', backgroundColor: '#fafbfc' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              {(['week', 'month', 'year', 'all', 'custom'] as AnalyticsPeriodType[]).map(pType => {
+                const labels: { [key in AnalyticsPeriodType]: string } = {
+                  week: '📅 週毎',
+                  month: '📊 月毎',
+                  year: '📈 年毎',
+                  all: '🌐 全期間',
+                  custom: '🔍 期間指定'
+                };
+                const isActive = analyticsPeriodType === pType;
+                return (
+                  <button
+                    key={pType}
+                    onClick={() => setAnalyticsPeriodType(pType)}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.8rem',
+                      borderRadius: '4px',
+                      border: isActive ? '1px solid var(--color-mizuiro)' : '1px solid var(--color-border)',
+                      backgroundColor: isActive ? 'var(--color-mizuiro)' : '#ffffff',
+                      color: isActive ? '#ffffff' : 'var(--color-text)',
+                      fontWeight: isActive ? 'bold' : 'normal',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {labels[pType]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sub Controls per period */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {analyticsPeriodType === 'week' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--color-accent-gray)' }}>対象日を含む週:</span>
+                  <input
+                    type="date"
+                    value={analyticsDate}
+                    onChange={(e) => setAnalyticsDate(e.target.value)}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border)', outline: 'none', cursor: 'pointer' }}
+                  />
+                </div>
+              )}
+
+              {analyticsPeriodType === 'month' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--color-accent-gray)' }}>集計月:</span>
+                  <input
+                    type="month"
+                    value={analyticsMonth}
+                    onChange={(e) => setAnalyticsMonth(e.target.value)}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border)', outline: 'none', cursor: 'pointer' }}
+                  />
+                </div>
+              )}
+
+              {analyticsPeriodType === 'year' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--color-accent-gray)' }}>集計年:</span>
+                  <select
+                    value={analyticsYear}
+                    onChange={(e) => setAnalyticsYear(e.target.value)}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border)', outline: 'none', cursor: 'pointer' }}
+                  >
+                    {[2024, 2025, 2026, 2027, 2028].map(y => {
+                      const reiwa = y - 2018;
+                      return (
+                        <option key={y} value={String(y)}>
+                          {y}年 (令和{reiwa === 1 ? '元' : reiwa}年)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {analyticsPeriodType === 'custom' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--color-accent-gray)' }}>期間:</span>
+                  <input
+                    type="date"
+                    value={analyticsStartDate}
+                    onChange={(e) => setAnalyticsStartDate(e.target.value)}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border)', outline: 'none', cursor: 'pointer' }}
+                  />
+                  <span>〜</span>
+                  <input
+                    type="date"
+                    value={analyticsEndDate}
+                    onChange={(e) => setAnalyticsEndDate(e.target.value)}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border)', outline: 'none', cursor: 'pointer' }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Analytics Body */}
+        <div style={{ padding: '1.25rem' }}>
+          {analyticsTotalCount === 0 ? (
+            <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.88rem', textAlign: 'center', margin: '2.5rem 0' }}>
+              選択された期間内にご予約実績はございません。
+            </p>
+          ) : (
+            <div>
+              {/* Summary KPI Grid */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                gap: '0.75rem', 
+                marginBottom: '1.5rem',
+                backgroundColor: 'var(--color-washi)',
+                padding: '0.85rem',
+                borderRadius: '4px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', display: 'block' }}>総予約数</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '1.25rem', color: 'var(--color-urushi)', fontFamily: 'var(--font-serif)' }}>
+                    {analyticsTotalCount} <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-sans)', fontWeight: 'normal' }}>件</span>
+                  </span>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', display: 'block' }}>個人祈祷 / 団体祈祷</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '1.05rem', color: 'var(--color-urushi)' }}>
+                    {analyticsIndivCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>件</span> / {analyticsOrgCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>件</span>
+                  </span>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', display: 'block' }}>初穂料総額</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '1.25rem', color: 'var(--color-mizuiro)', fontFamily: 'var(--font-serif)' }}>
+                    {analyticsTotalRevenue.toLocaleString()} <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-sans)', fontWeight: 'normal' }}>円</span>
+                  </span>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', display: 'block' }}>最も多い願意</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--color-urushi)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {topPrayer ? `${topPrayer.name} (${topPrayer.count}件)` : '-'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Visual Rankings & Bars */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', margin: 0, fontWeight: 'bold', color: 'var(--color-urushi)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <TrendingUp size={15} color="var(--color-mizuiro)" />
+                    願意別 予約件数ランキング & 構成比
+                  </h4>
+                  <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.75rem' }}>
+                    <button
+                      onClick={() => setAnalyticsSortBy('count')}
+                      style={{
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '3px',
+                        border: analyticsSortBy === 'count' ? '1px solid var(--color-mizuiro)' : '1px solid var(--color-border)',
+                        backgroundColor: analyticsSortBy === 'count' ? 'var(--color-mizuiro-light)' : '#ffffff',
+                        color: analyticsSortBy === 'count' ? 'var(--color-mizuiro)' : 'var(--color-text)',
+                        fontWeight: analyticsSortBy === 'count' ? 'bold' : 'normal',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      件数順
+                    </button>
+                    <button
+                      onClick={() => setAnalyticsSortBy('fee')}
+                      style={{
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '3px',
+                        border: analyticsSortBy === 'fee' ? '1px solid var(--color-mizuiro)' : '1px solid var(--color-border)',
+                        backgroundColor: analyticsSortBy === 'fee' ? 'var(--color-mizuiro-light)' : '#ffffff',
+                        color: analyticsSortBy === 'fee' ? 'var(--color-mizuiro)' : 'var(--color-text)',
+                        fontWeight: analyticsSortBy === 'fee' ? 'bold' : 'normal',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      初穂料順
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {prayerStatsList.map((item, index) => {
+                    const rankColors = ['#d4af37', '#a0a0a0', '#cd7f32'];
+                    const isTop3 = index < 3;
+                    return (
+                      <div
+                        key={item.name}
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '4px',
+                          padding: '0.55rem 0.85rem',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* Background Progress Bar */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: `${item.percentage}%`,
+                            backgroundColor: isTop3 ? 'rgba(50, 136, 163, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                            transition: 'width 0.4s ease',
+                            zIndex: 1
+                          }}
+                        />
+
+                        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              backgroundColor: isTop3 ? rankColors[index] : '#f0f0f0',
+                              color: isTop3 ? '#ffffff' : '#666666',
+                              fontSize: '0.72rem',
+                              fontWeight: 'bold'
+                            }}>
+                              {index + 1}
+                            </span>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.88rem', color: 'var(--color-text)' }}>
+                              {item.name}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.82rem' }}>
+                            <span style={{ fontWeight: 'bold', color: 'var(--color-urushi)', fontSize: '0.92rem' }}>
+                              {item.count} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--color-accent-gray)' }}>件 ({item.percentage.toFixed(1)}%)</span>
+                            </span>
+                            <span style={{ color: 'var(--color-mizuiro)', fontWeight: 'bold' }}>
+                              {item.fee.toLocaleString()} 円
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Detailed Breakdown Table */}
+              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: 'var(--color-washi-dark)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', width: '8%', textAlign: 'center' }}>順位</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>願意名</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'center', width: '18%' }}>予約件数</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'center', width: '15%' }}>構成比</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'right', width: '22%' }}>初穂料小計</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', textAlign: 'right', width: '20%' }}>平均初穂料</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prayerStatsList.map((item, idx) => (
+                      <tr key={item.name} style={{ borderBottom: '1px dashed var(--color-border)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: 'var(--color-accent-gray)' }}>{idx + 1}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', fontWeight: '500' }}>{item.name}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 'bold' }}>{item.count} 件</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: 'var(--color-accent-gray)' }}>{item.percentage.toFixed(1)}%</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{item.fee.toLocaleString()} 円</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--color-accent-gray)' }}>{item.avgFee.toLocaleString()} 円</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ backgroundColor: 'var(--color-washi)', borderTop: '2px solid var(--color-border)', fontWeight: 'bold' }}>
+                      <td colSpan={2} style={{ padding: '0.6rem 0.75rem', color: 'var(--color-urushi)' }}>合計</td>
+                      <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center', color: 'var(--color-urushi)' }}>{analyticsTotalCount} 件</td>
+                      <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center' }}>100.0%</td>
+                      <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: 'var(--color-mizuiro)' }}>{analyticsTotalRevenue.toLocaleString()} 円</td>
+                      <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: 'var(--color-accent-gray)' }}>
+                        {analyticsTotalCount > 0 ? Math.round(analyticsTotalRevenue / analyticsTotalCount).toLocaleString() : 0} 円
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           )}
         </div>
