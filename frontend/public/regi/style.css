@@ -1779,40 +1779,40 @@ rt {
   box-shadow: 0 1px 3px rgba(196, 162, 100, 0.2);
 }
 
-/* 提出用指定書式 (B5) プレビュー＆印刷スタイル */
+/* 提出用指定書式 (B5) プレビュー＆印刷スタイル (スプレッドシート原本完全再現) */
 .report-b5-sheet {
   max-width: 680px;
   margin: 0 auto;
   background: #fff;
-  padding: 18px 24px;
+  padding: 16px 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 2px;
   box-sizing: border-box;
-  font-family: "MS Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-family: "Yu Gothic", "Meiryo", "Hiragino Kaku Gothic ProN", "MS PGothic", sans-serif;
   color: #000;
 }
 
 .b5-report-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  border-bottom: 2px solid #000;
-  padding-bottom: 4px;
-  margin-bottom: 6px;
+  align-items: baseline;
+  border-bottom: none;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .b5-report-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.95rem;
+  font-weight: normal;
+  letter-spacing: 0.02em;
   color: #000;
 }
 
 .b5-report-date {
   font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-weight: normal;
+  letter-spacing: 0.05em;
   color: #000;
 }
 
@@ -1820,7 +1820,7 @@ rt {
   width: 100%;
   border-collapse: collapse;
   border: 2px solid #000;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   line-height: 1.25;
   background: #fff;
 }
@@ -1828,7 +1828,7 @@ rt {
 .b5-report-table th,
 .b5-report-table td {
   border-right: 1px solid #000;
-  padding: 2px 6px;
+  padding: 1.5px 5px;
   vertical-align: middle;
 }
 
@@ -1838,11 +1838,11 @@ rt {
 }
 
 .b5-report-table thead th {
-  border-bottom: 2px solid #000;
-  background-color: #f8f8f8;
-  font-weight: 700;
+  border-bottom: 1px solid #000;
+  background-color: #fff;
+  font-weight: normal;
   text-align: center;
-  padding: 4px 6px;
+  padding: 3px 5px;
   font-size: 0.82rem;
 }
 
@@ -1850,24 +1850,25 @@ rt {
   border-bottom: 1px dotted #888;
 }
 
-.b5-report-table tbody tr.row-has-qty {
-  background-color: #fffef7;
-}
-
 .b5-report-table tbody tr.row-total td {
-  border-top: 2px solid #000;
+  border-top: 1px solid #000;
   border-bottom: none;
-  font-weight: 700;
-  background-color: #f5f5f5;
-  padding: 5px 6px;
-  font-size: 0.88rem;
+  background-color: #fff;
+  padding: 3px 5px;
+  font-size: 0.85rem;
 }
 
-.b5-col-name { width: 38%; text-align: left; }
+.b5-col-name { width: 34%; text-align: left; }
 .b5-col-price { width: 15%; text-align: right; font-feature-settings: "tnum"; }
-.b5-col-qty { width: 11%; text-align: center; font-weight: 700; }
+.b5-col-qty { width: 13%; text-align: center; font-feature-settings: "tnum"; }
 .b5-col-amount { width: 18%; text-align: right; font-feature-settings: "tnum"; }
-.b5-col-remark { width: 18%; text-align: left; font-size: 0.72rem; }
+.b5-col-remark { width: 20%; text-align: left; font-size: 0.75rem; }
+
+.b5-total-label {
+  text-align: center !important;
+  letter-spacing: 0.4em;
+  padding-left: 0.4em;
+}
 
 /* 印刷用スタイル (A4 / B5 切り替え対応) */
 @media print {

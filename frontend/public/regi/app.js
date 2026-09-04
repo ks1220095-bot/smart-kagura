@@ -2662,8 +2662,7 @@ function renderB5SubmissionReportView(data) {
         <tbody>
           ${rowsHtml}
           <tr class="row-total">
-            <td class="b5-col-name" style="text-align: center; font-weight: bold;">入金合計</td>
-            <td class="b5-col-price"></td>
+            <td colspan="2" class="b5-total-label">入金合計</td>
             <td class="b5-col-qty">${grandQtyDisplay}</td>
             <td class="b5-col-amount">${grandAmountDisplay}</td>
             <td class="b5-col-remark"></td>
