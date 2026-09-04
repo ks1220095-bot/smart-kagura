@@ -1795,27 +1795,33 @@ rt {
 }
 
 .b5-report-header {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  justify-content: center;
+  align-items: center;
   border-bottom: none;
   padding-bottom: 3px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   width: 100%;
 }
 
 .b5-report-title {
   font-size: 1.05rem;
-  font-weight: normal;
-  letter-spacing: 0.02em;
+  font-weight: bold;
+  letter-spacing: 0.05em;
   color: #000;
+  text-align: center;
 }
 
 .b5-report-date {
-  font-size: 1.05rem;
+  position: absolute;
+  right: 0;
+  bottom: 3px;
+  font-size: 0.95rem;
   font-weight: normal;
   letter-spacing: 0.05em;
   color: #000;
+  text-align: right;
 }
 
 .b5-report-table {
@@ -1920,19 +1926,25 @@ rt {
     page-break-inside: auto;
   }
 
-  /* 提出用 B5 書式の印刷専用設定（紙面最大化＆URL完全消去＆1枚美収） */
+  /* 提出用 B5 書式の印刷専用設定（表題中央揃え＆上下左右センタリング＆紙面最大化＆URL完全消去） */
   body.print-format-b5 .report-b5-sheet {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 7mm 8mm 5mm 8mm !important;
-    margin: 0 !important;
+    height: 257mm !important;
+    max-height: 257mm !important;
+    padding: 0 7.5mm !important;
+    margin: 0 auto !important;
     box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
   }
 
   body.print-format-b5 .b5-report-header {
+    position: relative !important;
     display: flex !important;
-    justify-content: space-between !important;
-    align-items: baseline !important;
+    justify-content: center !important;
+    align-items: center !important;
     padding-bottom: 2mm !important;
     margin-bottom: 1.5mm !important;
     width: 100% !important;
@@ -1942,12 +1954,19 @@ rt {
     font-size: 10.5pt !important;
     font-weight: bold !important;
     color: #000 !important;
+    text-align: center !important;
+    letter-spacing: 0.05em !important;
+    width: 100% !important;
   }
 
   body.print-format-b5 .b5-report-date {
-    font-size: 10pt !important;
+    position: absolute !important;
+    right: 0 !important;
+    bottom: 2mm !important;
+    font-size: 9.5pt !important;
     font-weight: normal !important;
     color: #000 !important;
+    text-align: right !important;
   }
 
   body.print-format-b5 .b5-report-table {
