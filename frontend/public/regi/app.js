@@ -118,6 +118,127 @@ const SUBMISSION_SHEET_ITEMS = [
 ];
 
 // ==========================================
+// レジ・マスタ登録名 ➔ 提出用指定書式名への完全名寄せ辞書
+// ==========================================
+const ITEM_NAME_TO_SUBMISSION_MAP = {
+  // 季節の御朱印関連（秋・春・夏・冬）
+  "秋の御朱印": "季節の御朱印",
+  "春の御朱印": "季節の御朱印",
+  "夏の御朱印": "季節の御朱印",
+  "冬の御朱印": "季節の御朱印",
+  "季節の御朱印": "季節の御朱印",
+
+  // 札関連
+  "神社木札": "木札",
+  "木札": "木札",
+  "木札（大）": "木札(大)",
+  "木札(大)": "木札(大)",
+  "神社紙札": "神社紙札",
+  "紙札セット": "神札セット",
+  "神札セット": "神札セット",
+  "神社切札": "切札",
+  "切札": "切札",
+  "竈札": "竈札",
+  "商売繁盛紙札": "商売繁盛札",
+  "商売繁盛札": "商売繁盛札",
+  "厄災除守護紙札": "厄除守護札",
+  "厄除守護札": "厄除守護札",
+  "神宮大麻": "神宮大麻",
+  "四角札": "四角札",
+  "お札立て": "御札立",
+  "御札立": "御札立",
+  "晦日祓": "みそか祓い",
+  "みそか祓い": "みそか祓い",
+  "歳神様": "清瀧歳神様",
+  "清瀧歳神様": "清瀧歳神様",
+
+  // お守り関連
+  "波紋御守": "御守(波紋)",
+  "御守(波紋)": "御守(波紋)",
+  "御守（波紋）": "御守(波紋)",
+  "波紋御守（小）": "波紋御守（小）",
+  "波紋御守(小)": "波紋御守（小）",
+  "清瀧御守": "清瀧御守",
+  "足御守": "足御守",
+  "必勝安全御守": "必勝安全御守",
+  "白御守": "白御守",
+  "健康御守": "健康守",
+  "健康守": "健康守",
+  "白肌守": "白肌",
+  "白肌": "白肌",
+  "御守（紫）": "御守(紫)",
+  "御守(紫)": "御守(紫)",
+  "学業成就御守": "学業成就御守",
+  "合格御守": "合格祈願御守",
+  "合格祈願御守": "合格祈願御守",
+  "大祓カード御守": "大祓カード御守",
+  "開運厄除カード御守": "開運・厄除カード",
+  "開運・厄除カード": "開運・厄除カード",
+  "子授け守": "子授御守",
+  "子授御守": "子授御守",
+  "安産子宝御守": "安産子宝御守",
+  "厄除御守": "厄除御守",
+  "方位除御守": "方位除御守",
+  "病気平癒御守": "病気平癒守",
+  "病気平癒守": "病気平癒守",
+  "仕事御守": "仕事守",
+  "仕事守": "仕事守",
+  "勝守": "勝守",
+  "交通安全御守（大）": "交通安全大（青）",
+  "交通安全御守(大)": "交通安全大（青）",
+  "交通安全大（青）": "交通安全大（青）",
+  "交通安全鈴御守": "交通安全(鈴付･青)",
+  "交通安全(鈴付･青)": "交通安全(鈴付･青)",
+  "交通安全和紙御守": "交通安全和紙御守",
+  "交通安全ステッカー": "交通安全ステッカー",
+  "旅行安全御守": "旅行安全",
+  "旅行安全": "旅行安全",
+  "絆御守": "潜水艦(絆）",
+  "潜水艦(絆）": "潜水艦(絆）",
+  "潜水艦（絆）": "潜水艦(絆）",
+  "絆御守（隊員用）": "絆守（隊員用）",
+  "絆守（隊員用）": "絆守（隊員用）",
+
+  // 縁起物関連
+  "絵馬": "新清瀧絵馬",
+  "新清瀧絵馬": "新清瀧絵馬",
+  "七五三 絵馬": "七五三絵馬",
+  "七五三絵馬": "七五三絵馬",
+  "千歳飴": "千歳飴",
+  "干支クリスタル": "干支クリスタル",
+  "特大鏑矢": "特大鏑矢",
+  "鏑矢": "鏑矢",
+  "破魔矢": "破魔矢",
+  "破魔矢（カラフル）": "破魔矢（カラフル）",
+  "破魔矢(カラフル)": "破魔矢（カラフル）",
+  "卓上鏑矢": "卓上鏑矢",
+  "よりそい干支土鈴": "土鈴",
+  "土鈴": "土鈴",
+  "福俵": "福俵",
+  "熊手（大）": "熊手（新型）",
+  "熊手(大)": "熊手（新型）",
+  "熊手（新型）": "熊手（新型）",
+  "熊手（中）": "熊手（中型）",
+  "熊手(中)": "熊手（中型）",
+  "熊手（中型）": "熊手（中型）",
+  "熊手（小）": "熊手（小）台付",
+  "熊手(小)": "熊手（小）台付",
+  "熊手（小）台付": "熊手（小）台付",
+
+  // おみくじ関連
+  "おみくじ": "おみくじ",
+  "夢みくじ": "夢みくじ",
+  "扇子おみくじ": "扇子おみくじ",
+  "開運・招福おみくじ": "開運おみくじ",
+  "開運おみくじ": "開運おみくじ",
+
+  // 御朱印関連
+  "御朱印": "御朱印",
+  "限定御朱印": "限定御朱印",
+  "御朱印帳": "御朱印帳"
+};
+
+// ==========================================
 // アプリケーション状態管理 (State)
 // ==========================================
 const state = {
@@ -623,11 +744,27 @@ function setupEventListeners() {
   }
 
   DOM.btnGenerateReport.addEventListener('click', generateDailyReport);
+  
+  let savedDocTitle = document.title;
+  window.addEventListener('beforeprint', () => {
+    savedDocTitle = document.title;
+    document.title = ''; // ブラウザの標準ヘッダー（タイトル/URL）を完全消去
+  });
+  window.addEventListener('afterprint', () => {
+    document.title = savedDocTitle || '神社 授与品レジ・日次報告システム';
+  });
+
   DOM.btnPrintReport.addEventListener('click', () => {
     // 印刷用紙サイズ（B5/A4）のクラスをbodyに付与して印刷ダイアログを起動
     document.body.classList.toggle('print-format-b5', state.reportFormat === 'submission');
     document.body.classList.toggle('print-format-standard', state.reportFormat === 'standard');
+    
+    // タイトルを一時的に空にしてURL・システム名のヘッダー印字を防ぐ
+    document.title = '';
     window.print();
+    setTimeout(() => {
+      document.title = savedDocTitle || '神社 授与品レジ・日次報告システム';
+    }, 1000);
   });
   DOM.reportDate.addEventListener('change', (e) => {
     state.selectedDate = e.target.value;
@@ -2438,23 +2575,48 @@ function renderB5SubmissionReportView(data) {
   
   const formattedReiwa = `令和 ${reiwaYear} 年 ${month} 月 ${day} 日`;
 
+  // 当日の取引データを指定書式の正式品名ごとに正規化・名寄せ集計
+  const normalizedStats = {};
+  if (data.itemDetails) {
+    for (let rawName in data.itemDetails) {
+      const details = data.itemDetails[rawName];
+      if (!details) continue;
+
+      // 1. マッピング辞書から正規化名を取得
+      let targetName = ITEM_NAME_TO_SUBMISSION_MAP[rawName];
+      
+      // 2. 空白・括弧の全角半角正規化で再検索
+      if (!targetName) {
+        const cleanRaw = rawName.replace(/[\s\(\)（）]/g, '');
+        const matchedKey = Object.keys(ITEM_NAME_TO_SUBMISSION_MAP).find(k => k.replace(/[\s\(\)（）]/g, '') === cleanRaw);
+        if (matchedKey) targetName = ITEM_NAME_TO_SUBMISSION_MAP[matchedKey];
+      }
+
+      // 3. 指定書式品名リストと直接一致するか確認
+      if (!targetName) {
+        const directMatch = SUBMISSION_SHEET_ITEMS.find(s => s.name === rawName || s.name.replace(/[\s\(\)（）]/g, '') === rawName.replace(/[\s\(\)（）]/g, ''));
+        if (directMatch) targetName = directMatch.name;
+      }
+
+      // 見つからなければ元の名称を採用
+      targetName = targetName || rawName;
+
+      if (!normalizedStats[targetName]) {
+        normalizedStats[targetName] = { quantity: 0, amount: 0 };
+      }
+      normalizedStats[targetName].quantity += details.quantity;
+      normalizedStats[targetName].amount += details.amount;
+    }
+  }
+
   let totalQty = 0;
   let totalAmount = 0;
 
   // 全62品目の行を構築
   const rowsHtml = SUBMISSION_SHEET_ITEMS.map((sheetItem) => {
-    // データとの照合（完全一致または全角半角/空白除去でのマッチング）
-    let details = data.itemDetails[sheetItem.name];
-    if (!details) {
-      const cleanSheetName = sheetItem.name.replace(/[\s\(\)（）]/g, '');
-      const matchedKey = Object.keys(data.itemDetails).find(k => k.replace(/[\s\(\)（）]/g, '') === cleanSheetName);
-      if (matchedKey) {
-        details = data.itemDetails[matchedKey];
-      }
-    }
-
-    const qty = details ? details.quantity : 0;
-    const amount = details ? details.amount : 0;
+    const stats = normalizedStats[sheetItem.name];
+    const qty = stats ? stats.quantity : 0;
+    const amount = stats ? stats.amount : 0;
 
     if (qty > 0) {
       totalQty += qty;
