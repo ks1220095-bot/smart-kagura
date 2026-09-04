@@ -14,7 +14,7 @@
   <!-- FontAwesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.1.7">
   
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -364,6 +364,18 @@
           </div>
           
           <div class="control-group" style="gap:0.3rem;">
+            <label>報告書式</label>
+            <div class="report-format-toggle" style="display:flex; gap:0.4rem; align-items:center; height:38px;">
+              <button type="button" class="btn-report-format active" id="btn-format-submission" data-format="submission" style="height:38px; padding:0 0.85rem; font-size:0.88rem; border-radius:var(--radius-sm); border:1px solid var(--color-gold); background:var(--color-gold-bg); color:var(--color-gold-text); cursor:pointer; font-weight:700; display:flex; align-items:center; gap:0.35rem; transition:all 0.2s ease;">
+                <i class="fa-solid fa-scroll"></i> 提出用指定書式 (B5)
+              </button>
+              <button type="button" class="btn-report-format" id="btn-format-standard" data-format="standard" style="height:38px; padding:0 0.85rem; font-size:0.88rem; border-radius:var(--radius-sm); border:1px solid var(--color-border); background:var(--color-bg-sub); color:var(--color-text); cursor:pointer; font-weight:normal; display:flex; align-items:center; gap:0.35rem; transition:all 0.2s ease;">
+                <i class="fa-solid fa-file-lines"></i> 通常書式 (A4)
+              </button>
+            </div>
+          </div>
+
+          <div class="control-group" style="gap:0.3rem;" id="container-include-items">
             <label>出力内訳の選択</label>
             <div style="display:flex; gap:1.2rem; align-items:center; height:38px; background:var(--color-bg-sub); padding:0 1rem; border:1px solid var(--color-border); border-radius:var(--radius-sm);">
               <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; cursor:pointer; font-weight:normal; margin:0; color:var(--color-text);">
@@ -669,6 +681,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.1.6"></script>
+  <script src="app.js?v=2.1.7"></script>
 </body>
 </html>

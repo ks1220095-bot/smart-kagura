@@ -50,6 +50,74 @@ const MOCK_PRAYERS = {
 };
 
 // ==========================================
+// 提出用指定書式（清瀧神社〈R8/9/1ver.〉・全62品目）マスタ定義
+// ==========================================
+const SUBMISSION_SHEET_ITEMS = [
+  { name: "木札(大)", price: 5000, remark: "" },
+  { name: "木札", price: 2000, remark: "" },
+  { name: "四角札", price: 2000, remark: "" },
+  { name: "神宮大麻", price: 1000, remark: "" },
+  { name: "神社紙札", price: 800, remark: "" },
+  { name: "神札セット", price: 1800, remark: "" },
+  { name: "切札", price: 300, remark: "" },
+  { name: "竈札", price: 300, remark: "" },
+  { name: "商売繁盛札", price: 1000, remark: "" },
+  { name: "厄除守護札", price: 1000, remark: "" },
+  { name: "清瀧御守", price: 800, remark: "" },
+  { name: "足御守", price: 2000, remark: "" },
+  { name: "必勝安全御守", price: 800, remark: "" },
+  { name: "白御守", price: 600, remark: "" },
+  { name: "健康守", price: 600, remark: "" },
+  { name: "白肌", price: 500, remark: "" },
+  { name: "御守(紫)", price: 600, remark: "" },
+  { name: "御守(波紋)", price: 800, remark: "" },
+  { name: "波紋御守（小）", price: 600, remark: "" },
+  { name: "学業成就御守", price: 600, remark: "" },
+  { name: "合格祈願御守", price: 600, remark: "" },
+  { name: "大祓カード御守", price: 600, remark: "" },
+  { name: "開運・厄除カード", price: 500, remark: "" },
+  { name: "子授御守", price: 800, remark: "" },
+  { name: "安産子宝御守", price: 800, remark: "" },
+  { name: "厄除御守", price: 600, remark: "" },
+  { name: "方位除御守", price: 600, remark: "" },
+  { name: "病気平癒守", price: 600, remark: "" },
+  { name: "仕事守", price: 600, remark: "" },
+  { name: "勝守", price: 600, remark: "" },
+  { name: "交通安全大（青）", price: 1000, remark: "" },
+  { name: "交通安全(鈴付･青)", price: 800, remark: "" },
+  { name: "交通安全和紙御守", price: 500, remark: "" },
+  { name: "交通安全ステッカー", price: 700, remark: "" },
+  { name: "旅行安全", price: 600, remark: "" },
+  { name: "潜水艦(絆）", price: 800, remark: "" },
+  { name: "新清瀧絵馬", price: 600, remark: "" },
+  { name: "御札立", price: 500, remark: "" },
+  { name: "みそか祓い", price: 700, remark: "" },
+  { name: "清瀧歳神様", price: 2500, remark: "" },
+  { name: "干支クリスタル", price: 300, remark: "" },
+  { name: "特大鏑矢", price: 15000, remark: "" },
+  { name: "鏑矢", price: 3000, remark: "" },
+  { name: "破魔矢", price: 2000, remark: "" },
+  { name: "破魔矢（カラフル）", price: 2500, remark: "" },
+  { name: "卓上鏑矢", price: 1500, remark: "" },
+  { name: "土鈴", price: 1500, remark: "" },
+  { name: "福俵", price: 3000, remark: "" },
+  { name: "熊手（新型）", price: 5000, remark: "" },
+  { name: "熊手（中型）", price: 3000, remark: "" },
+  { name: "熊手（小）台付", price: 2000, remark: "" },
+  { name: "おみくじ", price: 100, remark: "" },
+  { name: "夢みくじ", price: 100, remark: "" },
+  { name: "扇子おみくじ", price: 200, remark: "" },
+  { name: "開運おみくじ", price: 200, remark: "" },
+  { name: "御朱印", price: 500, remark: "" },
+  { name: "季節の御朱印", price: 800, remark: "" },
+  { name: "限定御朱印", price: 1000, remark: "" },
+  { name: "御朱印帳", price: 1500, remark: "" },
+  { name: "七五三絵馬", price: 800, remark: "" },
+  { name: "千歳飴", price: 500, remark: "" },
+  { name: "絆守（隊員用）", price: 600, remark: "" }
+];
+
+// ==========================================
 // アプリケーション状態管理 (State)
 // ==========================================
 const state = {
@@ -75,6 +143,10 @@ const state = {
   isUsingMock: false,
   cancelTargetTxId: null,
   isCheckingOut: false, // 2重会計防止用ガードフラグ
+  
+  // 報告書書式設定
+  reportFormat: 'submission', // 'submission' (提出用B5) | 'standard' (通常A4)
+  lastReportData: null,
   
   gridCols: 2,
   pinchCooldown: false,
@@ -147,6 +219,9 @@ const DOM = {
   btnGenerateReport: document.getElementById('btn-generate-report'),
   btnPrintReport: document.getElementById('btn-print-report'),
   reportSheetView: document.getElementById('report-sheet-view'),
+  btnFormatSubmission: document.getElementById('btn-format-submission'),
+  btnFormatStandard: document.getElementById('btn-format-standard'),
+  containerIncludeItems: document.getElementById('container-include-items'),
   
   // マスタ画面
   masterGrid: document.getElementById('master-grid'),
@@ -523,8 +598,37 @@ function setupEventListeners() {
     });
   }
 
+  // 報告書式切り替え
+  if (DOM.btnFormatSubmission && DOM.btnFormatStandard) {
+    // 初期状態の表示制御
+    if (DOM.containerIncludeItems) {
+      DOM.containerIncludeItems.style.display = state.reportFormat === 'submission' ? 'none' : 'flex';
+    }
+
+    DOM.btnFormatSubmission.addEventListener('click', () => {
+      state.reportFormat = 'submission';
+      DOM.btnFormatSubmission.classList.add('active');
+      DOM.btnFormatStandard.classList.remove('active');
+      if (DOM.containerIncludeItems) DOM.containerIncludeItems.style.display = 'none';
+      if (state.lastReportData) renderDailyReportView(state.lastReportData);
+    });
+
+    DOM.btnFormatStandard.addEventListener('click', () => {
+      state.reportFormat = 'standard';
+      DOM.btnFormatStandard.classList.add('active');
+      DOM.btnFormatSubmission.classList.remove('active');
+      if (DOM.containerIncludeItems) DOM.containerIncludeItems.style.display = 'flex';
+      if (state.lastReportData) renderDailyReportView(state.lastReportData);
+    });
+  }
+
   DOM.btnGenerateReport.addEventListener('click', generateDailyReport);
-  DOM.btnPrintReport.addEventListener('click', () => window.print());
+  DOM.btnPrintReport.addEventListener('click', () => {
+    // 印刷用紙サイズ（B5/A4）のクラスをbodyに付与して印刷ダイアログを起動
+    document.body.classList.toggle('print-format-b5', state.reportFormat === 'submission');
+    document.body.classList.toggle('print-format-standard', state.reportFormat === 'standard');
+    window.print();
+  });
   DOM.reportDate.addEventListener('change', (e) => {
     state.selectedDate = e.target.value;
   });
@@ -2316,30 +2420,116 @@ async function generateDailyReport() {
 }
 
 function renderDailyReportView(data) {
-  const dateObj = new Date(data.date);
+  state.lastReportData = data;
+  if (state.reportFormat === 'submission') {
+    renderB5SubmissionReportView(data);
+  } else {
+    renderStandardDailyReportView(data);
+  }
+}
+
+// 提出用指定書式 (清瀧神社〈R8/9/1ver.〉・B5) レンダリング
+function renderB5SubmissionReportView(data) {
+  const dateObj = new Date(data.date.replace(/-/g, '/'));
+  const year = dateObj.getFullYear();
+  const reiwaYear = year >= 2019 ? (year - 2018) : 1;
+  const month = dateObj.getMonth() + 1;
+  const day = dateObj.getDate();
+  
+  const formattedReiwa = `令和 ${reiwaYear} 年 ${month} 月 ${day} 日`;
+
+  let totalQty = 0;
+  let totalAmount = 0;
+
+  // 全62品目の行を構築
+  const rowsHtml = SUBMISSION_SHEET_ITEMS.map((sheetItem) => {
+    // データとの照合（完全一致または全角半角/空白除去でのマッチング）
+    let details = data.itemDetails[sheetItem.name];
+    if (!details) {
+      const cleanSheetName = sheetItem.name.replace(/[\s\(\)（）]/g, '');
+      const matchedKey = Object.keys(data.itemDetails).find(k => k.replace(/[\s\(\)（）]/g, '') === cleanSheetName);
+      if (matchedKey) {
+        details = data.itemDetails[matchedKey];
+      }
+    }
+
+    const qty = details ? details.quantity : 0;
+    const amount = details ? details.amount : 0;
+
+    if (qty > 0) {
+      totalQty += qty;
+      totalAmount += amount;
+    }
+
+    const qtyDisplay = qty > 0 ? `${qty}` : '';
+    const amountDisplay = amount > 0 ? `${amount.toLocaleString()}` : '';
+    const hasQtyClass = qty > 0 ? 'row-has-qty' : '';
+
+    return `
+      <tr class="${hasQtyClass}">
+        <td class="b5-col-name">${sheetItem.name}</td>
+        <td class="b5-col-price">${sheetItem.price.toLocaleString()}</td>
+        <td class="b5-col-qty">${qtyDisplay}</td>
+        <td class="b5-col-amount">${amountDisplay}</td>
+        <td class="b5-col-remark">${sheetItem.remark || ''}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // 総合計の数量と金額
+  const grandQtyDisplay = totalQty > 0 ? `${totalQty}` : '';
+  const grandAmountDisplay = totalAmount > 0 ? `${totalAmount.toLocaleString()}` : (data.itemSalesTotal > 0 ? data.itemSalesTotal.toLocaleString() : '0');
+
+  DOM.reportSheetView.innerHTML = `
+    <div class="report-b5-sheet">
+      <div class="b5-report-header">
+        <div class="b5-report-title">清瀧神社〈R8/9/1ver.〉</div>
+        <div class="b5-report-date">${formattedReiwa}</div>
+      </div>
+      
+      <table class="b5-report-table">
+        <thead>
+          <tr>
+            <th class="b5-col-name">授与品名(入金項目)</th>
+            <th class="b5-col-price">初穂料(単価)</th>
+            <th class="b5-col-qty">数量</th>
+            <th class="b5-col-amount">金額</th>
+            <th class="b5-col-remark">備考</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+          <tr class="row-total">
+            <td class="b5-col-name" style="text-align: center; font-weight: bold;">入金合計</td>
+            <td class="b5-col-price"></td>
+            <td class="b5-col-qty">${grandQtyDisplay}</td>
+            <td class="b5-col-amount">${grandAmountDisplay}</td>
+            <td class="b5-col-remark"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// 従来の通常書式 (A4) レンダリング
+function renderStandardDailyReportView(data) {
+  const dateObj = new Date(data.date.replace(/-/g, '/'));
   const formattedDate = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
   
   // 出力項目のチェック状態を取得
-  const includeItems = document.getElementById('chk-include-items').checked;
+  const includeItems = document.getElementById('chk-include-items') ? document.getElementById('chk-include-items').checked : true;
   
   let itemRowsHtml = '';
   if (Object.keys(data.itemDetails).length === 0) {
     itemRowsHtml = '<tr><td colspan="3" class="text-center">授与履歴なし</td></tr>';
   } else {
     // マスタ（state.items）の並び順に合わせてソートして出力します
-    console.log("[DailyReport Debug] Sorting starting...");
-    console.log("[DailyReport Debug] Master items count:", state.items.length);
-    console.log("[DailyReport Debug] Master item names:", state.items.map(i => i.name));
-    
     const sortedNames = Object.keys(data.itemDetails).sort((a, b) => {
       const idxA = state.items.findIndex(item => item.name === a);
       const idxB = state.items.findIndex(item => item.name === b);
-      
-      console.log(`[DailyReport Debug] Compare: "${a}" (idx: ${idxA}) vs "${b}" (idx: ${idxB})`);
-      
       const posA = idxA === -1 ? 9999 : idxA;
       const posB = idxB === -1 ? 9999 : idxB;
-      
       return posA - posB;
     });
 
