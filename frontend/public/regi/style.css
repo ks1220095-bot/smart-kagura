@@ -1795,14 +1795,15 @@ rt {
 }
 
 .b5-report-header {
-  position: relative;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: baseline;
+  gap: 2.5rem;
   border-bottom: none;
   padding-bottom: 3px;
   margin-bottom: 6px;
   width: 100%;
+  text-align: center;
 }
 
 .b5-report-title {
@@ -1810,18 +1811,13 @@ rt {
   font-weight: bold;
   letter-spacing: 0.05em;
   color: #000;
-  text-align: center;
 }
 
 .b5-report-date {
-  position: absolute;
-  right: 0;
-  bottom: 3px;
-  font-size: 0.95rem;
+  font-size: 1.02rem;
   font-weight: normal;
   letter-spacing: 0.05em;
   color: #000;
-  text-align: right;
 }
 
 .b5-report-table {
@@ -1941,32 +1937,28 @@ rt {
   }
 
   body.print-format-b5 .b5-report-header {
-    position: relative !important;
     display: flex !important;
     justify-content: center !important;
-    align-items: center !important;
+    align-items: baseline !important;
+    gap: 12mm !important;
     padding-bottom: 2mm !important;
     margin-bottom: 1.5mm !important;
     width: 100% !important;
+    text-align: center !important;
   }
 
   body.print-format-b5 .b5-report-title {
     font-size: 10.5pt !important;
     font-weight: bold !important;
     color: #000 !important;
-    text-align: center !important;
     letter-spacing: 0.05em !important;
-    width: 100% !important;
   }
 
   body.print-format-b5 .b5-report-date {
-    position: absolute !important;
-    right: 0 !important;
-    bottom: 2mm !important;
-    font-size: 9.5pt !important;
+    font-size: 10pt !important;
     font-weight: normal !important;
     color: #000 !important;
-    text-align: right !important;
+    letter-spacing: 0.05em !important;
   }
 
   body.print-format-b5 .b5-report-table {
