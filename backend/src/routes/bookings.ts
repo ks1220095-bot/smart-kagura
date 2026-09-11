@@ -239,7 +239,7 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // 1. Check max slot capacity
+    // 1. Check max slot capacity (bypass if isStaff is true)
     const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['max_groups_per_slot']);
     const maxCapacity = parseInt(limitSetting.rows[0]?.value || '8');
 
@@ -252,8 +252,8 @@ router.post('/', async (req, res) => {
     const totalBooked = bookedCounts.rows.length;
     const hasOrg = bookedCounts.rows.some((r: any) => r.booking_type === 'organization');
 
-    // Rule A: If slot already contains an organization booking, it is completely locked.
-    if (hasOrg) {
+    // Rule A: If slot already contains an organization booking, it is completely locked (bypass if isStaff = true).
+    if (!isStaff && hasOrg) {
       return res.status(400).json({ error: 'ご指定の時間帯は団体参拝の貸切枠のため、個人・団体問わずこれ以上の予約はできません。' });
     }
 
@@ -261,8 +261,8 @@ router.post('/', async (req, res) => {
 
     if (includesOrg) {
       // Rule B: If trying to book an organization slot:
-      // - The slot must be completely empty (totalBooked must be 0)
-      if (totalBooked > 0) {
+      // - The slot must be completely empty (totalBooked must be 0) unless staff exception
+      if (!isStaff && totalBooked > 0) {
         return res.status(400).json({ error: 'ご指定の時間帯にはすでに他の方のご予約が入っているため、団体参拝の予約はできません。' });
       }
       // - The request must only contain 1 booking (cannot mix organization and individual)
@@ -271,8 +271,8 @@ router.post('/', async (req, res) => {
       }
     } else {
       // Rule C: If booking individual slots:
-      // Check if total new slots exceed capacity
-      if (totalBooked + bookings.length > maxCapacity) {
+      // Check if total new slots exceed capacity (bypass if isStaff is true)
+      if (!isStaff && totalBooked + bookings.length > maxCapacity) {
         const remaining = Math.max(0, maxCapacity - totalBooked);
         return res.status(400).json({ 
           error: `ご指定の時間帯は残り枠数（残り ${remaining}組）を超えているため、${bookings.length}件の同時予約はできません。` 
@@ -280,20 +280,22 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // 3. Check if slot is closed by shrine events
-    const closedEventsResult = await db.query(
-      `SELECT start_time, end_time FROM events WHERE event_date = $1 AND is_closed_slot = 1`,
-      [first.booking_date]
-    );
-    const bookingMin = timeToMinutes(first.booking_time);
-    const isClosedEvent = closedEventsResult.rows.some((event: any) => {
-      const startMin = timeToMinutes(event.start_time);
-      const endMin = timeToMinutes(event.end_time);
-      return bookingMin >= startMin && bookingMin < endMin;
-    });
+    // 3. Check if slot is closed by shrine events (bypass if isStaff is true)
+    if (!isStaff) {
+      const closedEventsResult = await db.query(
+        `SELECT start_time, end_time FROM events WHERE event_date = $1 AND is_closed_slot = 1`,
+        [first.booking_date]
+      );
+      const bookingMin = timeToMinutes(first.booking_time);
+      const isClosedEvent = closedEventsResult.rows.some((event: any) => {
+        const startMin = timeToMinutes(event.start_time);
+        const endMin = timeToMinutes(event.end_time);
+        return bookingMin >= startMin && bookingMin < endMin;
+      });
 
-    if (isClosedEvent) {
-      return res.status(400).json({ error: 'ご指定の時間帯は祭典・行事等により受付停止中です。' });
+      if (isClosedEvent) {
+        return res.status(400).json({ error: 'ご指定の時間帯は祭典・行事等により受付停止中です。' });
+      }
     }
 
     // 4. Insert all items inside a transaction
