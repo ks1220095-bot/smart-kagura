@@ -880,30 +880,32 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
         inputEnd.value = getJstDateString(today);
       }
       
-      state.dashboard.customStart = inputStart.value;
-      state.dashboard.customEnd = inputEnd.value;
+      state.dashboard.customStart = inputStart ? inputStart.value : getJstDateString(thirtyDaysAgo);
+      state.dashboard.customEnd = inputEnd ? inputEnd.value : getJstDateString(today);
       loadDashboardData();
     });
 
-    const triggerCustomApply = () => {
-      if (!inputStart.value || !inputEnd.value) return;
-      if (inputStart.value > inputEnd.value) {
-        showToast('開始日は終了日より前の日付にしてください。', 'error');
+    const triggerCustomApply = (showError = true) => {
+      if (!inputStart || !inputEnd) return;
+      let sVal = inputStart.value;
+      let eVal = inputEnd.value;
+      if (!sVal || !eVal) {
+        if (showError) showToast('開始日と終了日を両方指定してください。', 'error');
         return;
       }
-      state.dashboard.customStart = inputStart.value;
-      state.dashboard.customEnd = inputEnd.value;
+      if (sVal > eVal) {
+        if (showError) {
+          showToast('開始日は終了日より前の日付にしてください。', 'error');
+        }
+        return;
+      }
+      state.dashboard.customStart = sVal;
+      state.dashboard.customEnd = eVal;
       loadDashboardData();
     };
 
     if (btnApplyCustom) {
-      btnApplyCustom.addEventListener('click', triggerCustomApply);
-    }
-    if (inputStart) {
-      inputStart.addEventListener('change', triggerCustomApply);
-    }
-    if (inputEnd) {
-      inputEnd.addEventListener('change', triggerCustomApply);
+      btnApplyCustom.addEventListener('click', () => triggerCustomApply(true));
     }
   }
 
@@ -975,30 +977,32 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
         inputStatsEnd.value = getJstDateString(today);
       }
       
-      state.dashboard.statsCustomStart = inputStatsStart.value;
-      state.dashboard.statsCustomEnd = inputStatsEnd.value;
+      state.dashboard.statsCustomStart = inputStatsStart ? inputStatsStart.value : getJstDateString(thirtyDaysAgo);
+      state.dashboard.statsCustomEnd = inputStatsEnd ? inputStatsEnd.value : getJstDateString(today);
       loadDashboardData();
     });
 
-    const triggerStatsCustomApply = () => {
-      if (!inputStatsStart.value || !inputStatsEnd.value) return;
-      if (inputStatsStart.value > inputStatsEnd.value) {
-        showToast('開始日は終了日より前の日付にしてください。', 'error');
+    const triggerStatsCustomApply = (showError = true) => {
+      if (!inputStatsStart || !inputStatsEnd) return;
+      let sVal = inputStatsStart.value;
+      let eVal = inputStatsEnd.value;
+      if (!sVal || !eVal) {
+        if (showError) showToast('開始日と終了日を両方指定してください。', 'error');
         return;
       }
-      state.dashboard.statsCustomStart = inputStatsStart.value;
-      state.dashboard.statsCustomEnd = inputStatsEnd.value;
+      if (sVal > eVal) {
+        if (showError) {
+          showToast('開始日は終了日より前の日付にしてください。', 'error');
+        }
+        return;
+      }
+      state.dashboard.statsCustomStart = sVal;
+      state.dashboard.statsCustomEnd = eVal;
       loadDashboardData();
     };
 
     if (btnApplyStats) {
-      btnApplyStats.addEventListener('click', triggerStatsCustomApply);
-    }
-    if (inputStatsStart) {
-      inputStatsStart.addEventListener('change', triggerStatsCustomApply);
-    }
-    if (inputStatsEnd) {
-      inputStatsEnd.addEventListener('change', triggerStatsCustomApply);
+      btnApplyStats.addEventListener('click', () => triggerStatsCustomApply(true));
     }
   }
 
@@ -4093,7 +4097,7 @@ function renderDashboardCharts() {
     let maxDateStr = '';
     
     state.dashboard.rangeTransactions.forEach(tx => {
-      if (tx && tx.date && /^d{4}-d{2}-d{2}$/.test(tx.date) && (tx.status === '有効' || tx.status === 'true')) {
+      if (tx && tx.date && /^\d{4}-\d{2}-\d{2}$/.test(tx.date) && (tx.status === '有効' || tx.status === 'true')) {
         if (!minDateStr || tx.date < minDateStr) minDateStr = tx.date;
         if (!maxDateStr || tx.date > maxDateStr) maxDateStr = tx.date;
       }
