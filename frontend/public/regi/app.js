@@ -247,6 +247,9 @@ const state = {
   transactions: [],
   dashboard: {
     rangeTransactions: [],
+    cachedTransactionsMap: {}, // transactionId_itemId -> tx
+    earliestFetchedDate: null,
+    latestFetchedDate: null,
     trendChart: null,
     categoryChart: null,
     activeRange: 'week', // 'week' | 'month' | 'year' | 'all' | 'custom'
@@ -845,28 +848,27 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
     btnWeek.addEventListener('click', () => {
       setRangeActiveButton(btnWeek);
       state.dashboard.activeRange = 'week';
-      loadDashboardData(); // 週間のデータ範囲で読み込み直す
+      loadDashboardData();
     });
     btnMonth.addEventListener('click', () => {
       setRangeActiveButton(btnMonth);
       state.dashboard.activeRange = 'month';
-      loadDashboardData(); // 月間のデータ範囲で読み込み直す
+      loadDashboardData();
     });
     btnYear.addEventListener('click', () => {
       setRangeActiveButton(btnYear);
       state.dashboard.activeRange = 'year';
-      loadDashboardData(); // 年間のデータ範囲で読み込み直す
+      loadDashboardData();
     });
     btnAll.addEventListener('click', () => {
       setRangeActiveButton(btnAll);
       state.dashboard.activeRange = 'all';
-      loadDashboardData(); // 全期間のデータを読み込む
+      loadDashboardData();
     });
     btnCustom.addEventListener('click', () => {
       setRangeActiveButton(btnCustom);
       state.dashboard.activeRange = 'custom';
       
-      // カレンダーの初期値（今日〜30日前）をセット
       const today = new Date();
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(today.getDate() - 30);
@@ -883,20 +885,25 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       loadDashboardData();
     });
 
-    if (btnApplyCustom && inputStart && inputEnd) {
-      btnApplyCustom.addEventListener('click', () => {
-        if (!inputStart.value || !inputEnd.value) {
-          showToast('開始日と終了日を両方指定してください。', 'error');
-          return;
-        }
-        if (inputStart.value > inputEnd.value) {
-          showToast('開始日は終了日より前の日付にしてください。', 'error');
-          return;
-        }
-        state.dashboard.customStart = inputStart.value;
-        state.dashboard.customEnd = inputEnd.value;
-        loadDashboardData();
-      });
+    const triggerCustomApply = () => {
+      if (!inputStart.value || !inputEnd.value) return;
+      if (inputStart.value > inputEnd.value) {
+        showToast('開始日は終了日より前の日付にしてください。', 'error');
+        return;
+      }
+      state.dashboard.customStart = inputStart.value;
+      state.dashboard.customEnd = inputEnd.value;
+      loadDashboardData();
+    };
+
+    if (btnApplyCustom) {
+      btnApplyCustom.addEventListener('click', triggerCustomApply);
+    }
+    if (inputStart) {
+      inputStart.addEventListener('change', triggerCustomApply);
+    }
+    if (inputEnd) {
+      inputEnd.addEventListener('change', triggerCustomApply);
     }
   }
 
@@ -973,20 +980,25 @@ function setupDragAndDrop(dropzone, fileInput, previewImg, callback) {
       loadDashboardData();
     });
 
-    if (btnApplyStats && inputStatsStart && inputStatsEnd) {
-      btnApplyStats.addEventListener('click', () => {
-        if (!inputStatsStart.value || !inputStatsEnd.value) {
-          showToast('開始日と終了日を両方指定してください。', 'error');
-          return;
-        }
-        if (inputStatsStart.value > inputStatsEnd.value) {
-          showToast('開始日は終了日より前の日付にしてください。', 'error');
-          return;
-        }
-        state.dashboard.statsCustomStart = inputStatsStart.value;
-        state.dashboard.statsCustomEnd = inputStatsEnd.value;
-        loadDashboardData();
-      });
+    const triggerStatsCustomApply = () => {
+      if (!inputStatsStart.value || !inputStatsEnd.value) return;
+      if (inputStatsStart.value > inputStatsEnd.value) {
+        showToast('開始日は終了日より前の日付にしてください。', 'error');
+        return;
+      }
+      state.dashboard.statsCustomStart = inputStatsStart.value;
+      state.dashboard.statsCustomEnd = inputStatsEnd.value;
+      loadDashboardData();
+    };
+
+    if (btnApplyStats) {
+      btnApplyStats.addEventListener('click', triggerStatsCustomApply);
+    }
+    if (inputStatsStart) {
+      inputStatsStart.addEventListener('change', triggerStatsCustomApply);
+    }
+    if (inputStatsEnd) {
+      inputStatsEnd.addEventListener('change', triggerStatsCustomApply);
     }
   }
 
@@ -3651,7 +3663,7 @@ function setupOfflineMonitoring() {
 // ==========================================
 // 総合ダッシュボードの制御ロジック
 // ==========================================
-async function loadDashboardData(isBackground = false) {
+async function loadDashboardData(isBackground = false, forceRefresh = false) {
   const now = new Date();
   
   // 今月1日
@@ -3677,7 +3689,7 @@ async function loadDashboardData(isBackground = false) {
   } else if (range === 'year') {
     startDate = `${now.getFullYear()}-01-01`;
   } else if (range === 'all') {
-    startDate = '2025-01-01'; // システム稼働初期の十分に古い日付を設定
+    startDate = '2026-01-01'; // 稼働開始年（2026年）
   } else if (range === 'custom') {
     startDate = state.dashboard.customStart || startOfWeekStr;
   }
@@ -3693,17 +3705,17 @@ async function loadDashboardData(isBackground = false) {
   } else if (statsRange === 'year') {
     statsStartDate = `${now.getFullYear()}-01-01`;
   } else if (statsRange === 'all') {
-    statsStartDate = '2025-01-01';
+    statsStartDate = '2026-01-01';
   } else if (statsRange === 'custom') {
     statsStartDate = state.dashboard.statsCustomStart || startOfWeekStr;
   }
 
-  // 表示に必要な全範囲をカバーするために「推移表示開始日」「統計表示開始日」「今月開始日」の中で最も過去の日付を採用
+  // 表示に必要な全範囲をカバーするために最も過去の開始日を採用
   let fetchStartDate = startOfMonthStr;
-  if (startDate < fetchStartDate) fetchStartDate = startDate;
-  if (statsStartDate < fetchStartDate) fetchStartDate = statsStartDate;
+  if (startDate && startDate < fetchStartDate) fetchStartDate = startDate;
+  if (statsStartDate && statsStartDate < fetchStartDate) fetchStartDate = statsStartDate;
 
-  // 終了日も同様に「本日」「推移終了日」「統計終了日」の中で最も未来の日付を採用
+  // 終了日も同様に最も未来の日付を採用
   let fetchEndDate = todayStr;
   if (range === 'custom' && state.dashboard.customEnd && state.dashboard.customEnd > fetchEndDate) {
     fetchEndDate = state.dashboard.customEnd;
@@ -3711,48 +3723,90 @@ async function loadDashboardData(isBackground = false) {
   if (statsRange === 'custom' && state.dashboard.statsCustomEnd && state.dashboard.statsCustomEnd > fetchEndDate) {
     fetchEndDate = state.dashboard.statsCustomEnd;
   }
+
+  // 背景ポーリング時は直近（今週〜本日）のみ軽く取得してキャッシュを更新
+  if (isBackground) {
+    fetchStartDate = startOfWeekStr;
+    fetchEndDate = todayStr;
+  }
+
+  // すでにメモリキャッシュで要求範囲をカバーできている場合はネットワーク通信不要で即時描画
+  if (!forceRefresh && !isBackground && 
+      state.dashboard.earliestFetchedDate && state.dashboard.earliestFetchedDate <= fetchStartDate &&
+      state.dashboard.latestFetchedDate && state.dashboard.latestFetchedDate >= fetchEndDate &&
+      state.dashboard.rangeTransactions.length > 0) {
+    renderDashboard();
+    return;
+  }
   
   if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
-    // デモ用モックモード
     state.dashboard.rangeTransactions = getMockRangeTransactions(fetchStartDate, fetchEndDate);
     renderDashboard();
     return;
   }
   
-  if (!isBackground) showLoader(true);
+  // カード上の控えめなローディング演出（全画面遮断は行わない）
+  const subtitleEl = document.getElementById('dashboard-stats-subtitle');
+  if (subtitleEl && !isBackground) {
+    subtitleEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="margin-right:0.25rem;"></i> データを集計中...';
+  }
+
   try {
     const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${fetchStartDate}&endDate=${fetchEndDate}`);
     const data = await res.json();
     
-    if (data.status === 'success') {
-      state.dashboard.rangeTransactions = data.transactions;
+    if (data.status === 'success' && Array.isArray(data.transactions)) {
+      // 取得したレコードをキャッシュマップにマージ
+      data.transactions.forEach(tx => {
+        if (!tx) return;
+        const key = `${tx.transactionId}_${tx.itemId || ''}_${tx.date || ''}`;
+        state.dashboard.cachedTransactionsMap[key] = {
+          ...tx,
+          subtotal: Number(tx.subtotal) || 0,
+          quantity: Number(tx.quantity) || 0,
+          price: Number(tx.price) || 0
+        };
+      });
+
+      // 配列形式に更新
+      state.dashboard.rangeTransactions = Object.values(state.dashboard.cachedTransactionsMap);
+
+      if (!state.dashboard.earliestFetchedDate || fetchStartDate < state.dashboard.earliestFetchedDate) {
+        state.dashboard.earliestFetchedDate = fetchStartDate;
+      }
+      if (!state.dashboard.latestFetchedDate || fetchEndDate > state.dashboard.latestFetchedDate) {
+        state.dashboard.latestFetchedDate = fetchEndDate;
+      }
+
       renderDashboard();
     } else {
-      throw new Error(data.message);
+      throw new Error(data.message || 'データ取得に失敗しました');
     }
   } catch (err) {
-    console.error('Failed to load dashboard data:', err);
-    // エラー時のフォールバックはバックグラウンド時以外にトースト表示
-    if (!isBackground) {
-      showToast('ダッシュボードデータの読み込みに失敗しました。ローカルデータで代用します。', 'warning');
+    console.warn('Dashboard data fetch issue:', err);
+    // 既存のキャッシュがあればそれを維持して描画
+    if (state.dashboard.rangeTransactions.length > 0) {
+      renderDashboard();
+    } else {
+      // キャッシュが何もない場合のみローカルデータで代用
+      state.dashboard.rangeTransactions = state.transactions.map(tx => {
+        return (tx.items || []).map(item => ({
+          transactionId: tx.transactionId,
+          timestamp: tx.timestamp,
+          date: (tx.timestamp || '').split(' ')[0] || todayStr,
+          itemId: item.id,
+          itemName: item.name,
+          quantity: Number(item.quantity) || 0,
+          price: Number(item.price) || 0,
+          subtotal: (Number(item.price) || 0) * (Number(item.quantity) || 0),
+          status: tx.status || '有効'
+        }));
+      }).flat();
+      renderDashboard();
     }
-    // エラー時はローカルの当日分だけで代用
-    state.dashboard.rangeTransactions = state.transactions.map(tx => {
-      return tx.items.map(item => ({
-        transactionId: tx.transactionId,
-        timestamp: tx.timestamp,
-        date: tx.timestamp.split(' ')[0],
-        itemId: item.id,
-        itemName: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        subtotal: item.price * item.quantity,
-        status: tx.status || '有効'
-      }));
-    }).flat();
-    renderDashboard();
-  } finally {
-    if (!isBackground) showLoader(false);
+    if (!isBackground) {
+      showToast('ダッシュボードデータを更新しました。', 'info');
+    }
   }
 }
 
@@ -3884,18 +3938,27 @@ function renderDashboard() {
 
 function renderDashboardCharts() {
   const now = new Date();
-  const range = state.dashboard.activeRange; // 'week' | 'month'
+  const range = state.dashboard.activeRange; // 'week' | 'month' | 'year' | 'all' | 'custom'
   
   // チャート描画先のCanvas
-  const trendCtx = document.getElementById('sales-trend-chart').getContext('2d');
-  const categoryCtx = document.getElementById('sales-category-chart').getContext('2d');
+  const trendCanvas = document.getElementById('sales-trend-chart');
+  const categoryCanvas = document.getElementById('sales-category-chart');
+  if (!trendCanvas || !categoryCanvas) return;
+
+  const trendCtx = trendCanvas.getContext('2d');
+  const categoryCtx = categoryCanvas.getContext('2d');
   
   // 二重描画バグ防止のため既存チャートがあれば破棄
-  if (state.dashboard.trendChart) state.dashboard.trendChart.destroy();
-  if (state.dashboard.categoryChart) state.dashboard.categoryChart.destroy();
+  if (state.dashboard.trendChart) {
+    state.dashboard.trendChart.destroy();
+    state.dashboard.trendChart = null;
+  }
+  if (state.dashboard.categoryChart) {
+    state.dashboard.categoryChart.destroy();
+    state.dashboard.categoryChart = null;
+  }
 
   // 期間に合わせた売上データの抽出
-  let filteredTxs = [];
   let labels = [];
   let salesData = [];
   
@@ -3909,25 +3972,28 @@ function renderDashboardCharts() {
       labels.push(label);
       
       const daySales = state.dashboard.rangeTransactions
-        .filter(tx => tx.date === dateStr && (tx.status === '有効' || tx.status === 'true'))
-        .reduce((sum, tx) => sum + tx.subtotal, 0);
+        .filter(tx => tx && tx.date === dateStr && (tx.status === '有効' || tx.status === 'true'))
+        .reduce((sum, tx) => sum + (Number(tx.subtotal) || 0), 0);
       salesData.push(daySales);
     }
   } else if (range === 'month') {
     // 今月（週別推移：第1週〜第5週）
     const tempLabels = ['第1週 (1~7日)', '第2週 (8~14日)', '第3週 (15~21日)', '第4週 (22~28日)', '第5週 (29日~)'];
     const tempSales = [0, 0, 0, 0, 0];
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const yearMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     
     state.dashboard.rangeTransactions.forEach(tx => {
-      if (tx.status !== '有効' && tx.status !== 'true') return;
-      const txDate = new Date(tx.date.replace(/-/g, "/"));
-      if (txDate.getFullYear() === now.getFullYear() && txDate.getMonth() === now.getMonth()) {
-        const day = txDate.getDate();
-        if (day <= 7) tempSales[0] += tx.subtotal;
-        else if (day <= 14) tempSales[1] += tx.subtotal;
-        else if (day <= 21) tempSales[2] += tx.subtotal;
-        else if (day <= 28) tempSales[3] += tx.subtotal;
-        else tempSales[4] += tx.subtotal;
+      if (!tx || (tx.status !== '有効' && tx.status !== 'true') || !tx.date) return;
+      if (tx.date.startsWith(yearMonthStr)) {
+        const day = parseInt(tx.date.slice(8, 10)) || 1;
+        const sub = Number(tx.subtotal) || 0;
+        if (day <= 7) tempSales[0] += sub;
+        else if (day <= 14) tempSales[1] += sub;
+        else if (day <= 21) tempSales[2] += sub;
+        else if (day <= 28) tempSales[3] += sub;
+        else tempSales[4] += sub;
       }
     });
     labels = tempLabels;
@@ -3936,93 +4002,131 @@ function renderDashboardCharts() {
     // 年間（今年1月〜12月の月別）
     labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
     const tempSales = Array(12).fill(0);
+    const yearPrefix = `${now.getFullYear()}-`;
     
     state.dashboard.rangeTransactions.forEach(tx => {
-      if (tx.status !== '有効' && tx.status !== 'true') return;
-      const txDate = new Date(tx.date.replace(/-/g, "/"));
-      if (txDate.getFullYear() === now.getFullYear()) {
-        const m = txDate.getMonth(); // 0〜11
-        tempSales[m] += tx.subtotal;
+      if (!tx || (tx.status !== '有効' && tx.status !== 'true') || !tx.date) return;
+      if (tx.date.startsWith(yearPrefix)) {
+        const m = parseInt(tx.date.slice(5, 7)) - 1; // 0〜11
+        if (m >= 0 && m < 12) {
+          tempSales[m] += (Number(tx.subtotal) || 0);
+        }
       }
     });
     salesData = tempSales;
   } else if (range === 'custom') {
-    // 期間指定（31日以下なら日別、それ以上なら月別）
-    const start = new Date((state.dashboard.customStart || '').replace(/-/g, "/"));
-    const end = new Date((state.dashboard.customEnd || '').replace(/-/g, "/"));
+    let cStart = state.dashboard.customStart;
+    let cEnd = state.dashboard.customEnd;
     
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      labels = ['範囲無効'];
-      salesData = [0];
-    } else {
-      const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays <= 31) {
-        // 日別
-        let cur = new Date(start);
-        while (cur <= end) {
-          const dateStr = getJstDateString(cur);
-          const label = `${cur.getMonth() + 1}/${cur.getDate()}`;
-          labels.push(label);
-          
-          const daySales = state.dashboard.rangeTransactions
-            .filter(tx => tx.date === dateStr && (tx.status === '有効' || tx.status === 'true'))
-            .reduce((sum, tx) => sum + tx.subtotal, 0);
-          salesData.push(daySales);
-          
-          cur.setDate(cur.getDate() + 1);
-        }
-      } else {
-        // 月別
-        let cur = new Date(start.getFullYear(), start.getMonth(), 1);
-        const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
-        
-        const monthSales = {};
-        while (cur <= endMonth) {
-          const yyyymmLabel = `${cur.getFullYear()}/${String(cur.getMonth() + 1).padStart(2, '0')}`;
-          labels.push(yyyymmLabel);
-          monthSales[yyyymmLabel] = 0;
-          cur.setMonth(cur.getMonth() + 1);
-        }
-        
-        state.dashboard.rangeTransactions.forEach(tx => {
-          if (tx.status !== '有効' && tx.status !== 'true') return;
-          const txDate = new Date(tx.date.replace(/-/g, "/"));
-          const yyyymm = `${txDate.getFullYear()}/${String(txDate.getMonth() + 1).padStart(2, '0')}`;
-          if (monthSales[yyyymm] !== undefined) {
-            monthSales[yyyymm] += tx.subtotal;
-          }
-        });
-        salesData = labels.map(lbl => monthSales[lbl]);
-      }
+    if (!cStart || !cEnd) {
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      cStart = cStart || getJstDateString(thirtyDaysAgo);
+      cEnd = cEnd || getJstDateString(today);
+      state.dashboard.customStart = cStart;
+      state.dashboard.customEnd = cEnd;
     }
-  } else if (range === 'all') {
-    // 全期間（すべての年月の月別集計）
-    if (state.dashboard.rangeTransactions.length === 0) {
-      labels = ['データ無し'];
-      salesData = [0];
+    
+    if (cStart > cEnd) {
+      const temp = cStart;
+      cStart = cEnd;
+      cEnd = temp;
+      state.dashboard.customStart = cStart;
+      state.dashboard.customEnd = cEnd;
+    }
+
+    const dStart = new Date(cStart.replace(/-/g, '/'));
+    const dEnd = new Date(cEnd.replace(/-/g, '/'));
+    const diffDays = Math.ceil(Math.abs(dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 31) {
+      // 日別
+      let cur = new Date(dStart);
+      while (cur <= dEnd) {
+        const dateStr = getJstDateString(cur);
+        const label = `${cur.getMonth() + 1}/${cur.getDate()}`;
+        labels.push(label);
+        
+        const daySales = state.dashboard.rangeTransactions
+          .filter(tx => tx && tx.date === dateStr && (tx.status === '有効' || tx.status === 'true'))
+          .reduce((sum, tx) => sum + (Number(tx.subtotal) || 0), 0);
+        salesData.push(daySales);
+        
+        cur.setDate(cur.getDate() + 1);
+      }
     } else {
-      const dates = state.dashboard.rangeTransactions.map(tx => new Date(tx.date.replace(/-/g, "/")));
-      const start = new Date(Math.min(...dates));
-      const end = new Date(Math.max(...dates));
+      // 月別
+      const startY = parseInt(cStart.slice(0, 4));
+      const startM = parseInt(cStart.slice(5, 7));
+      const endY = parseInt(cEnd.slice(0, 4));
+      const endM = parseInt(cEnd.slice(5, 7));
       
-      let cur = new Date(start.getFullYear(), start.getMonth(), 1);
-      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
-      
+      let curY = startY;
+      let curM = startM;
       const monthSales = {};
-      while (cur <= endMonth) {
-        const yyyymmLabel = `${cur.getFullYear()}/${String(cur.getMonth() + 1).padStart(2, '0')}`;
+      while (curY < endY || (curY === endY && curM <= endM)) {
+        const yyyymmLabel = `${curY}/${String(curM).padStart(2, '0')}`;
         labels.push(yyyymmLabel);
         monthSales[yyyymmLabel] = 0;
-        cur.setMonth(cur.getMonth() + 1);
+        curM++;
+        if (curM > 12) {
+          curM = 1;
+          curY++;
+        }
       }
       
       state.dashboard.rangeTransactions.forEach(tx => {
-        if (tx.status !== '有効' && tx.status !== 'true') return;
-        const txDate = new Date(tx.date.replace(/-/g, "/"));
-        const yyyymm = `${txDate.getFullYear()}/${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+        if (!tx || !tx.date || (tx.status !== '有効' && tx.status !== 'true')) return;
+        if (tx.date >= cStart && tx.date <= cEnd) {
+          const yyyymm = `${tx.date.slice(0, 4)}/${tx.date.slice(5, 7)}`;
+          if (monthSales[yyyymm] !== undefined) {
+            monthSales[yyyymm] += (Number(tx.subtotal) || 0);
+          }
+        }
+      });
+      salesData = labels.map(lbl => monthSales[lbl]);
+    }
+  } else if (range === 'all') {
+    // 全期間（全有効レコードから最古月〜最新月を月別集計）
+    let minDateStr = '';
+    let maxDateStr = '';
+    
+    state.dashboard.rangeTransactions.forEach(tx => {
+      if (tx && tx.date && /^d{4}-d{2}-d{2}$/.test(tx.date) && (tx.status === '有効' || tx.status === 'true')) {
+        if (!minDateStr || tx.date < minDateStr) minDateStr = tx.date;
+        if (!maxDateStr || tx.date > maxDateStr) maxDateStr = tx.date;
+      }
+    });
+
+    if (!minDateStr || !maxDateStr) {
+      labels = ['データ無し'];
+      salesData = [0];
+    } else {
+      const startY = parseInt(minDateStr.slice(0, 4));
+      const startM = parseInt(minDateStr.slice(5, 7));
+      const endY = parseInt(maxDateStr.slice(0, 4));
+      const endM = parseInt(maxDateStr.slice(5, 7));
+      
+      let curY = startY;
+      let curM = startM;
+      const monthSales = {};
+      while (curY < endY || (curY === endY && curM <= endM)) {
+        const yyyymmLabel = `${curY}/${String(curM).padStart(2, '0')}`;
+        labels.push(yyyymmLabel);
+        monthSales[yyyymmLabel] = 0;
+        curM++;
+        if (curM > 12) {
+          curM = 1;
+          curY++;
+        }
+      }
+      
+      state.dashboard.rangeTransactions.forEach(tx => {
+        if (!tx || !tx.date || (tx.status !== '有効' && tx.status !== 'true')) return;
+        const yyyymm = `${tx.date.slice(0, 4)}/${tx.date.slice(5, 7)}`;
         if (monthSales[yyyymm] !== undefined) {
-          monthSales[yyyymm] += tx.subtotal;
+          monthSales[yyyymm] += (Number(tx.subtotal) || 0);
         }
       });
       salesData = labels.map(lbl => monthSales[lbl]);
@@ -4372,7 +4476,7 @@ function showDashboardDetail(type) {
     title = `${rangeName}・授与料推移の明細`;
     
     const chart = state.dashboard.trendChart;
-    if (chart && chart.data && chart.data.labels) {
+    if (chart && chart.data && chart.data.labels && chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data) {
       const labels = chart.data.labels;
       const data = chart.data.datasets[0].data;
       
