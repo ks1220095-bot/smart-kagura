@@ -1993,7 +1993,7 @@ rt {
   }
 
   body.print-format-b5 .b5-report-table tbody tr {
-    height: 3.55mm !important;
+    height: 3.50mm !important;
   }
 
   body.print-format-b5 .b5-report-table tbody td {

@@ -50,7 +50,7 @@ const MOCK_PRAYERS = {
 };
 
 // ==========================================
-// 提出用指定書式（清瀧神社〈R8/9/1ver.〉・全62品目）マスタ定義
+// 提出用指定書式（清瀧神社〈R8/9/1ver.〉・全63品目）マスタ定義
 // ==========================================
 const SUBMISSION_SHEET_ITEMS = [
   { name: "木札(大)", price: 5000, remark: "" },
@@ -63,6 +63,7 @@ const SUBMISSION_SHEET_ITEMS = [
   { name: "竈札", price: 300, remark: "" },
   { name: "商売繁盛札", price: 1000, remark: "" },
   { name: "厄除守護札", price: 1000, remark: "" },
+  { name: "しあわせ 貝御守", price: 1000, remark: "" },
   { name: "清瀧御守", price: 800, remark: "" },
   { name: "足御守", price: 2000, remark: "" },
   { name: "必勝安全御守", price: 800, remark: "" },
@@ -153,6 +154,10 @@ const ITEM_NAME_TO_SUBMISSION_MAP = {
   "清瀧歳神様": "清瀧歳神様",
 
   // お守り関連
+  "しあわせ 貝御守": "しあわせ 貝御守",
+  "しあわせ貝御守": "しあわせ 貝御守",
+  "しあわせ貝守": "しあわせ 貝御守",
+  "貝御守": "しあわせ 貝御守",
   "波紋御守": "御守(波紋)",
   "御守(波紋)": "御守(波紋)",
   "御守（波紋）": "御守(波紋)",
@@ -2628,7 +2633,7 @@ function renderB5SubmissionReportView(data) {
   let totalQty = 0;
   let totalAmount = 0;
 
-  // 全62品目の行を構築
+  // 全63品目の行を構築
   const rowsHtml = SUBMISSION_SHEET_ITEMS.map((sheetItem) => {
     const stats = normalizedStats[sheetItem.name];
     const qty = stats ? stats.quantity : 0;
