@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://smart-kagura-backend.onrender.com/api/:path*"
+    },
+    {
+      "source": "/notifications/:path*",
+      "destination": "https://smart-kagura-backend.onrender.com/notifications/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

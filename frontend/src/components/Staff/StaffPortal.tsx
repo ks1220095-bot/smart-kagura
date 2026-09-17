@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key, Coins, AlertCircle } from 'lucide-react';
 import type { Booking } from '../../types';
+import { getApiUrl } from '../../config/api';
 import Dashboard, { ScheduleInnerPrint, DailyReportPrint, MonthlyReportPrint } from './Dashboard';
 import CalendarView from './CalendarView';
 import BookingsList from './BookingsList';
@@ -154,7 +155,7 @@ async function subscribeUserToPush() {
       return;
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const apiUrl = getApiUrl();
     const keyRes = await fetch(`${apiUrl}/api/notifications/vapid-key`);
     if (!keyRes.ok) return;
     const { publicKey } = await keyRes.json();
@@ -492,7 +493,7 @@ export const StaffPortal: React.FC = () => {
     }
     const fetchManualDateEvents = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/api/events?date=${manualDate}`);
         if (res.ok) {
           const data = await res.json();
@@ -513,7 +514,7 @@ export const StaffPortal: React.FC = () => {
       const queue: any[] = JSON.parse(rawQueue);
       if (queue.length === 0) return;
       setSyncingOffline(true);
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings?is_staff=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -536,7 +537,7 @@ export const StaffPortal: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings`);
       if (!res.ok) throw new Error('予約一覧の取得に失敗しました。');
       const data = await res.json();
@@ -609,7 +610,7 @@ export const StaffPortal: React.FC = () => {
         return;
       }
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/api/bookings`);
         if (res.ok) {
           const data = await res.json();
@@ -847,7 +848,7 @@ export const StaffPortal: React.FC = () => {
     }
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings?is_staff=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

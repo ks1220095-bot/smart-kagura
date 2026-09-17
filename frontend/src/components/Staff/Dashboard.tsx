@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter } from 'lucide-react';
 import type { Booking } from '../../types';
+import { getApiUrl } from '../../config/api';
 import { printElement } from '../../utils/printUtils';
 
 const TIME_SLOTS = [
@@ -174,7 +175,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setActionLoading(true);
     setActionMessage(null);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       // 1. Update primary target
       const res = await fetch(`${apiUrl}/api/bookings/${editingBooking.id}?is_staff=true`, {
@@ -230,7 +231,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setActionLoading(true);
     setActionMessage(null);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       // 1. Cancel primary target
       const res = await fetch(`${apiUrl}/api/bookings/${cancellingBooking.id}?is_staff=true`, {

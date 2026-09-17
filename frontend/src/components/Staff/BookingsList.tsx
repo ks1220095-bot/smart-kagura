@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Booking } from '../../types';
+import { getApiUrl } from '../../config/api';
 
 interface BookingsListProps {
   bookings: Booking[];
@@ -78,7 +79,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     if (!editTargetBooking || !editTargetBooking.id) return;
     setSavingDetail(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings/${editTargetBooking.id}?is_staff=true`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -172,7 +173,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       search: searchText
     }).toString();
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const apiUrl = getApiUrl();
     window.open(`${apiUrl}/api/bookings/export-csv?${query}`, '_blank');
   };
 
@@ -189,7 +190,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     setSavingPayment(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings/${selectedBooking.id}/payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -214,7 +215,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
   const handleSaveHatsuhoryo = async (bookingId: number) => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings/${bookingId}/payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -234,7 +235,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
   const handleSaveProgress = async (bookingId: number, status: '新規です♪' | 'チェック済み！' | '受付済み♪' | 'ご祈祷中👏' | '返信済み！' | '遅刻中＞＜') => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings/${bookingId}/progress`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -301,7 +302,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     if (selectedBookingIds.length === 0) return;
     setIsBulkUpdating(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings/bulk-update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -332,7 +333,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
   const handleToggleCheckbox = async (booking: Booking, field: 'is_accepted' | 'payment_status' | 'is_receipt_issued') => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       let payload: any = {};
       if (field === 'is_accepted') {
@@ -1747,7 +1748,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                    className="btn btn-outline-gold"
                    onClick={async () => {
                      try {
-                       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                       const apiUrl = getApiUrl();
                        const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}?is_staff=true`, { method: 'DELETE' });
                        if (!res.ok) throw new Error('予約のキャンセルに失敗しました。');
                        setDeleteTarget(null);
@@ -1771,7 +1772,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 onClick={async () => {
                   if (!confirm('この予約データをデータベースから完全に消去します。この操作は絶対に取り消せません。本当によろしいですか？')) return;
                   try {
-                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const apiUrl = getApiUrl();
                     const res = await fetch(`${apiUrl}/api/bookings/${deleteTarget.id}?hard=true`, { method: 'DELETE' });
                     if (!res.ok) throw new Error('予約の完全削除に失敗しました。');
                     setDeleteTarget(null);

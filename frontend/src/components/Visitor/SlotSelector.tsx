@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import type { SlotAvailability } from '../../types';
+import { getApiUrl } from '../../config/api';
 
 // 2025-2027 Exact National Astronomical Observatory of Japan New Moon (lunar month start) dates
 const NEW_MOONS = [
@@ -99,7 +100,7 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
   useEffect(() => {
     const fetchPeriod = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/api/settings`);
         if (res.ok) {
           const data = await res.json();
@@ -129,7 +130,7 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
       setLoading(true);
       setError('');
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/api/bookings/slots-availability?date=${selectedDate}`);
         if (!res.ok) throw new Error('空き状況の取得に失敗しました。');
         const data = await res.json();

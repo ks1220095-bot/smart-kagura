@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Users, AlertCircle } from 'lucide-react';
 import type { Booking } from '../../types';
+import { getApiUrl } from '../../config/api';
 import SlotSelector from './SlotSelector';
 import BookingSuccess from './BookingSuccess';
 
@@ -326,7 +327,7 @@ export const VisitorPortal: React.FC = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/api/settings`);
         if (res.ok) {
           const settings = await res.json();
@@ -803,7 +804,7 @@ export const VisitorPortal: React.FC = () => {
     setChangeLoading(true);
     setChangeError('');
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/bookings/${id}`);
       if (!res.ok) throw new Error('ご予約情報が見つかりません。すでにキャンセルされている可能性があります。');
       const data = await res.json();
@@ -830,7 +831,7 @@ export const VisitorPortal: React.FC = () => {
     setChangeLoading(true);
     setChangeError('');
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       // 1. Cancel primary target
       const res = await fetch(`${apiUrl}/api/bookings/${targetBooking.id}`, { method: 'DELETE' });
@@ -1358,7 +1359,7 @@ export const VisitorPortal: React.FC = () => {
       : [singlePayload];
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const url = isEditMode && editBookingId 
         ? `${apiUrl}/api/bookings/${editBookingId}`
         : `${apiUrl}/api/bookings`;
@@ -1477,7 +1478,7 @@ export const VisitorPortal: React.FC = () => {
     }
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/talismans${forceSync ? '?sync=true' : ''}`);
       if (!res.ok) throw new Error('授与品データのフェッチに失敗しました。');
       const data = await res.json();

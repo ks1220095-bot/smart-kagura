@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Plus, Lock, Unlock, CalendarDays, Calendar, Check, X, Edit3, Trash2, Printer, AlertCircle } from 'lucide-react';
 import { getRokuyoAndInu } from '../Visitor/SlotSelector';
 import type { CalendarEvent, Booking } from '../../types';
+import { getApiUrl } from '../../config/api';
 
 interface CalendarViewProps {
   bookings: Booking[];
@@ -193,7 +194,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     setLoadingBatch(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       const promises = slotsToLock.map(slotTime => {
         const [h, m] = slotTime.split(':').map(Number);
@@ -252,7 +253,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     setLoadingBatch(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       const promises = eventsToDelete.map(id => 
         fetch(`${apiUrl}/api/events/${id}`, { method: 'DELETE' })
@@ -274,7 +275,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     try {
       const year = currentDate.getFullYear();
       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/events?month=${year}-${month}`);
       if (!res.ok) throw new Error('行事情報の取得に失敗しました。');
       const data = await res.json();
@@ -318,7 +319,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     if (!title || !eventDate || !startTime || !endTime) return;
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -354,7 +355,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     if (!editingEvent || !editingEvent.id || !editTitle || !editEventDate || !editStartTime || !editEndTime) return;
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/events/${editingEvent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -383,7 +384,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     if (!window.confirm(`「${editingEvent.title}」を削除してもよろしいですか？`)) return;
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/events/${editingEvent.id}`, {
         method: 'DELETE'
       });
@@ -403,7 +404,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     if (!window.confirm(`「${eventTitle || 'この行事'}」を削除してもよろしいですか？`)) return;
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/events/${id}`, {
         method: 'DELETE'
       });
@@ -1456,7 +1457,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               setActionLoading(true);
               setActionMessage(null);
               try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const apiUrl = getApiUrl();
                 
                 // 1. Update primary target
                 const res = await fetch(`${apiUrl}/api/bookings/${editingBooking.id}?is_staff=true`, {
@@ -1795,7 +1796,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     setActionLoading(true);
                     setActionMessage(null);
                     try {
-                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                      const apiUrl = getApiUrl();
                       
                       // 1. Cancel primary target
                       const res = await fetch(`${apiUrl}/api/bookings/${cancellingBooking.id}?is_staff=true`, {

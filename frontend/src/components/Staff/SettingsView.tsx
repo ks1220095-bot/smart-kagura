@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Check } from 'lucide-react';
+import { getApiUrl } from '../../config/api';
 
 export const SettingsView: React.FC = () => {
   const [maxCapacity, setMaxCapacity] = useState<number>(8);
@@ -19,7 +20,7 @@ export const SettingsView: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/settings`);
       if (!res.ok) throw new Error('設定の取得に失敗しました。');
       const data = await res.json();
@@ -47,7 +48,7 @@ export const SettingsView: React.FC = () => {
     setTestError('');
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/settings/test-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +79,7 @@ export const SettingsView: React.FC = () => {
     setError('');
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = getApiUrl();
       
       // 1. Save max capacity
       const res1 = await fetch(`${apiUrl}/api/settings`, {
