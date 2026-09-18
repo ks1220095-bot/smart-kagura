@@ -1105,6 +1105,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                       if (hasParents) parts.push('家族情報');
                                       if (hasYakudoshi || hasKotobuki) parts.push('祈祷情報');
                                       if (hasTournament || hasConstruction) parts.push('行事・工事情報');
+                                      if (hasOrgDetails) parts.push('団体・授与品詳細');
                                       if (b.notes) parts.push('備考');
                                       return parts.join('・');
                                     })()}
