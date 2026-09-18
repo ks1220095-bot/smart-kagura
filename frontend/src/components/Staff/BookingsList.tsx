@@ -1052,8 +1052,20 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         
                         const hasTournament = !isIndiv && !!b.tournament_name;
                         const hasConstruction = !isIndiv && !!b.construction_name;
+                        const hasOrgDetails = !isIndiv && (
+                          !!b.talisman_name ||
+                          !!b.additional_talismans ||
+                          !!b.representative_title_name ||
+                          !!b.company_address ||
+                          b.wants_receipt === 1 ||
+                          !!b.receipt_name ||
+                          !!b.receipt_amount ||
+                          !!b.staff_dept_title_name ||
+                          !!b.staff_phone ||
+                          !!b.staff_email
+                        );
                         
-                        const hasDetails = hasChild || hasParents || hasYakudoshi || hasKotobuki || hasTournament || hasConstruction || !!b.notes;
+                        const hasDetails = hasChild || hasParents || hasYakudoshi || hasKotobuki || hasTournament || hasConstruction || hasOrgDetails || !!b.notes;
                         const isExpanded = expandedBookingIds.includes(b.id!);
 
                         if (!hasDetails) return null;
@@ -1203,6 +1215,79 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   }}>
                                     <div style={{ color: '#e6a23c', fontWeight: 'bold' }}>
                                       🎉 寿祝い: {b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* E-1. 団体参拝・授与品・領収証詳細 */}
+                                {!isIndiv && hasOrgDetails && (
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor: '#fbf9f5',
+                                    border: '1px solid rgba(197, 160, 89, 0.35)',
+                                    padding: '0.5rem 0.6rem',
+                                    borderRadius: '4px',
+                                    lineHeight: '1.4',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.4rem'
+                                  }}>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', borderBottom: '1px dashed rgba(197, 160, 89, 0.4)', paddingBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span>🏢 団体参拝・授与品・領収証詳細</span>
+                                      {b.wants_receipt === 1 && (
+                                        <span style={{ backgroundColor: '#e6a23c', color: '#fff', padding: '0.1rem 0.4rem', borderRadius: '3px', fontSize: '0.65rem' }}>
+                                          🧾 領収証希望
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.4rem' }}>
+                                      {/* お札墨書名 */}
+                                      {b.talisman_name && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.65rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>お札墨書名</div>
+                                          <strong style={{ fontSize: '0.85rem', color: 'var(--color-shu)' }}>{b.talisman_name}</strong>
+                                        </div>
+                                      )}
+                                      {/* 追加授与品（守札） */}
+                                      {b.additional_talismans && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.65rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>追加授与品（守札）</div>
+                                          <strong style={{ fontSize: '0.85rem', color: '#222', whiteSpace: 'pre-wrap' }}>{b.additional_talismans}</strong>
+                                        </div>
+                                      )}
+                                      {/* 参拝代表者 */}
+                                      {b.representative_title_name && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>参拝代表者役職・氏名</div>
+                                          <strong style={{ fontSize: '0.85rem' }}>{b.representative_title_name}</strong>
+                                          {b.representative_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.representative_kana})</div>}
+                                        </div>
+                                      )}
+                                      {/* 団体所在地 */}
+                                      {b.company_address && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>団体所在地</div>
+                                          <div style={{ fontSize: '0.8rem' }}>{b.company_address}</div>
+                                          {b.company_address_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.company_address_kana})</div>}
+                                        </div>
+                                      )}
+                                      {/* 領収証情報 */}
+                                      {b.wants_receipt === 1 && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>領収証 宛名・金額</div>
+                                          <div style={{ fontSize: '0.8rem' }}>宛名: <strong>{b.receipt_name || b.company_name || '（未指定）'}</strong></div>
+                                          <div style={{ fontSize: '0.8rem' }}>金額: <strong>{b.receipt_amount ? `${Number(b.receipt_amount).toLocaleString()} 円` : `${(b.hatsuhoryo || 0).toLocaleString()} 円 (初穂料)`}</strong></div>
+                                        </div>
+                                      )}
+                                      {/* 申込担当者 */}
+                                      {(b.staff_dept_title_name || b.staff_phone || b.staff_email) && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>申込担当者情報</div>
+                                          {b.staff_dept_title_name && <div>氏名: <strong>{b.staff_dept_title_name}</strong></div>}
+                                          {b.staff_phone && <div>TEL: <strong>{b.staff_phone}</strong></div>}
+                                          {b.staff_email && <div>Email: <strong>{b.staff_email}</strong></div>}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 )}
@@ -2231,6 +2316,16 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>追加授与品（守札・希望品）</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="例: 交通安全守 10体、厄除守 2体"
+                      value={editFormData.additional_talismans || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, additional_talismans: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.75rem' }}>申込担当者名 <span className="required">*</span></label>
                     <input
                       type="text"
@@ -2259,8 +2354,47 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                   </div>
                 </div>
 
-                {/* 3-a. 必勝祈願・工事安全 */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+                {/* 3-b. 領収証設定 */}
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>🧾 領収証の発行</span>
+                    <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-gold)' }}>
+                      <input
+                        type="checkbox"
+                        checked={Number(editFormData.wants_receipt) === 1}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, wants_receipt: e.target.checked ? 1 : 0 }))}
+                      />
+                      領収証を希望する
+                    </label>
+                  </div>
+                  {Number(editFormData.wants_receipt) === 1 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem' }}>宛名 (未記入時は会社・団体名)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder={editFormData.company_name || '宛名'}
+                          value={editFormData.receipt_name || ''}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem' }}>金額 (未記入時は初穂料)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder={String(editFormData.hatsuhoryo || 0)}
+                          value={editFormData.receipt_amount !== undefined && editFormData.receipt_amount !== null ? editFormData.receipt_amount : ''}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_amount: e.target.value ? parseInt(e.target.value) : undefined }))}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3-c. 必勝祈願・工事安全 */}
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>🏆 必勝祈願・工事安全詳細</span>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     <div className="form-group" style={{ margin: 0 }}>
@@ -2288,6 +2422,24 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         className="form-control"
                         value={editFormData.construction_name || ''}
                         onChange={(e) => setEditFormData(prev => ({ ...prev, construction_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>施工 (会社・氏名)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.construction_builder || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, construction_builder: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.75rem' }}>設計 (会社・氏名)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.construction_designer || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, construction_designer: e.target.value }))}
                       />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>

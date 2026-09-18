@@ -436,21 +436,33 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               </div>
             )}
 
-            {/* Representative & Talisman Name Details (Gold highlight border block - お札墨書名単独化) */}
-            {!isIndiv && booking.talisman_name && (
+            {/* Representative & Talisman Name Details (Gold highlight border block - お札墨書名 & 追加授与品) */}
+            {!isIndiv && (booking.talisman_name || booking.additional_talismans) && (
               <div style={{ 
                 marginTop: '0.3rem', 
-                padding: '0.45rem 0.55rem', 
+                padding: '0.4rem 0.55rem', 
                 backgroundColor: 'rgba(197, 160, 89, 0.03)', 
                 border: '1.5px solid rgba(197, 160, 89, 0.25)', 
                 borderRadius: '4px',
                 fontSize: '0.8rem', 
                 lineHeight: '1.35' 
               }}>
-                <div>
-                  <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
-                  <strong style={{ fontSize: talismanFontSize, color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
-                </div>
+                {booking.talisman_name && (
+                  <div>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>お札墨書名</span>
+                    <strong style={{ fontSize: talismanFontSize, color: '#d80100', display: 'block' }}>{booking.talisman_name}</strong>
+                  </div>
+                )}
+                {booking.additional_talismans && (
+                  <div style={{ 
+                    marginTop: booking.talisman_name ? '0.3rem' : 0, 
+                    borderTop: booking.talisman_name ? '1px dashed rgba(197, 160, 89, 0.3)' : 'none', 
+                    paddingTop: booking.talisman_name ? '0.25rem' : 0 
+                  }}>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>追加授与品（守札）</span>
+                    <strong style={{ fontSize: '0.9rem', color: '#111', display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{booking.additional_talismans}</strong>
+                  </div>
+                )}
               </div>
             )}
           </div>
