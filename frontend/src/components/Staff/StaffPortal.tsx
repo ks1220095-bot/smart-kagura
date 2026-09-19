@@ -406,7 +406,7 @@ export const StaffPortal: React.FC = () => {
     if (manualType === 'individual') {
       if (manualPrayer1 === '初宮詣（お宮参り）') {
         setManualHatsuhoryo(manualIsTwin ? 15000 : 10000);
-      } else if (manualPrayer1 === '七五三詣' || manualPrayer1 === '車祓（お車のお祓い）') {
+      } else if (manualPrayer1 === '七五三詣' || manualPrayer1 === '車祓（お車のお祓い）' || manualPrayer1 === '安産祈願') {
         setManualHatsuhoryo(10000);
       } else {
         setManualHatsuhoryo(5000);
@@ -655,7 +655,7 @@ export const StaffPortal: React.FC = () => {
   // Handle manual pricing sync in staff manual form
   useEffect(() => {
     if (manualType === 'individual') {
-      const isSpecial = ['初宮詣（お宮参り）', '七五三詣', '車祓（お車のお祓い）'].includes(manualPrayer1);
+      const isSpecial = ['初宮詣（お宮参り）', '七五三詣', '車祓（お車のお祓い）', '安産祈願'].includes(manualPrayer1);
       setManualHatsuhoryo(isSpecial ? 10000 : 5000);
     } else {
       setManualHatsuhoryo(Number(manualAttendingCount) < 5 ? 20000 : 30000);

@@ -12,7 +12,7 @@ const INDIVIDUAL_PRAYERS = [
   { value: '八方除け', price: 5000 },
   { value: '除災招福（開運招福）', price: 5000 },
   { value: '方位除け', price: 5000 },
-  { value: '安産祈願', price: 5000 },
+  { value: '安産祈願', price: 10000 },
   { value: '初宮詣（お宮参り）', price: 10000 },
   { value: '七五三詣', price: 10000 },
   { value: '車祓（お車のお祓い）', price: 10000 },
