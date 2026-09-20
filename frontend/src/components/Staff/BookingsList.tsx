@@ -9,6 +9,7 @@ interface BookingsListProps {
   onSelectYomifuda: (booking: Booking) => void;
   onSelectReceipt: (booking: Booking) => void;
   onSelectBulkYomifuda?: (bookings: Booking[]) => void;
+  onSelectBulkReceipt?: (bookings: Booking[]) => void;
 }
 
 // Helper: Determine visually distinct pastel colors based on prayer types
@@ -40,7 +41,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   onRefresh,
   onSelectYomifuda,
   onSelectReceipt,
-  onSelectBulkYomifuda
+  onSelectBulkYomifuda,
+  onSelectBulkReceipt
 }) => {
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -646,6 +648,38 @@ export const BookingsList: React.FC<BookingsListProps> = ({
               >
                 <Printer size={12} />
                 一括お札印刷
+              </button>
+            </div>
+
+            {/* 一括: 領収証印刷 */}
+            <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  const selectedBookings = bookings.filter(b => selectedBookingIds.includes(b.id!) && b.is_cancelled !== 1);
+                  if (selectedBookings.length === 0) {
+                    alert('印刷可能な予約（キャンセルされていない予約）が選択されていません。');
+                    return;
+                  }
+                  if (onSelectBulkReceipt) {
+                    onSelectBulkReceipt(selectedBookings);
+                  }
+                }}
+                className="btn"
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '0.3rem 0.6rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                  backgroundColor: 'var(--color-gold)',
+                  borderColor: 'var(--color-gold)',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={12} />
+                一括領収証印刷
               </button>
             </div>
           </div>

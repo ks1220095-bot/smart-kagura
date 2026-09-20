@@ -199,6 +199,7 @@ export const StaffPortal: React.FC = () => {
   const [selectedYomifuda, setSelectedYomifuda] = useState<Booking | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<Booking | null>(null);
   const [selectedBulkYomifuda, setSelectedBulkYomifuda] = useState<Booking[] | null>(null);
+  const [selectedBulkReceipt, setSelectedBulkReceipt] = useState<Booking[] | null>(null);
   const [selectedSchedulePrintDate, setSelectedSchedulePrintDate] = useState<string | null>(null);
   const [selectedDailyReportPrintDate, setSelectedDailyReportPrintDate] = useState<string | null>(null);
   const [selectedMonthlyReportPrintMonth, setSelectedMonthlyReportPrintMonth] = useState<string | null>(null);
@@ -2074,6 +2075,7 @@ export const StaffPortal: React.FC = () => {
               onSelectYomifuda={setSelectedYomifuda}
               onSelectReceipt={setSelectedReceipt}
               onSelectBulkYomifuda={setSelectedBulkYomifuda}
+              onSelectBulkReceipt={setSelectedBulkReceipt}
             />
           )}
 
@@ -2099,6 +2101,13 @@ export const StaffPortal: React.FC = () => {
           <ReceiptPrint 
             booking={selectedReceipt} 
             onClose={() => setSelectedReceipt(null)} 
+          />
+        )}
+
+        {selectedBulkReceipt && (
+          <ReceiptPrint 
+            bookings={selectedBulkReceipt} 
+            onClose={() => setSelectedBulkReceipt(null)} 
           />
         )}
 
