@@ -290,13 +290,19 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     </div>
                   </div>
 
-                  {/* Address Line */}
-                  <div style={{ marginTop: '0.35rem', width: '62%', borderBottom: '1px solid #333', paddingBottom: '0.2rem' }}>
+                  {/* Address Line (Centered) */}
+                  <div style={{ 
+                    width: '72%', 
+                    margin: '0.35rem auto 0', 
+                    borderBottom: '1px solid #333', 
+                    paddingBottom: '0.25rem',
+                    textAlign: 'center'
+                  }}>
                     <h3 style={{ 
-                      fontSize: '1.3rem', 
+                      fontSize: '1.35rem', 
                       fontWeight: 'bold', 
                       margin: 0,
-                      letterSpacing: '0.05em',
+                      letterSpacing: '0.08em',
                       fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif'
                     }}>
                       {address}　御中
@@ -319,13 +325,13 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     金　￥ {amount.toLocaleString()} ─
                   </div>
 
-                  {/* Description / Particulars */}
+                  {/* Description / Particulars (Centered) */}
                   <div style={{ 
                     fontSize: '0.95rem', 
-                    letterSpacing: '0.04em',
+                    letterSpacing: '0.06em',
                     fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                    alignSelf: 'flex-start',
-                    paddingLeft: '0.5rem'
+                    textAlign: 'center',
+                    width: '100%'
                   }}>
                     但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
                   </div>
