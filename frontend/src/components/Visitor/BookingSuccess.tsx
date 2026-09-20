@@ -124,7 +124,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
             )}
             {bookings.some(b => b.prayer1 === '安産祈願') && (
               <li style={{ color: 'var(--color-accent-green)', fontWeight: 600 }}>
-                ・【安産祈願の方】すでにお持ちの腹帯（妊婦帯）をご持参いただけますと、ご神前にてお祓いいたします。当日受付時にお渡しください。
+                ・【安産祈願の方】ご祈祷の授与品として腹帯をお渡しする予定でございます。
               </li>
             )}
             {!isIndiv && (

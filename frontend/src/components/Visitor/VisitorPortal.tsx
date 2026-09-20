@@ -3269,7 +3269,7 @@ export const VisitorPortal: React.FC = () => {
                 )}
                 {prayer1 === '安産祈願' && (
                   <p style={{ color: 'var(--color-accent-green)', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    ※安産祈願の方は、すでにお持ちの腹帯（妊婦帯）をご持参いただけますと、ご神前にてお祓いいたします。当日受付の際、職員へお渡しください。
+                    ※安産祈願の方は、ご祈祷の授与品として腹帯をお渡しする予定でございます。
                   </p>
                 )}
                 {bookingType === 'organization' && (
