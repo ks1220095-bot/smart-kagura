@@ -291,62 +291,66 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     </div>
                   </div>
 
-                  {/* Address Line (Centered) */}
-                  <div style={{ 
-                    width: '75%', 
-                    margin: '0.35rem auto 0', 
-                    borderBottom: '1px solid #333', 
-                    paddingBottom: '0.25rem',
-                    textAlign: 'center',
-                    alignSelf: 'center',
+                  {/* Middle Main Block (Centered Vertically & Horizontally) */}
+                  <div style={{
+                    margin: 'auto 0',
+                    width: '100%',
                     display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.65rem'
                   }}>
-                    <h3 style={{ 
-                      fontSize: '1.35rem', 
-                      fontWeight: 'bold', 
-                      margin: 0,
+                    {/* Address Line (Centered) */}
+                    <div style={{ 
+                      width: '75%', 
+                      borderBottom: '1px solid #333', 
+                      paddingBottom: '0.25rem',
+                      textAlign: 'center',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      <h3 style={{ 
+                        fontSize: '1.35rem', 
+                        fontWeight: 'bold', 
+                        margin: 0,
+                        letterSpacing: '0.08em',
+                        fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                        textAlign: 'center'
+                      }}>
+                        {address}　御中
+                      </h3>
+                    </div>
+
+                    {/* Grand Amount Board (洗練された飾り二重線枠) */}
+                    <div style={{ 
+                      textAlign: 'center',
+                      border: '3px double #333333',
+                      padding: '0.35rem 1.5rem',
+                      backgroundColor: '#ffffff',
+                      fontSize: '1.85rem',
+                      fontWeight: 'bold',
                       letterSpacing: '0.08em',
                       fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                      textAlign: 'center'
+                      width: '78%'
                     }}>
-                      {address}　御中
-                    </h3>
-                  </div>
+                      金　￥ {amount.toLocaleString()} ─
+                    </div>
 
-                  {/* Grand Amount Board (洗練された飾り二重線枠) */}
-                  <div style={{ 
-                    margin: '0.4rem auto',
-                    textAlign: 'center',
-                    border: '3px double #333333',
-                    padding: '0.35rem 1.5rem',
-                    backgroundColor: '#ffffff',
-                    fontSize: '1.85rem',
-                    fontWeight: 'bold',
-                    letterSpacing: '0.08em',
-                    fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                    width: '78%',
-                    alignSelf: 'center'
-                  }}>
-                    金　￥ {amount.toLocaleString()} ─
-                  </div>
-
-                  {/* Description / Particulars (Centered) */}
-                  <div style={{ 
-                    fontSize: '0.95rem', 
-                    letterSpacing: '0.06em',
-                    fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                    textAlign: 'center',
-                    width: '100%',
-                    alignSelf: 'center',
-                    margin: '0 auto'
-                  }}>
-                    但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
+                    {/* Description / Particulars (Centered) */}
+                    <div style={{ 
+                      fontSize: '0.95rem', 
+                      letterSpacing: '0.06em',
+                      fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                      textAlign: 'center',
+                      width: '100%'
+                    }}>
+                      但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
+                    </div>
                   </div>
 
                   {/* Footer details & Hanko Seal */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
                     {/* 内訳表 */}
                     <div style={{ 
                       border: '1px solid #444', 
