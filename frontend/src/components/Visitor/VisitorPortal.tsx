@@ -209,6 +209,13 @@ export const VisitorPortal: React.FC = () => {
   const [syncingTalismans, setSyncingTalismans] = useState(false);
   const [talismanFilterCategory, setTalismanFilterCategory] = useState<'all' | 'ofuda' | 'omamori'>('all');
 
+  // Form editing mode states (For full reschedule updates)
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editBookingId, setEditBookingId] = useState<number | null>(null);
+  const [relatedBookings, setRelatedBookings] = useState<Booking[]>([]);
+  const [batchRescheduleRelated, setBatchRescheduleRelated] = useState(true);
+  const [batchCancelRelated, setBatchCancelRelated] = useState(true);
+
   // Reset dynamic fields when main prayer changes to prevent leftover data
   useEffect(() => {
     setYakudoshiType('');
@@ -222,7 +229,8 @@ export const VisitorPortal: React.FC = () => {
     setChildGender('');
     setKotobukiType('');
     setKotobukiOtherText('');
-    // Auto-fill typical price
+    // Auto-fill typical price (skip in edit mode to preserve existing fee)
+    if (isEditMode) return;
     if (prayer1 === '初宮詣（お宮参り）' && isTwin) {
       setHatsuhoryo(15000);
     } else {
@@ -231,7 +239,7 @@ export const VisitorPortal: React.FC = () => {
         setHatsuhoryo(found.price);
       }
     }
-  }, [prayer1, isTwin]);
+  }, [prayer1, isTwin, isEditMode]);
 
   // Individual Form fields
   const [isRestored, setIsRestored] = useState(false);
@@ -342,13 +350,6 @@ export const VisitorPortal: React.FC = () => {
     };
     fetchSettings();
   }, []);
-
-  // Form editing mode states (For full reschedule updates)
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editBookingId, setEditBookingId] = useState<number | null>(null);
-  const [relatedBookings, setRelatedBookings] = useState<Booking[]>([]);
-  const [batchRescheduleRelated, setBatchRescheduleRelated] = useState(true);
-  const [batchCancelRelated, setBatchCancelRelated] = useState(true);
 
   // Save form draft to localStorage whenever relevant fields change
   useEffect(() => {
@@ -911,8 +912,9 @@ export const VisitorPortal: React.FC = () => {
       for (let i = 0; i < prayerItems.length; i++) {
         const item = prayerItems[i];
         const minPrice = getIndividualMinPrice(item.prayer1, Boolean(item.is_twin));
-        if (item.hatsuhoryo < minPrice) {
-          return `【${item.prayer1}（${item.name}様）】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${minPrice.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
+        const effectiveMin = (isEditMode && item.prayer1 === '安産祈願' && item.hatsuhoryo >= 5000) ? 5000 : minPrice;
+        if (item.hatsuhoryo < effectiveMin) {
+          return `【${item.prayer1}（${item.name}様）】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${effectiveMin.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
         }
         if (item.prayer1 === '初宮詣（お宮参り）' || item.prayer1 === '七五三詣' || item.prayer1 === '十三参り') {
           const hasFather = Boolean(item.father_name?.trim() || item.father_kana?.trim());
@@ -1010,8 +1012,9 @@ export const VisitorPortal: React.FC = () => {
     }
 
     const minPrice = getIndividualMinPrice(prayer1, isTwin);
-    if (hatsuhoryo < minPrice) {
-      alert(`初穂料は選択された願意の目安金額（${minPrice.toLocaleString()}円以上）をご入力ください。`);
+    const effectiveMin = (isEditMode && prayer1 === '安産祈願' && hatsuhoryo >= 5000) ? 5000 : minPrice;
+    if (hatsuhoryo < effectiveMin) {
+      alert(`初穂料は選択された願意の目安金額（${effectiveMin.toLocaleString()}円以上）をご入力ください。`);
       return;
     }
 
@@ -2021,7 +2024,8 @@ export const VisitorPortal: React.FC = () => {
 
                       {(() => {
                         const minPrice = getIndividualMinPrice(prayer1, isTwin);
-                        const isBelowMin = Boolean(prayer1 && hatsuhoryo < minPrice);
+                        const effectiveMin = (isEditMode && prayer1 === '安産祈願' && hatsuhoryo >= 5000) ? 5000 : minPrice;
+                        const isBelowMin = Boolean(prayer1 && hatsuhoryo < effectiveMin);
                         return (
                           <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2030,14 +2034,14 @@ export const VisitorPortal: React.FC = () => {
                               </label>
                               {prayer1 && (
                                 <span style={{ fontSize: '0.75rem', color: isBelowMin ? '#d3381c' : 'var(--color-accent-gray)', fontWeight: isBelowMin ? 'bold' : 'normal' }}>
-                                  目安: {minPrice.toLocaleString()}円〜
+                                  目安: {effectiveMin.toLocaleString()}円〜
                                 </span>
                               )}
                             </div>
                             <input
                               type="number"
                               className="form-control"
-                              min={minPrice}
+                              min={effectiveMin}
                               step="1000"
                               value={hatsuhoryo || ''}
                               onChange={(e) => setHatsuhoryo(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
@@ -2051,7 +2055,7 @@ export const VisitorPortal: React.FC = () => {
                             />
                             {isBelowMin && (
                               <div style={{ fontSize: '0.78rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <span>⚠️</span> 初穂料は目安金額（{minPrice.toLocaleString()}円以上）をご入力ください。
+                                <span>⚠️</span> 初穂料は目安金額（{effectiveMin.toLocaleString()}円以上）をご入力ください。
                               </div>
                             )}
                           </div>
