@@ -213,30 +213,30 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                 backgroundColor: '#ffffff',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                 width: '200mm',
-                height: '138mm',
+                height: '128mm',
                 maxWidth: '200mm',
-                maxHeight: '138mm',
+                maxHeight: '128mm',
                 boxSizing: 'border-box',
-                fontFamily: 'var(--font-serif)',
-                color: '#000000',
+                fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                color: '#1a1a1a',
                 margin: '0 auto',
                 padding: '0'
               }}
             >
-              {/* Outer Border */}
+              {/* Outer Border (子持二重枠 - 外枠) */}
               <div style={{
                 width: '100%',
                 height: '100%',
-                border: '1px solid #111111',
-                padding: '2.5mm',
+                border: '1px solid #222222',
+                padding: '2mm',
                 boxSizing: 'border-box'
               }}>
-                {/* Inner Border & Content Container */}
+                {/* Inner Border & Content Container (子持二重枠 - 内枠) */}
                 <div style={{
                   width: '100%',
                   height: '100%',
-                  border: '2px solid #111111',
-                  padding: '5mm 8mm',
+                  border: '2px solid #222222',
+                  padding: '4mm 7mm',
                   boxSizing: 'border-box',
                   display: 'flex',
                   flexDirection: 'column',
@@ -244,84 +244,128 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                 }}>
                   {/* Header Title */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>No. ＿＿＿＿＿＿</span>
-                    <h2 style={{ 
-                      fontSize: '1.9rem', 
-                      textAlign: 'center', 
-                      margin: '0 auto', 
-                      letterSpacing: '0.5em', 
-                      fontWeight: 'bold',
-                      borderBottom: '2px solid #000000',
-                      paddingBottom: '0.15rem',
-                      width: '45%'
-                    }}>
-                      領収証
-                    </h2>
-                    <span style={{ fontSize: '0.85rem' }}>日付： {item.receiptDate}</span>
+                    <div style={{ fontSize: '0.8rem', letterSpacing: '0.05em', color: '#333' }}>
+                      No. ＿＿＿＿＿＿
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: '-0.15rem' }}>
+                      <h2 style={{ 
+                        fontSize: '1.85rem', 
+                        margin: 0, 
+                        letterSpacing: '0.7em', 
+                        fontWeight: 'bold',
+                        fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                        color: '#111'
+                      }}>
+                        領　収　証
+                      </h2>
+                      <div style={{ 
+                        width: '140px', 
+                        height: '3px', 
+                        borderBottom: '3px double #222', 
+                        margin: '0.2rem auto 0' 
+                      }} />
+                    </div>
+                    <div style={{ fontSize: '0.82rem', letterSpacing: '0.05em', color: '#333' }}>
+                      日付： {item.receiptDate}
+                    </div>
                   </div>
 
                   {/* Address Line */}
-                  <div style={{ marginTop: '0.4rem', borderBottom: '1px solid #000000', width: '70%', paddingBottom: '0.2rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0 }}>
+                  <div style={{ marginTop: '0.2rem', width: '65%', borderBottom: '1px solid #222', paddingBottom: '0.2rem' }}>
+                    <h3 style={{ 
+                      fontSize: '1.25rem', 
+                      fontWeight: 'bold', 
+                      margin: 0,
+                      letterSpacing: '0.05em',
+                      fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif'
+                    }}>
                       {address}　御中
                     </h3>
                   </div>
 
-                  {/* Grand Amount Board */}
+                  {/* Grand Amount Board (洗練された飾り二重線枠) */}
                   <div style={{ 
-                    margin: '0.5rem 0',
+                    margin: '0.35rem auto',
                     textAlign: 'center',
-                    border: '2px solid #000000',
-                    padding: '0.35rem',
-                    backgroundColor: '#fafafa',
+                    border: '3px double #222222',
+                    padding: '0.35rem 1.5rem',
+                    backgroundColor: '#ffffff',
                     fontSize: '1.75rem',
                     fontWeight: 'bold',
-                    letterSpacing: '0.05em',
-                    fontFamily: 'var(--font-sans)',
-                    width: '80%',
-                    alignSelf: 'center'
+                    letterSpacing: '0.08em',
+                    fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                    width: '78%'
                   }}>
                     金　￥ {amount.toLocaleString()} ─
                   </div>
 
                   {/* Description / Particulars */}
-                  <div style={{ fontSize: '0.95rem', marginBottom: '0.5rem', borderBottom: '1px dashed #000000', width: '80%', paddingBottom: '0.25rem', alignSelf: 'flex-start' }}>
+                  <div style={{ 
+                    fontSize: '0.92rem', 
+                    letterSpacing: '0.04em',
+                    fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                    alignSelf: 'flex-start',
+                    paddingLeft: '0.5rem'
+                  }}>
                     但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
                   </div>
 
                   {/* Footer details & Hanko Seal */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#444', border: '1px solid #aaa', padding: '0.5rem', width: '35%' }}>
-                      【内訳】<br />
-                      ・ご祈祷料： ￥{amount.toLocaleString()}<br />
-                      ・消費税法非課税扱い
+                    {/* 内訳表 */}
+                    <div style={{ 
+                      border: '1px solid #444', 
+                      fontSize: '0.72rem', 
+                      width: '36%', 
+                      backgroundColor: '#ffffff' 
+                    }}>
+                      <div style={{ display: 'flex', borderBottom: '1px solid #444' }}>
+                        <div style={{ width: '45%', padding: '0.2rem 0.4rem', borderRight: '1px solid #444', backgroundColor: '#fcfbf7', fontWeight: 'bold' }}>
+                          内　訳
+                        </div>
+                        <div style={{ width: '55%', padding: '0.2rem 0.4rem', textAlign: 'right', fontWeight: 'bold' }}>
+                          ￥{amount.toLocaleString()}
+                        </div>
+                      </div>
+                      <div style={{ padding: '0.2rem 0.4rem', fontSize: '0.66rem', color: '#555' }}>
+                        ※消費税法非課税扱い
+                      </div>
                     </div>
 
                     {/* Shrine issuing details & Seal square */}
-                    <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', width: '55%', justifyContent: 'flex-end' }}>
-                      <div style={{ textAlign: 'right', fontSize: '0.78rem', lineHeight: '1.35' }}>
-                        <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0 0 0.15rem 0' }}>清瀧神社 社務所</h4>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                      <div style={{ textAlign: 'right', fontSize: '0.75rem', lineHeight: '1.4', color: '#222' }}>
+                        <h4 style={{ 
+                          fontSize: '1.1rem', 
+                          fontWeight: 'bold', 
+                          margin: '0 0 0.15rem 0',
+                          letterSpacing: '0.08em',
+                          fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif'
+                        }}>
+                          清瀧神社 社務所
+                        </h4>
                         〒279-0041 千葉県浦安市堀江4-1-5<br />
                         TEL： 047-351-5417<br />
                         FAX： 047-351-3110
                       </div>
 
-                      {/* Red Square Seal (Simulation) */}
+                      {/* 本朱肉色 二重角印 */}
                       <div style={{ 
-                        width: '24mm', 
-                        height: '24mm', 
-                        border: '2px solid #ff4d4f', 
-                        color: '#ff4d4f',
+                        width: '23mm', 
+                        height: '23mm', 
+                        border: '3px double #b32418', 
+                        color: '#b32418',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        lineHeight: '1.2',
+                        fontSize: '0.72rem',
+                        lineHeight: '1.25',
                         padding: '0.15rem',
                         writingMode: 'vertical-rl',
                         letterSpacing: '0.08em',
-                        borderRadius: '3px'
+                        borderRadius: '2px',
+                        boxSizing: 'border-box'
                       }}>
                         清瀧神社<br />社務所印
                       </div>

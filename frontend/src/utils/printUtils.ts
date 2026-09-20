@@ -85,6 +85,14 @@ export const printElement = (
             box-shadow: none !important;
             border: none !important;
           }
+          .receipt-print-wrapper {
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            gap: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
           .print-receipt-page,
           .receipt-sheet {
             width: 100% !important;
@@ -95,9 +103,14 @@ export const printElement = (
             box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            overflow: hidden !important;
+          }
+          .print-receipt-page:last-child,
+          .receipt-sheet:last-child {
             page-break-after: avoid !important;
             break-after: avoid !important;
-            overflow: hidden !important;
           }
           .print-yomifuda-page {
             width: 100% !important;
