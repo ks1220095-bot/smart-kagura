@@ -149,11 +149,16 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
         flexWrap: 'wrap',
         gap: '0.5rem'
       }}>
-        <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
-          {receiptItems.length > 1
-            ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚）`
-            : '領収証 印刷プレビュー（A5横サイズ）'}
-        </h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
+            {receiptItems.length > 1
+              ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚）`
+              : '領収証 印刷プレビュー（A5横サイズ）'}
+          </h4>
+          <span style={{ fontSize: '0.75rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#fffae6' }}>
+            ※ 印刷時は詳細設定で 用紙サイズ:「A5」、両面印刷:「オフ（片面）」をご指定ください
+          </span>
+        </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
             onClick={handlePrint} 
@@ -225,14 +230,14 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
               style={{
                 backgroundColor: '#ffffff',
                 width: '210mm',
-                height: '148mm',
+                height: '147mm',
                 maxWidth: '210mm',
-                maxHeight: '148mm',
+                maxHeight: '147mm',
                 boxSizing: 'border-box',
                 fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                 color: '#1a1a1a',
                 margin: '0 auto',
-                padding: '8mm'
+                padding: '8mm 9mm'
               }}
             >
               {/* Outer Border (子持二重枠 - 外枠) */}
@@ -240,14 +245,14 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                 width: '100%',
                 height: '100%',
                 border: '1px solid #222222',
-                padding: '2mm',
+                padding: '2.5mm',
                 boxSizing: 'border-box'
               }}>
                 {/* Inner Border & Content Container (子持二重枠 - 内枠) */}
                 <div style={{
                   width: '100%',
                   height: '100%',
-                  border: '2px solid #222222',
+                  border: '1.5px solid #222222',
                   padding: '5mm 8mm',
                   boxSizing: 'border-box',
                   display: 'flex',
@@ -261,15 +266,24 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     </div>
                     <div style={{ textAlign: 'center', marginTop: '-0.15rem' }}>
                       <h2 style={{ 
-                        fontSize: '2rem', 
+                        fontSize: '1.95rem', 
                         margin: 0, 
-                        letterSpacing: '0.75em', 
+                        letterSpacing: '0.7em', 
                         fontWeight: 'bold',
                         fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                         color: '#111'
                       }}>
                         領　収　証
                       </h2>
+                      {/* 潰れない二重下線 (上線1px + 隙間3px + 下線1px) */}
+                      <div style={{ 
+                        width: '140px', 
+                        margin: '0.2rem auto 0', 
+                        borderTop: '1px solid #333', 
+                        borderBottom: '1px solid #333', 
+                        height: '3px',
+                        boxSizing: 'border-box'
+                      }} />
                     </div>
                     <div style={{ fontSize: '0.85rem', letterSpacing: '0.05em', color: '#333' }}>
                       日付： {item.receiptDate}
@@ -277,7 +291,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                   </div>
 
                   {/* Address Line */}
-                  <div style={{ marginTop: '0.35rem', width: '65%', borderBottom: '1px solid #222', paddingBottom: '0.25rem' }}>
+                  <div style={{ marginTop: '0.35rem', width: '62%', borderBottom: '1px solid #333', paddingBottom: '0.2rem' }}>
                     <h3 style={{ 
                       fontSize: '1.3rem', 
                       fontWeight: 'bold', 
@@ -291,16 +305,16 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
 
                   {/* Grand Amount Board (洗練された飾り二重線枠) */}
                   <div style={{ 
-                    margin: '0.45rem auto',
+                    margin: '0.4rem auto',
                     textAlign: 'center',
-                    border: '3px double #222222',
-                    padding: '0.4rem 1.5rem',
+                    border: '3px double #333333',
+                    padding: '0.35rem 1.5rem',
                     backgroundColor: '#ffffff',
                     fontSize: '1.85rem',
                     fontWeight: 'bold',
                     letterSpacing: '0.08em',
                     fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                    width: '80%'
+                    width: '78%'
                   }}>
                     金　￥ {amount.toLocaleString()} ─
                   </div>
