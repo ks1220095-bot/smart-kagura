@@ -152,8 +152,8 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
             {receiptItems.length > 1
-              ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚）`
-              : '領収証 印刷プレビュー（A5横サイズ）'}
+              ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚・中央揃え）`
+              : '領収証 印刷プレビュー（A5横・中央揃え）'}
           </h4>
           <span style={{ fontSize: '0.75rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#fffae6' }}>
             ※ 印刷時は詳細設定で 用紙サイズ:「A5」、両面印刷:「オフ（片面）」をご指定ください
@@ -257,10 +257,11 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                   boxSizing: 'border-box',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}>
                   {/* Header Title */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
                     <div style={{ fontSize: '0.82rem', letterSpacing: '0.05em', color: '#333' }}>
                       No. ＿＿＿＿＿＿
                     </div>
@@ -292,18 +293,23 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
 
                   {/* Address Line (Centered) */}
                   <div style={{ 
-                    width: '72%', 
+                    width: '75%', 
                     margin: '0.35rem auto 0', 
                     borderBottom: '1px solid #333', 
                     paddingBottom: '0.25rem',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    alignSelf: 'center',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
                   }}>
                     <h3 style={{ 
                       fontSize: '1.35rem', 
                       fontWeight: 'bold', 
                       margin: 0,
                       letterSpacing: '0.08em',
-                      fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif'
+                      fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
+                      textAlign: 'center'
                     }}>
                       {address}　御中
                     </h3>
@@ -320,7 +326,8 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     fontWeight: 'bold',
                     letterSpacing: '0.08em',
                     fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                    width: '78%'
+                    width: '78%',
+                    alignSelf: 'center'
                   }}>
                     金　￥ {amount.toLocaleString()} ─
                   </div>
@@ -331,13 +338,15 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     letterSpacing: '0.06em',
                     fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                     textAlign: 'center',
-                    width: '100%'
+                    width: '100%',
+                    alignSelf: 'center',
+                    margin: '0 auto'
                   }}>
                     但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
                   </div>
 
                   {/* Footer details & Hanko Seal */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', width: '100%' }}>
                     {/* 内訳表 */}
                     <div style={{ 
                       border: '1px solid #444', 
