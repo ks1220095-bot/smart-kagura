@@ -95,12 +95,14 @@ export const printElement = (
           }
           .print-receipt-page,
           .receipt-sheet {
-            width: 200mm !important;
-            height: 128mm !important;
-            max-width: 200mm !important;
-            max-height: 128mm !important;
+            width: 210mm !important;
+            height: 147.5mm !important;
+            max-width: 210mm !important;
+            max-height: 147.5mm !important;
+            padding: 8mm !important;
             margin: 0 auto !important;
             box-sizing: border-box !important;
+            box-shadow: none !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             page-break-after: always !important;

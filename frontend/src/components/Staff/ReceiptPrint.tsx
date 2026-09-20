@@ -106,12 +106,17 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
           pdf.addPage([210, 148], 'landscape');
         }
 
+        const prevShadow = sheet.style.boxShadow;
+        sheet.style.boxShadow = 'none';
+
         const canvas = await html2canvas(sheet, {
           scale: 3, // High resolution
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false
         });
+
+        sheet.style.boxShadow = prevShadow;
 
         const imgData = canvas.toDataURL('image/png');
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 148);
@@ -212,15 +217,15 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
               style={{
                 backgroundColor: '#ffffff',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                width: '200mm',
-                height: '128mm',
-                maxWidth: '200mm',
-                maxHeight: '128mm',
+                width: '210mm',
+                height: '148mm',
+                maxWidth: '210mm',
+                maxHeight: '148mm',
                 boxSizing: 'border-box',
                 fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                 color: '#1a1a1a',
                 margin: '0 auto',
-                padding: '0'
+                padding: '8mm'
               }}
             >
               {/* Outer Border (子持二重枠 - 外枠) */}
@@ -236,7 +241,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                   width: '100%',
                   height: '100%',
                   border: '2px solid #222222',
-                  padding: '4mm 7mm',
+                  padding: '5mm 8mm',
                   boxSizing: 'border-box',
                   display: 'flex',
                   flexDirection: 'column',
@@ -244,12 +249,12 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                 }}>
                   {/* Header Title */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ fontSize: '0.8rem', letterSpacing: '0.05em', color: '#333' }}>
+                    <div style={{ fontSize: '0.82rem', letterSpacing: '0.05em', color: '#333' }}>
                       No. ＿＿＿＿＿＿
                     </div>
                     <div style={{ textAlign: 'center', marginTop: '-0.15rem' }}>
                       <h2 style={{ 
-                        fontSize: '1.85rem', 
+                        fontSize: '1.9rem', 
                         margin: 0, 
                         letterSpacing: '0.7em', 
                         fontWeight: 'bold',
@@ -259,21 +264,21 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                         領　収　証
                       </h2>
                       <div style={{ 
-                        width: '140px', 
+                        width: '150px', 
                         height: '3px', 
                         borderBottom: '3px double #222', 
-                        margin: '0.2rem auto 0' 
+                        margin: '0.25rem auto 0' 
                       }} />
                     </div>
-                    <div style={{ fontSize: '0.82rem', letterSpacing: '0.05em', color: '#333' }}>
+                    <div style={{ fontSize: '0.85rem', letterSpacing: '0.05em', color: '#333' }}>
                       日付： {item.receiptDate}
                     </div>
                   </div>
 
                   {/* Address Line */}
-                  <div style={{ marginTop: '0.2rem', width: '65%', borderBottom: '1px solid #222', paddingBottom: '0.2rem' }}>
+                  <div style={{ marginTop: '0.35rem', width: '65%', borderBottom: '1px solid #222', paddingBottom: '0.25rem' }}>
                     <h3 style={{ 
-                      fontSize: '1.25rem', 
+                      fontSize: '1.3rem', 
                       fontWeight: 'bold', 
                       margin: 0,
                       letterSpacing: '0.05em',
@@ -285,23 +290,23 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
 
                   {/* Grand Amount Board (洗練された飾り二重線枠) */}
                   <div style={{ 
-                    margin: '0.35rem auto',
+                    margin: '0.45rem auto',
                     textAlign: 'center',
                     border: '3px double #222222',
-                    padding: '0.35rem 1.5rem',
+                    padding: '0.4rem 1.5rem',
                     backgroundColor: '#ffffff',
-                    fontSize: '1.75rem',
+                    fontSize: '1.85rem',
                     fontWeight: 'bold',
                     letterSpacing: '0.08em',
                     fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
-                    width: '78%'
+                    width: '80%'
                   }}>
                     金　￥ {amount.toLocaleString()} ─
                   </div>
 
                   {/* Description / Particulars */}
                   <div style={{ 
-                    fontSize: '0.92rem', 
+                    fontSize: '0.95rem', 
                     letterSpacing: '0.04em',
                     fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                     alignSelf: 'flex-start',
@@ -315,30 +320,30 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     {/* 内訳表 */}
                     <div style={{ 
                       border: '1px solid #444', 
-                      fontSize: '0.72rem', 
+                      fontSize: '0.75rem', 
                       width: '36%', 
                       backgroundColor: '#ffffff' 
                     }}>
                       <div style={{ display: 'flex', borderBottom: '1px solid #444' }}>
-                        <div style={{ width: '45%', padding: '0.2rem 0.4rem', borderRight: '1px solid #444', backgroundColor: '#fcfbf7', fontWeight: 'bold' }}>
+                        <div style={{ width: '45%', padding: '0.25rem 0.4rem', borderRight: '1px solid #444', backgroundColor: '#fcfbf7', fontWeight: 'bold' }}>
                           内　訳
                         </div>
-                        <div style={{ width: '55%', padding: '0.2rem 0.4rem', textAlign: 'right', fontWeight: 'bold' }}>
+                        <div style={{ width: '55%', padding: '0.25rem 0.4rem', textAlign: 'right', fontWeight: 'bold' }}>
                           ￥{amount.toLocaleString()}
                         </div>
                       </div>
-                      <div style={{ padding: '0.2rem 0.4rem', fontSize: '0.66rem', color: '#555' }}>
+                      <div style={{ padding: '0.2rem 0.4rem', fontSize: '0.68rem', color: '#555' }}>
                         ※消費税法非課税扱い
                       </div>
                     </div>
 
                     {/* Shrine issuing details & Seal square */}
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                      <div style={{ textAlign: 'right', fontSize: '0.75rem', lineHeight: '1.4', color: '#222' }}>
+                    <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                      <div style={{ textAlign: 'right', fontSize: '0.78rem', lineHeight: '1.45', color: '#222' }}>
                         <h4 style={{ 
-                          fontSize: '1.1rem', 
+                          fontSize: '1.15rem', 
                           fontWeight: 'bold', 
-                          margin: '0 0 0.15rem 0',
+                          margin: '0 0 0.2rem 0',
                           letterSpacing: '0.08em',
                           fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif'
                         }}>
@@ -351,15 +356,15 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
 
                       {/* 本朱肉色 二重角印 */}
                       <div style={{ 
-                        width: '23mm', 
-                        height: '23mm', 
+                        width: '24mm', 
+                        height: '24mm', 
                         border: '3px double #b32418', 
                         color: '#b32418',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 'bold',
-                        fontSize: '0.72rem',
+                        fontSize: '0.75rem',
                         lineHeight: '1.25',
                         padding: '0.15rem',
                         writingMode: 'vertical-rl',
