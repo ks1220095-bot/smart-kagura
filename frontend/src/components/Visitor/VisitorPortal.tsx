@@ -286,6 +286,9 @@ export const VisitorPortal: React.FC = () => {
   const [wantsReceipt, setWantsReceipt] = useState(savedDraft?.wantsReceipt ?? false);
   const [receiptName, setReceiptName] = useState(savedDraft?.receiptName ?? '');
   const [receiptAmount, setReceiptAmount] = useState(savedDraft?.receiptAmount ?? 20000);
+  const [hasAdditionalReceipt, setHasAdditionalReceipt] = useState(savedDraft?.hasAdditionalReceipt ?? false);
+  const [receiptName2, setReceiptName2] = useState(savedDraft?.receiptName2 ?? '');
+  const [receiptAmount2, setReceiptAmount2] = useState(savedDraft?.receiptAmount2 ?? 0);
 
   // Organization Dynamic fields
   const [orgCustomPrayer1, setOrgCustomPrayer1] = useState(savedDraft?.orgCustomPrayer1 ?? '');
@@ -582,6 +585,9 @@ export const VisitorPortal: React.FC = () => {
       setWantsReceipt(b.wants_receipt === 1);
       setReceiptName(b.receipt_name || '');
       setReceiptAmount(b.receipt_amount || 0);
+      setHasAdditionalReceipt(b.receipt_split_count === 2);
+      setReceiptName2(b.receipt_name2 || '');
+      setReceiptAmount2(b.receipt_amount2 || 0);
 
       // Org dynamic fields
       if (b.prayer1 !== '社運隆盛' && b.prayer1 !== '商売繁昌' && b.prayer1 !== '安全祈願' && b.prayer1 !== '必勝祈願' && b.prayer1 !== '工事安全') {
@@ -645,6 +651,7 @@ export const VisitorPortal: React.FC = () => {
       companyName, companyKana, companyAddress, companyAddressKana,
       representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
       talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
+      hasAdditionalReceipt, receiptName2, receiptAmount2,
       hasPastPrayer, isTwin, childName2, childKana2, notes,
       birthYear, birthMonth, birthDay,
       birthYear2, birthMonth2, birthDay2,
@@ -670,6 +677,7 @@ export const VisitorPortal: React.FC = () => {
     companyName, companyKana, companyAddress, companyAddressKana,
     representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
     talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
+    hasAdditionalReceipt, receiptName2, receiptAmount2,
     hasPastPrayer, isTwin, childName2, childKana2, notes,
     birthYear, birthMonth, birthDay,
     birthYear2, birthMonth2, birthDay2,
@@ -722,6 +730,9 @@ export const VisitorPortal: React.FC = () => {
         if (state.wantsReceipt !== undefined) setWantsReceipt(state.wantsReceipt);
         if (state.receiptName) setReceiptName(state.receiptName);
         if (state.receiptAmount) setReceiptAmount(state.receiptAmount);
+        if (state.hasAdditionalReceipt !== undefined) setHasAdditionalReceipt(state.hasAdditionalReceipt);
+        if (state.receiptName2) setReceiptName2(state.receiptName2);
+        if (state.receiptAmount2) setReceiptAmount2(state.receiptAmount2);
 
         if (state.hasPastPrayer !== undefined) setHasPastPrayer(state.hasPastPrayer);
         if (state.isTwin !== undefined) setIsTwin(state.isTwin);
@@ -952,6 +963,9 @@ export const VisitorPortal: React.FC = () => {
       }
       if (wantsReceipt && (!receiptName.trim() || receiptAmount <= 0)) {
         return '領収証の発行に必要な宛名および金額を正しくご入力ください。';
+      }
+      if (wantsReceipt && hasAdditionalReceipt && (!receiptName2.trim() || receiptAmount2 <= 0)) {
+        return '追加の領収証（2社目）に必要な宛名および金額を正しくご入力ください。';
       }
       
       const p1 = getActivePrayer1();
@@ -1250,8 +1264,11 @@ export const VisitorPortal: React.FC = () => {
       additional_talismans: bookingType === 'organization' ? additionalTalismans : undefined,
       
       wants_receipt: bookingType === 'organization' ? (wantsReceipt ? 1 : 0) : 0,
+      receipt_split_count: (bookingType === 'organization' && wantsReceipt && hasAdditionalReceipt) ? 2 : 1,
       receipt_name: bookingType === 'organization' && wantsReceipt ? receiptName : undefined,
       receipt_amount: bookingType === 'organization' && wantsReceipt ? receiptAmount : undefined,
+      receipt_name2: (bookingType === 'organization' && wantsReceipt && hasAdditionalReceipt) ? receiptName2 : undefined,
+      receipt_amount2: (bookingType === 'organization' && wantsReceipt && hasAdditionalReceipt) ? receiptAmount2 : undefined,
 
       yakudoshi_type: bookingType === 'individual' ? (prayerItems[0]?.yakudoshi_type || yakudoshiType) : undefined,
       
@@ -1460,6 +1477,10 @@ export const VisitorPortal: React.FC = () => {
     setAdditionalTalismans('');
     setWantsReceipt(false);
     setReceiptName('');
+    setReceiptAmount(20000);
+    setHasAdditionalReceipt(false);
+    setReceiptName2('');
+    setReceiptAmount2(0);
     setOrgCustomPrayer1('');
     setOrgCustomPrayer2('');
     setTournamentName('');
@@ -3186,34 +3207,107 @@ export const VisitorPortal: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={wantsReceipt}
-                        onChange={(e) => setWantsReceipt(e.target.checked)}
+                        onChange={(e) => {
+                          setWantsReceipt(e.target.checked);
+                          if (!e.target.checked) {
+                            setHasAdditionalReceipt(false);
+                          }
+                        }}
                       />
                       領収証の発行を希望する
                     </label>
 
                     {wantsReceipt && (
-                      <div className="form-row alert-warning" style={{ margin: 0, padding: '1rem' }}>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label>領収証の宛名 <span className="required">*</span></label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={receiptName}
-                            onChange={(e) => setReceiptName(e.target.value)}
-                            required
-                          />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <div className="form-row alert-warning" style={{ margin: 0, padding: '1rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>{hasAdditionalReceipt ? '領収証の宛名（1社目）' : '領収証の宛名'} <span className="required">*</span></label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例：株式会社〇〇"
+                              value={receiptName}
+                              onChange={(e) => setReceiptName(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>{hasAdditionalReceipt ? '領収証の金額（1社目・円）' : '領収証の金額 (円)'} <span className="required">*</span></label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              min="1"
+                              value={receiptAmount}
+                              onChange={(e) => setReceiptAmount(Math.max(1, parseInt(e.target.value) || 0))}
+                              required
+                            />
+                          </div>
                         </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label>領収証の金額 (円) <span className="required">*</span></label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            min="1"
-                            value={receiptAmount}
-                            onChange={(e) => setReceiptAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                            required
-                          />
+
+                        {/* 追加領収証チェックボックス */}
+                        <div style={{ paddingLeft: '0.25rem' }}>
+                          <label className="checkbox-label" style={{ fontWeight: '500', color: 'var(--color-urushi)' }}>
+                            <input
+                              type="checkbox"
+                              checked={hasAdditionalReceipt}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setHasAdditionalReceipt(checked);
+                                if (checked && receiptAmount2 === 0) {
+                                  const half = Math.floor(hatsuhoryo / 2);
+                                  setReceiptAmount(hatsuhoryo - half);
+                                  setReceiptAmount2(half);
+                                }
+                              }}
+                            />
+                            追加で領収証を希望の場合（2社名義での発行など）
+                          </label>
                         </div>
+
+                        {hasAdditionalReceipt && (
+                          <div className="form-row alert-warning" style={{ margin: 0, padding: '1rem', backgroundColor: '#fff9e6', borderLeft: '4px solid var(--color-gold)' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>領収証の宛名（2社目） <span className="required">*</span></label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="例：関連企業・協力会社名など"
+                                value={receiptName2}
+                                onChange={(e) => setReceiptName2(e.target.value)}
+                                required={hasAdditionalReceipt}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>領収証の金額（2社目・円） <span className="required">*</span></label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                min="1"
+                                value={receiptAmount2}
+                                onChange={(e) => setReceiptAmount2(Math.max(1, parseInt(e.target.value) || 0))}
+                                required={hasAdditionalReceipt}
+                              />
+                            </div>
+                            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', fontSize: '0.82rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <span style={{ color: (receiptAmount + receiptAmount2 === hatsuhoryo) ? 'var(--color-accent-green)' : '#d3381c', fontWeight: 'bold' }}>
+                                合計: {(receiptAmount + receiptAmount2).toLocaleString()} 円 / お初穂料: {hatsuhoryo.toLocaleString()} 円
+                                {receiptAmount + receiptAmount2 !== hatsuhoryo && ' (※初穂料とお支払い金額の合計をご確認ください)'}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                                onClick={() => {
+                                  const half = Math.floor(hatsuhoryo / 2);
+                                  setReceiptAmount(hatsuhoryo - half);
+                                  setReceiptAmount2(half);
+                                }}
+                              >
+                                初穂料を等分に配分
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3484,7 +3578,19 @@ export const VisitorPortal: React.FC = () => {
                     )}
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
                       <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>領収証</span>
-                      <span>{wantsReceipt ? `希望する (宛名: ${receiptName} / 金額: ${receiptAmount.toLocaleString()}円)` : '希望しない'}</span>
+                      <div>
+                        {!wantsReceipt ? (
+                          <span>希望しない</span>
+                        ) : hasAdditionalReceipt ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <div>1社目: <strong>{receiptName}</strong> 様 / <strong>{receiptAmount.toLocaleString()}円</strong></div>
+                            <div>2社目: <strong>{receiptName2}</strong> 様 / <strong>{receiptAmount2.toLocaleString()}円</strong></div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--color-mizuiro)' }}>（計2枚発行・合計: {(receiptAmount + receiptAmount2).toLocaleString()}円）</div>
+                          </div>
+                        ) : (
+                          <span>希望する (宛名: <strong>{receiptName}</strong> 様 / 金額: <strong>{receiptAmount.toLocaleString()}円</strong>)</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Victory Prayer Info */}

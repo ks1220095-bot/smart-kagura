@@ -37,6 +37,9 @@ export interface Booking {
   wants_receipt?: number; // 0 or 1
   receipt_name?: string;
   receipt_amount?: number;
+  receipt_split_count?: number; // 1 or 2
+  receipt_name2?: string;
+  receipt_amount2?: number;
 
   // 個人厄年
   yakudoshi_type?: 'maeyaku' | 'honyaku' | 'atoyaku' | '';

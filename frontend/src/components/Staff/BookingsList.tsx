@@ -1309,9 +1309,22 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                       {/* 領収証情報 */}
                                       {b.wants_receipt === 1 && (
                                         <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>領収証 宛名・金額</div>
-                                          <div style={{ fontSize: '0.8rem' }}>宛名: <strong>{b.receipt_name || b.company_name || '（未指定）'}</strong></div>
-                                          <div style={{ fontSize: '0.8rem' }}>金額: <strong>{b.receipt_amount ? `${Number(b.receipt_amount).toLocaleString()} 円` : `${(b.hatsuhoryo || 0).toLocaleString()} 円 (初穂料)`}</strong></div>
+                                          <div style={{ fontSize: '0.65rem', color: '#777', fontWeight: 'bold' }}>領収証 宛名・金額</div>
+                                          {b.receipt_split_count === 2 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem' }}>
+                                              <div style={{ fontSize: '0.78rem', borderBottom: '1px dashed #eee', paddingBottom: '0.15rem' }}>
+                                                1社目: <strong>{b.receipt_name || b.company_name || '（未指定）'}</strong> ({b.receipt_amount ? `${Number(b.receipt_amount).toLocaleString()} 円` : '未設定'})
+                                              </div>
+                                              <div style={{ fontSize: '0.78rem' }}>
+                                                2社目: <strong>{b.receipt_name2 || '（未指定）'}</strong> ({b.receipt_amount2 ? `${Number(b.receipt_amount2).toLocaleString()} 円` : '未設定'})
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <>
+                                              <div style={{ fontSize: '0.8rem' }}>宛名: <strong>{b.receipt_name || b.company_name || '（未指定）'}</strong></div>
+                                              <div style={{ fontSize: '0.8rem' }}>金額: <strong>{b.receipt_amount ? `${Number(b.receipt_amount).toLocaleString()} 円` : `${(b.hatsuhoryo || 0).toLocaleString()} 円 (初穂料)`}</strong></div>
+                                            </>
+                                          )}
                                         </div>
                                       )}
                                       {/* 申込担当者 */}
@@ -2403,27 +2416,70 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     </label>
                   </div>
                   {Number(editFormData.wants_receipt) === 1 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.75rem' }}>宛名 (未記入時は会社・団体名)</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder={editFormData.company_name || '宛名'}
-                          value={editFormData.receipt_name || ''}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_name: e.target.value }))}
-                        />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>
+                            {editFormData.receipt_split_count === 2 ? '宛名（1社目）' : '宛名 (未記入時は会社・団体名)'}
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder={editFormData.company_name || '宛名'}
+                            value={editFormData.receipt_name || ''}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_name: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '0.75rem' }}>
+                            {editFormData.receipt_split_count === 2 ? '金額（1社目・円）' : '金額 (未記入時は初穂料)'}
+                          </label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            placeholder={String(editFormData.hatsuhoryo || 0)}
+                            value={editFormData.receipt_amount !== undefined && editFormData.receipt_amount !== null ? editFormData.receipt_amount : ''}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_amount: e.target.value ? parseInt(e.target.value) : undefined }))}
+                          />
+                        </div>
                       </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.75rem' }}>金額 (未記入時は初穂料)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder={String(editFormData.hatsuhoryo || 0)}
-                          value={editFormData.receipt_amount !== undefined && editFormData.receipt_amount !== null ? editFormData.receipt_amount : ''}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_amount: e.target.value ? parseInt(e.target.value) : undefined }))}
-                        />
+
+                      {/* 2社名義発行チェックボックス */}
+                      <div style={{ paddingLeft: '0.25rem' }}>
+                        <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                          <input
+                            type="checkbox"
+                            checked={editFormData.receipt_split_count === 2}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_split_count: e.target.checked ? 2 : 1 }))}
+                          />
+                          追加で領収証を発行する（2社名義での発行）
+                        </label>
                       </div>
+
+                      {editFormData.receipt_split_count === 2 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', backgroundColor: '#fff9e6', padding: '0.5rem', borderRadius: '3px', border: '1px solid var(--color-gold)' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>宛名（2社目）</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="2社目の宛名"
+                              value={editFormData.receipt_name2 || ''}
+                              onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_name2: e.target.value }))}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>金額（2社目・円）</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="金額"
+                              value={editFormData.receipt_amount2 !== undefined && editFormData.receipt_amount2 !== null ? editFormData.receipt_amount2 : ''}
+                              onChange={(e) => setEditFormData(prev => ({ ...prev, receipt_amount2: e.target.value ? parseInt(e.target.value) : undefined }))}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

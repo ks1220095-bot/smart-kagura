@@ -33,10 +33,50 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
     return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
   };
 
+  interface ReceiptItem {
+    id: string | number;
+    receiptDate: string;
+    address: string;
+    amount: number;
+    booking: Booking;
+    splitIndex?: number;
+  }
+
+  const receiptItems: ReceiptItem[] = [];
+  targetBookings.forEach((b, bIdx) => {
+    const dateStr = getReceiptDateString(b);
+    if (b.receipt_split_count === 2 && b.receipt_name2 && b.receipt_amount2) {
+      receiptItems.push({
+        id: `${b.id || bIdx}-1`,
+        receiptDate: dateStr,
+        address: b.receipt_name || b.company_name || b.name || '',
+        amount: b.receipt_amount || b.hatsuhoryo || 0,
+        booking: b,
+        splitIndex: 1
+      });
+      receiptItems.push({
+        id: `${b.id || bIdx}-2`,
+        receiptDate: dateStr,
+        address: b.receipt_name2,
+        amount: b.receipt_amount2,
+        booking: b,
+        splitIndex: 2
+      });
+    } else {
+      receiptItems.push({
+        id: b.id || bIdx,
+        receiptDate: dateStr,
+        address: b.receipt_name || b.company_name || b.name || '',
+        amount: b.receipt_amount || b.hatsuhoryo || 0,
+        booking: b
+      });
+    }
+  });
+
   const handlePrint = () => {
-    const title = targetBookings.length === 1
-      ? `清瀧神社_領収証_${targetBookings[0].receipt_name || targetBookings[0].name || targetBookings[0].company_name || 'ご祈祷'}`
-      : `清瀧神社_領収証一括_${targetBookings.length}件`;
+    const title = receiptItems.length === 1
+      ? `清瀧神社_領収証_${receiptItems[0].address || 'ご祈祷'}`
+      : `清瀧神社_領収証_${receiptItems.length}枚`;
 
     printElement(printRef.current, {
       title,
@@ -77,9 +117,9 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 148);
       }
 
-      const fileName = targetBookings.length === 1 
-        ? `清瀧神社_領収証_${targetBookings[0].receipt_name || targetBookings[0].name || targetBookings[0].company_name || 'ご祈祷'}.pdf`
-        : `清瀧神社_領収証一括_${targetBookings.length}件.pdf`;
+      const fileName = receiptItems.length === 1 
+        ? `清瀧神社_領収証_${receiptItems[0].address || 'ご祈祷'}.pdf`
+        : `清瀧神社_領収証_${receiptItems.length}枚.pdf`;
 
       pdf.save(fileName);
     } catch (err) {
@@ -105,8 +145,8 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
         gap: '0.5rem'
       }}>
         <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
-          {targetBookings.length > 1
-            ? `領収証 一括印刷プレビュー（全 ${targetBookings.length} 件）`
+          {receiptItems.length > 1
+            ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚）`
             : '領収証 印刷プレビュー（A5横サイズ）'}
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -116,7 +156,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
             <Printer size={14} />
-            {targetBookings.length > 1 ? `一括印刷する (${targetBookings.length}件 / A5横)` : '印刷する (A5横)'}
+            {receiptItems.length > 1 ? `印刷する (${receiptItems.length}枚 / A5横)` : '印刷する (A5横)'}
           </button>
           <button 
             onClick={handleDownloadPdf} 
@@ -135,7 +175,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
             }}
           >
             {isGeneratingPdf ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />}
-            {isGeneratingPdf ? 'PDF生成中...' : (targetBookings.length > 1 ? `A5 一括PDF保存 (${targetBookings.length}件)` : 'A5 PDF保存')}
+            {isGeneratingPdf ? 'PDF生成中...' : (receiptItems.length > 1 ? `A5 PDF保存 (${receiptItems.length}枚)` : 'A5 PDF保存')}
           </button>
           <button 
             onClick={onClose} 
@@ -161,13 +201,13 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
           padding: '2rem 0' 
         }}
       >
-        {targetBookings.map((b, idx) => {
-          const amount = b.receipt_amount || b.hatsuhoryo || 0;
-          const address = b.receipt_name || b.company_name || b.name || '';
+        {receiptItems.map((item) => {
+          const amount = item.amount;
+          const address = item.address;
 
           return (
             <div 
-              key={b.id || idx}
+              key={item.id}
               className="receipt-sheet print-receipt-page" 
               style={{
                 backgroundColor: '#ffffff',
@@ -217,7 +257,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     }}>
                       領収証
                     </h2>
-                    <span style={{ fontSize: '0.85rem' }}>日付： {getReceiptDateString(b)}</span>
+                    <span style={{ fontSize: '0.85rem' }}>日付： {item.receiptDate}</span>
                   </div>
 
                   {/* Address Line */}

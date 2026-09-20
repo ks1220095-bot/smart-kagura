@@ -168,6 +168,9 @@ async function initSqlite() {
           wants_receipt INTEGER DEFAULT 0,
           receipt_name TEXT,
           receipt_amount INTEGER,
+          receipt_split_count INTEGER DEFAULT 1,
+          receipt_name2 TEXT,
+          receipt_amount2 INTEGER,
           yakudoshi_type TEXT,
           father_name TEXT,
           father_kana TEXT,
@@ -234,6 +237,9 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_gender TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN child_gender2 TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN representative_kana TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN receipt_split_count INTEGER DEFAULT 1`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN receipt_name2 TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN receipt_amount2 INTEGER`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -323,6 +329,9 @@ async function verifyPostgresSchema() {
         wants_receipt INTEGER DEFAULT 0,
         receipt_name VARCHAR(255),
         receipt_amount INTEGER,
+        receipt_split_count INTEGER DEFAULT 1,
+        receipt_name2 VARCHAR(255),
+        receipt_amount2 INTEGER,
         yakudoshi_type VARCHAR(50),
         father_name VARCHAR(255),
         father_kana VARCHAR(255),
@@ -433,6 +442,15 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS representative_kana VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS receipt_split_count INTEGER DEFAULT 1
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS receipt_name2 VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS receipt_amount2 INTEGER
     `);
 
     await client.query(`
