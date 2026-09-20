@@ -117,19 +117,19 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
             width: '80%',
             alignSelf: 'center'
           }}>
-            金額　￥ {amount.toLocaleString()} ─
+            金　￥ {amount.toLocaleString()} ─
           </div>
 
           {/* Description / Particulars */}
           <div style={{ fontSize: '1rem', marginBottom: '1.5rem', borderBottom: '1px dashed #000000', width: '80%', paddingBottom: '0.4rem', alignSelf: 'flex-start' }}>
-            Butsu　<strong>御初穂料（ご祈祷：{booking.prayer1}）</strong>として上記の通り正に受領いたしました。
+            但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
           </div>
 
           {/* Footer details & Hanko Seal */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
             <div style={{ fontSize: '0.75rem', color: '#666', border: '1px solid #ccc', padding: '0.75rem', width: '35%' }}>
               【内訳】<br />
-              ・御初穂料： ￥{amount.toLocaleString()}<br />
+              ・ご祈祷料： ￥{amount.toLocaleString()}<br />
               ・消費税法非課税扱い
             </div>
 
