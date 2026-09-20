@@ -129,110 +129,124 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
           style={{
             backgroundColor: '#ffffff',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            position: 'relative',
-            width: '210mm',
-            height: '148mm',
-            maxHeight: '148mm',
+            width: '200mm',
+            height: '138mm',
+            maxWidth: '200mm',
+            maxHeight: '138mm',
             boxSizing: 'border-box',
-            padding: '7mm 12mm',
             fontFamily: 'var(--font-serif)',
             color: '#000000',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            overflow: 'hidden'
+            margin: '0 auto',
+            padding: '0'
           }}
         >
-          {/* Receipt Border line (safely positioned within printable margins) */}
-          <div style={{ position: 'absolute', top: '5mm', bottom: '5mm', left: '5mm', right: '5mm', border: '1px solid #111111', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: '6.5mm', bottom: '6.5mm', left: '6.5mm', right: '6.5mm', border: '2px solid #111111', pointerEvents: 'none' }} />
-
-          {/* Header Title */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>No. ＿＿＿＿＿＿</span>
-            <h2 style={{ 
-              fontSize: '2rem', 
-              textAlign: 'center', 
-              margin: '0 auto', 
-              letterSpacing: '0.5em', 
-              fontWeight: 'bold',
-              borderBottom: '2px solid #000000',
-              paddingBottom: '0.15rem',
-              width: '50%'
-            }}>
-              領収証
-            </h2>
-            <span style={{ fontSize: '0.85rem' }}>日付： {getTodayString()}</span>
-          </div>
-
-          {/* Address Line */}
-          <div style={{ marginTop: '0.8rem', borderBottom: '1px solid #000000', width: '75%', paddingBottom: '0.2rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>
-              {address}　御中
-            </h3>
-          </div>
-
-          {/* Grand Amount Board */}
-          <div style={{ 
-            margin: '0.8rem 0',
-            textAlign: 'center',
-            border: '2px solid #000000',
-            padding: '0.45rem',
-            backgroundColor: '#fafafa',
-            fontSize: '1.8rem',
-            fontWeight: 'bold',
-            letterSpacing: '0.05em',
-            fontFamily: 'var(--font-sans)',
-            width: '80%',
-            alignSelf: 'center'
+          {/* Outer Border */}
+          <div style={{
+            width: '100%',
+            height: '100%',
+            border: '1px solid #111111',
+            padding: '2.5mm',
+            boxSizing: 'border-box'
           }}>
-            金　￥ {amount.toLocaleString()} ─
-          </div>
-
-          {/* Description / Particulars */}
-          <div style={{ fontSize: '0.95rem', marginBottom: '0.8rem', borderBottom: '1px dashed #000000', width: '80%', paddingBottom: '0.3rem', alignSelf: 'flex-start' }}>
-            但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
-          </div>
-
-          {/* Footer details & Hanko Seal */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
-            <div style={{ fontSize: '0.75rem', color: '#666', border: '1px solid #ccc', padding: '0.6rem', width: '35%' }}>
-              【内訳】<br />
-              ・ご祈祷料： ￥{amount.toLocaleString()}<br />
-              ・消費税法非課税扱い
-            </div>
-
-            {/* Shrine issuing details & Seal square */}
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', width: '55%', justifyContent: 'flex-end' }}>
-              <div style={{ textAlign: 'right', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0 0 0.2rem 0' }}>清瀧神社 社務所</h4>
-                〒279-0041 千葉県浦安市堀江4-1-5<br />
-                TEL： 047-351-5417<br />
-                FAX： 047-351-3110
+            {/* Inner Border & Content Container */}
+            <div style={{
+              width: '100%',
+              height: '100%',
+              border: '2px solid #111111',
+              padding: '5mm 8mm',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              {/* Header Title */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>No. ＿＿＿＿＿＿</span>
+                <h2 style={{ 
+                  fontSize: '1.9rem', 
+                  textAlign: 'center', 
+                  margin: '0 auto', 
+                  letterSpacing: '0.5em', 
+                  fontWeight: 'bold',
+                  borderBottom: '2px solid #000000',
+                  paddingBottom: '0.15rem',
+                  width: '45%'
+                }}>
+                  領収証
+                </h2>
+                <span style={{ fontSize: '0.85rem' }}>日付： {getTodayString()}</span>
               </div>
 
-              {/* Red Square Seal (Simulation) */}
+              {/* Address Line */}
+              <div style={{ marginTop: '0.4rem', borderBottom: '1px solid #000000', width: '70%', paddingBottom: '0.2rem' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0 }}>
+                  {address}　御中
+                </h3>
+              </div>
+
+              {/* Grand Amount Board */}
               <div style={{ 
-                width: '28mm', 
-                height: '28mm', 
-                border: '2px solid #ff4d4f', 
-                color: '#ff4d4f',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                margin: '0.5rem 0',
+                textAlign: 'center',
+                border: '2px solid #000000',
+                padding: '0.35rem',
+                backgroundColor: '#fafafa',
+                fontSize: '1.75rem',
                 fontWeight: 'bold',
-                fontSize: '0.75rem',
-                lineHeight: '1.2',
-                padding: '0.2rem',
-                writingMode: 'vertical-rl',
-                letterSpacing: '0.1em',
-                borderRadius: '4px'
+                letterSpacing: '0.05em',
+                fontFamily: 'var(--font-sans)',
+                width: '80%',
+                alignSelf: 'center'
               }}>
-                清瀧神社<br />社務所印
+                金　￥ {amount.toLocaleString()} ─
               </div>
+
+              {/* Description / Particulars */}
+              <div style={{ fontSize: '0.95rem', marginBottom: '0.5rem', borderBottom: '1px dashed #000000', width: '80%', paddingBottom: '0.25rem', alignSelf: 'flex-start' }}>
+                但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
+              </div>
+
+              {/* Footer details & Hanko Seal */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
+                <div style={{ fontSize: '0.72rem', color: '#444', border: '1px solid #aaa', padding: '0.5rem', width: '35%' }}>
+                  【内訳】<br />
+                  ・ご祈祷料： ￥{amount.toLocaleString()}<br />
+                  ・消費税法非課税扱い
+                </div>
+
+                {/* Shrine issuing details & Seal square */}
+                <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', width: '55%', justifyContent: 'flex-end' }}>
+                  <div style={{ textAlign: 'right', fontSize: '0.78rem', lineHeight: '1.35' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0 0 0.15rem 0' }}>清瀧神社 社務所</h4>
+                    〒279-0041 千葉県浦安市堀江4-1-5<br />
+                    TEL： 047-351-5417<br />
+                    FAX： 047-351-3110
+                  </div>
+
+                  {/* Red Square Seal (Simulation) */}
+                  <div style={{ 
+                    width: '24mm', 
+                    height: '24mm', 
+                    border: '2px solid #ff4d4f', 
+                    color: '#ff4d4f',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    fontSize: '0.7rem',
+                    lineHeight: '1.2',
+                    padding: '0.15rem',
+                    writingMode: 'vertical-rl',
+                    letterSpacing: '0.08em',
+                    borderRadius: '3px'
+                  }}>
+                    清瀧神社<br />社務所印
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
-
         </div>
       </div>
     </div>,
