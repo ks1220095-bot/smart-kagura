@@ -3218,35 +3218,51 @@ export const VisitorPortal: React.FC = () => {
                     </label>
 
                     {wantsReceipt && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                        <div className="form-row alert-warning" style={{ margin: 0, padding: '1rem' }}>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label>{hasAdditionalReceipt ? '領収証の宛名（1社目）' : '領収証の宛名'} <span className="required">*</span></label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="例：株式会社〇〇"
-                              value={receiptName}
-                              onChange={(e) => setReceiptName(e.target.value)}
-                              required
-                            />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.75rem' }}>
+                        {/* 1社目カード */}
+                        <div style={{
+                          backgroundColor: '#fbfbfb',
+                          border: '1px solid var(--color-border)',
+                          borderLeft: '4px solid var(--color-mizuiro)',
+                          borderRadius: '4px',
+                          padding: '1rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem'
+                        }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-urushi)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span>📄</span>
+                            <span>{hasAdditionalReceipt ? '領収証（1社目）' : '領収証の発行情報'}</span>
                           </div>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label>{hasAdditionalReceipt ? '領収証の金額（1社目・円）' : '領収証の金額 (円)'} <span className="required">*</span></label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              min="1"
-                              value={receiptAmount}
-                              onChange={(e) => setReceiptAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                              required
-                            />
+                          <div className="form-row" style={{ margin: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
+                            <div className="form-group" style={{ margin: 0, flex: '2 1 240px' }}>
+                              <label>{hasAdditionalReceipt ? '領収証の宛名（1社目）' : '領収証の宛名'} <span className="required">*</span></label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="例：株式会社〇〇"
+                                value={receiptName}
+                                onChange={(e) => setReceiptName(e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0, flex: '1 1 160px' }}>
+                              <label>{hasAdditionalReceipt ? '領収証の金額（1社目・円）' : '領収証の金額 (円)'} <span className="required">*</span></label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                min="1"
+                                value={receiptAmount}
+                                onChange={(e) => setReceiptAmount(Math.max(1, parseInt(e.target.value) || 0))}
+                                required
+                              />
+                            </div>
                           </div>
                         </div>
 
                         {/* 追加領収証チェックボックス */}
-                        <div style={{ paddingLeft: '0.25rem' }}>
-                          <label className="checkbox-label" style={{ fontWeight: '500', color: 'var(--color-urushi)' }}>
+                        <div style={{ padding: '0.25rem 0.5rem', backgroundColor: '#fcfcfc', border: '1px dashed var(--color-border)', borderRadius: '4px' }}>
+                          <label className="checkbox-label" style={{ fontWeight: '500', color: 'var(--color-urushi)', margin: 0 }}>
                             <input
                               type="checkbox"
                               checked={hasAdditionalReceipt}
@@ -3260,43 +3276,82 @@ export const VisitorPortal: React.FC = () => {
                                 }
                               }}
                             />
-                            追加で領収証を希望の場合（2社名義での発行など）
+                            <span>追加で領収証を希望の場合（2社名義での発行など）</span>
                           </label>
                         </div>
 
+                        {/* 2社目カード */}
                         {hasAdditionalReceipt && (
-                          <div className="form-row alert-warning" style={{ margin: 0, padding: '1rem', backgroundColor: '#fff9e6', borderLeft: '4px solid var(--color-gold)' }}>
-                            <div className="form-group" style={{ margin: 0 }}>
-                              <label>領収証の宛名（2社目） <span className="required">*</span></label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                placeholder="例：関連企業・協力会社名など"
-                                value={receiptName2}
-                                onChange={(e) => setReceiptName2(e.target.value)}
-                                required={hasAdditionalReceipt}
-                              />
+                          <div style={{
+                            backgroundColor: '#fffdf7',
+                            border: '1px solid var(--color-gold)',
+                            borderLeft: '4px solid var(--color-gold)',
+                            borderRadius: '4px',
+                            padding: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem'
+                          }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-urushi)', borderBottom: '1px dashed rgba(197, 160, 89, 0.4)', paddingBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>📄</span>
+                              <span>領収証（2社目）</span>
                             </div>
-                            <div className="form-group" style={{ margin: 0 }}>
-                              <label>領収証の金額（2社目・円） <span className="required">*</span></label>
-                              <input
-                                type="number"
-                                className="form-control"
-                                min="1"
-                                value={receiptAmount2}
-                                onChange={(e) => setReceiptAmount2(Math.max(1, parseInt(e.target.value) || 0))}
-                                required={hasAdditionalReceipt}
-                              />
+                            <div className="form-row" style={{ margin: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
+                              <div className="form-group" style={{ margin: 0, flex: '2 1 240px' }}>
+                                <label>領収証の宛名（2社目） <span className="required">*</span></label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="例：関連企業・協力会社名など"
+                                  value={receiptName2}
+                                  onChange={(e) => setReceiptName2(e.target.value)}
+                                  required={hasAdditionalReceipt}
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0, flex: '1 1 160px' }}>
+                                <label>領収証の金額（2社目・円） <span className="required">*</span></label>
+                                <input
+                                  type="number"
+                                  className="form-control"
+                                  min="1"
+                                  value={receiptAmount2}
+                                  onChange={(e) => setReceiptAmount2(Math.max(1, parseInt(e.target.value) || 0))}
+                                  required={hasAdditionalReceipt}
+                                />
+                              </div>
                             </div>
-                            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', fontSize: '0.82rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                              <span style={{ color: (receiptAmount + receiptAmount2 === hatsuhoryo) ? 'var(--color-accent-green)' : '#d3381c', fontWeight: 'bold' }}>
-                                合計: {(receiptAmount + receiptAmount2).toLocaleString()} 円 / お初穂料: {hatsuhoryo.toLocaleString()} 円
-                                {receiptAmount + receiptAmount2 !== hatsuhoryo && ' (※初穂料とお支払い金額の合計をご確認ください)'}
-                              </span>
+
+                            {/* 合計とお初穂料の照合バー（独立ブロック） */}
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '0.6rem 0.75rem',
+                              backgroundColor: '#ffffff',
+                              border: '1px solid rgba(197, 160, 89, 0.35)',
+                              borderRadius: '4px',
+                              flexWrap: 'wrap',
+                              gap: '0.5rem',
+                              marginTop: '0.25rem'
+                            }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: (receiptAmount + receiptAmount2 === hatsuhoryo) ? 'var(--color-accent-green)' : '#d3381c' }}>
+                                  {(receiptAmount + receiptAmount2 === hatsuhoryo) ? '✓ ' : '⚠ '}
+                                  1社目: {receiptAmount.toLocaleString()} 円 ＋ 2社目: {receiptAmount2.toLocaleString()} 円 ＝ 合計 {(receiptAmount + receiptAmount2).toLocaleString()} 円
+                                </div>
+                                <div style={{ fontSize: '0.78rem', color: '#666' }}>
+                                  お初穂料： <strong>{hatsuhoryo.toLocaleString()} 円</strong>
+                                  {receiptAmount + receiptAmount2 !== hatsuhoryo && (
+                                    <span style={{ color: '#d3381c', fontWeight: 'bold', marginLeft: '0.4rem' }}>
+                                      ※合計がお初穂料と一致していません
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                               <button
                                 type="button"
                                 className="btn btn-secondary"
-                                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                                style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
                                 onClick={() => {
                                   const half = Math.floor(hatsuhoryo / 2);
                                   setReceiptAmount(hatsuhoryo - half);
@@ -3576,21 +3631,45 @@ export const VisitorPortal: React.FC = () => {
                         <span>{additionalTalismans}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>領収証</span>
-                      <div>
-                        {!wantsReceipt ? (
-                          <span>希望しない</span>
-                        ) : hasAdditionalReceipt ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                            <div>1社目: <strong>{receiptName}</strong> 様 / <strong>{receiptAmount.toLocaleString()}円</strong></div>
-                            <div>2社目: <strong>{receiptName2}</strong> 様 / <strong>{receiptAmount2.toLocaleString()}円</strong></div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--color-mizuiro)' }}>（計2枚発行・合計: {(receiptAmount + receiptAmount2).toLocaleString()}円）</div>
-                          </div>
-                        ) : (
-                          <span>希望する (宛名: <strong>{receiptName}</strong> 様 / 金額: <strong>{receiptAmount.toLocaleString()}円</strong>)</span>
-                        )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>領収証の発行</span>
+                        <span style={{ fontWeight: 'bold', color: wantsReceipt ? 'var(--color-urushi)' : '#888' }}>
+                          {wantsReceipt ? (hasAdditionalReceipt ? '希望する（2社名義・計2枚発行）' : '希望する（1枚発行）') : '希望しない'}
+                        </span>
                       </div>
+                      {wantsReceipt && (
+                        <div style={{ backgroundColor: '#fcfbf7', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: hasAdditionalReceipt ? '1px dashed #e0dcd3' : 'none', paddingBottom: hasAdditionalReceipt ? '0.5rem' : '0', flexWrap: 'wrap', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.88rem', color: '#444' }}>
+                              {hasAdditionalReceipt ? '【1社目】宛名: ' : '宛名: '}
+                              <strong style={{ color: '#222', fontSize: '0.95rem' }}>{receiptName}</strong> 様
+                            </span>
+                            <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                              {receiptAmount.toLocaleString()} 円
+                            </span>
+                          </div>
+                          {hasAdditionalReceipt && (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                <span style={{ fontSize: '0.88rem', color: '#444' }}>
+                                  【2社目】宛名: <strong style={{ color: '#222', fontSize: '0.95rem' }}>{receiptName2}</strong> 様
+                                </span>
+                                <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                                  {receiptAmount2.toLocaleString()} 円
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e0dcd3', paddingTop: '0.4rem', fontSize: '0.82rem' }}>
+                                <span style={{ color: '#666' }}>領収証 合計金額</span>
+                                <span style={{ fontWeight: 'bold', color: (receiptAmount + receiptAmount2 === hatsuhoryo) ? 'var(--color-accent-green)' : '#d3381c' }}>
+                                  {(receiptAmount + receiptAmount2).toLocaleString()} 円
+                                  {receiptAmount + receiptAmount2 === hatsuhoryo ? '（お初穂料と一致）' : '（※お初穂料と不一致）'}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Victory Prayer Info */}
