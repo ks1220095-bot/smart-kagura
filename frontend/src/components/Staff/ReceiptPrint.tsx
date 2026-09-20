@@ -1,6 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { Booking } from '../../types';
 
 interface ReceiptPrintProps {
@@ -10,6 +12,8 @@ interface ReceiptPrintProps {
 
 export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   const getTodayString = () => {
     const today = new Date();
     return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
@@ -17,6 +21,39 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
 
   const amount = booking.receipt_amount || booking.hatsuhoryo || 0;
   const address = booking.receipt_name || booking.company_name || '';
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setIsGeneratingPdf(true);
+
+    try {
+      // A5 landscape: width 210mm, height 148mm
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [210, 148]
+      });
+
+      const canvas = await html2canvas(printRef.current, {
+        scale: 3, // High resolution
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 0, 0, 210, 148);
+
+      const recipientName = booking.receipt_name || booking.name || booking.company_name || 'ご祈祷';
+      const fileName = `清瀧神社_領収証_${recipientName}.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('PDFの生成中にエラーが発生しました。');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   return createPortal(
     <div className="print-modal-overlay">
@@ -28,12 +65,14 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
         justifyContent: 'space-between',
         alignItems: 'center',
         color: 'white',
-        borderBottom: '2px solid var(--color-gold)'
+        borderBottom: '2px solid var(--color-gold)',
+        flexWrap: 'wrap',
+        gap: '0.5rem'
       }}>
         <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
           領収証 印刷プレビュー（A5横サイズ）
         </h4>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
             onClick={() => window.print()} 
             className="btn btn-primary" 
@@ -41,6 +80,25 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
           >
             <Printer size={14} />
             印刷する (A5横)
+          </button>
+          <button 
+            onClick={handleDownloadPdf} 
+            disabled={isGeneratingPdf}
+            className="btn" 
+            style={{ 
+              padding: '0.4rem 0.9rem', 
+              fontSize: '0.85rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.4rem',
+              backgroundColor: '#1890ff',
+              color: '#ffffff',
+              border: '1px solid #1890ff',
+              cursor: isGeneratingPdf ? 'wait' : 'pointer'
+            }}
+          >
+            {isGeneratingPdf ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />}
+            {isGeneratingPdf ? 'PDF生成中...' : 'A5 PDF保存'}
           </button>
           <button 
             onClick={onClose} 
@@ -57,16 +115,15 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 0' }}>
         <div 
           ref={printRef}
-          className="receipt-sheet print-landscape-page" 
+          className="receipt-sheet print-receipt-page" 
           style={{
             backgroundColor: '#ffffff',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            border: '1px solid #111111',
-            borderRadius: '2px',
             position: 'relative',
             width: '210mm',
             height: '148mm', // A5 landscape dimensions
-            padding: '12mm 15mm',
+            boxSizing: 'border-box',
+            padding: '10mm 14mm',
             fontFamily: 'var(--font-serif)',
             color: '#000000',
             display: 'flex',
@@ -74,9 +131,9 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
             justifyContent: 'space-between'
           }}
         >
-          {/* Receipt Border line */}
-          <div style={{ position: 'absolute', top: '4mm', bottom: '4mm', left: '4mm', right: '4mm', border: '1px solid #111111', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: '5mm', bottom: '5mm', left: '5mm', right: '5mm', border: '2px solid #111111', pointerEvents: 'none' }} />
+          {/* Receipt Border line (safely positioned within printable margins) */}
+          <div style={{ position: 'absolute', top: '6mm', bottom: '6mm', left: '6mm', right: '6mm', border: '1px solid #111111', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: '7.5mm', bottom: '7.5mm', left: '7.5mm', right: '7.5mm', border: '2px solid #111111', pointerEvents: 'none' }} />
 
           {/* Header Title */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
