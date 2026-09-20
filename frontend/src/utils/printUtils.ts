@@ -45,7 +45,7 @@ export const printElement = (
         <title>${title}</title>
         <style>
           @page {
-            size: ${size} ${orientation};
+            size: ${size === 'A5' && orientation === 'landscape' ? '210mm 148mm' : `${size} ${orientation}`};
             margin: 0;
           }
           * {

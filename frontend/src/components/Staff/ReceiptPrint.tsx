@@ -193,6 +193,14 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
         </div>
       </div>
 
+      <style>{`
+        @media screen {
+          .receipt-sheet {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+          }
+        }
+      `}</style>
+
       {/* Receipt Sheets Container */}
       <div 
         ref={printRef}
@@ -216,7 +224,6 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
               className="receipt-sheet print-receipt-page" 
               style={{
                 backgroundColor: '#ffffff',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                 width: '210mm',
                 height: '148mm',
                 maxWidth: '210mm',
@@ -254,21 +261,15 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                     </div>
                     <div style={{ textAlign: 'center', marginTop: '-0.15rem' }}>
                       <h2 style={{ 
-                        fontSize: '1.9rem', 
+                        fontSize: '2rem', 
                         margin: 0, 
-                        letterSpacing: '0.7em', 
+                        letterSpacing: '0.75em', 
                         fontWeight: 'bold',
                         fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                         color: '#111'
                       }}>
                         領　収　証
                       </h2>
-                      <div style={{ 
-                        width: '150px', 
-                        height: '3px', 
-                        borderBottom: '3px double #222', 
-                        margin: '0.25rem auto 0' 
-                      }} />
                     </div>
                     <div style={{ fontSize: '0.85rem', letterSpacing: '0.05em', color: '#333' }}>
                       日付： {item.receiptDate}
