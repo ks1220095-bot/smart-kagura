@@ -15,7 +15,18 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
   const printRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const getTodayString = () => {
+  const getReceiptDateString = () => {
+    if (booking.booking_date) {
+      const parts = booking.booking_date.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+          return `${year}年${month}月${day}日`;
+        }
+      }
+    }
     const today = new Date();
     return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
   };
@@ -174,7 +185,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
                 }}>
                   領収証
                 </h2>
-                <span style={{ fontSize: '0.85rem' }}>日付： {getTodayString()}</span>
+                <span style={{ fontSize: '0.85rem' }}>日付： {getReceiptDateString()}</span>
               </div>
 
               {/* Address Line */}
