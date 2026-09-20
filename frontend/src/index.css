@@ -405,14 +405,27 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     break-after: avoid !important;
   }
   
-  .receipt-sheet {
-    width: 210mm !important;
-    height: 148mm !important; 
-    box-sizing: border-box !important;
-    padding: 10mm 12mm !important;
+  .receipt-print-wrapper {
+    padding: 0 !important;
     margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .receipt-sheet {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 210mm !important;
+    max-height: 148mm !important; 
+    box-sizing: border-box !important;
+    padding: 7mm 12mm !important;
+    margin: 0 auto !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    overflow: hidden !important;
     box-shadow: none !important;
     border: none !important;
     background: white !important;

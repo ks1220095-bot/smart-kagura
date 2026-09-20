@@ -85,6 +85,20 @@ export const printElement = (
             box-shadow: none !important;
             border: none !important;
           }
+          .print-receipt-page,
+          .receipt-sheet {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 210mm !important;
+            max-height: 148mm !important;
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+            overflow: hidden !important;
+          }
           .print-yomifuda-page {
             width: 100% !important;
             height: 100% !important;

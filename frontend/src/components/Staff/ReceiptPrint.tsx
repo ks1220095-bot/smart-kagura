@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { printElement } from '../../utils/printUtils';
 import type { Booking } from '../../types';
 
 interface ReceiptPrintProps {
@@ -21,6 +22,15 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
 
   const amount = booking.receipt_amount || booking.hatsuhoryo || 0;
   const address = booking.receipt_name || booking.company_name || '';
+
+  const handlePrint = () => {
+    const recipientName = booking.receipt_name || booking.name || booking.company_name || 'ご祈祷';
+    printElement(printRef.current, {
+      title: `清瀧神社_領収証_${recipientName}`,
+      orientation: 'landscape',
+      size: 'A5'
+    });
+  };
 
   const handleDownloadPdf = async () => {
     if (!printRef.current) return;
@@ -74,7 +84,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
         </h4>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
-            onClick={() => window.print()} 
+            onClick={handlePrint} 
             className="btn btn-primary" 
             style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
@@ -112,7 +122,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
       </div>
 
       {/* Receipt Sheet */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 0' }}>
+      <div className="receipt-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 0' }}>
         <div 
           ref={printRef}
           className="receipt-sheet print-receipt-page" 
@@ -121,53 +131,55 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
             position: 'relative',
             width: '210mm',
-            height: '148mm', // A5 landscape dimensions
+            height: '148mm',
+            maxHeight: '148mm',
             boxSizing: 'border-box',
-            padding: '10mm 14mm',
+            padding: '7mm 12mm',
             fontFamily: 'var(--font-serif)',
             color: '#000000',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            overflow: 'hidden'
           }}
         >
           {/* Receipt Border line (safely positioned within printable margins) */}
-          <div style={{ position: 'absolute', top: '6mm', bottom: '6mm', left: '6mm', right: '6mm', border: '1px solid #111111', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: '7.5mm', bottom: '7.5mm', left: '7.5mm', right: '7.5mm', border: '2px solid #111111', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: '5mm', bottom: '5mm', left: '5mm', right: '5mm', border: '1px solid #111111', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: '6.5mm', bottom: '6.5mm', left: '6.5mm', right: '6.5mm', border: '2px solid #111111', pointerEvents: 'none' }} />
 
           {/* Header Title */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>No. ＿＿＿＿＿＿</span>
             <h2 style={{ 
-              fontSize: '2.2rem', 
+              fontSize: '2rem', 
               textAlign: 'center', 
               margin: '0 auto', 
               letterSpacing: '0.5em', 
               fontWeight: 'bold',
               borderBottom: '2px solid #000000',
-              paddingBottom: '0.2rem',
+              paddingBottom: '0.15rem',
               width: '50%'
             }}>
               領収証
             </h2>
-            <span style={{ fontSize: '0.9rem' }}>日付： {getTodayString()}</span>
+            <span style={{ fontSize: '0.85rem' }}>日付： {getTodayString()}</span>
           </div>
 
           {/* Address Line */}
-          <div style={{ marginTop: '1.5rem', borderBottom: '1px solid #000000', width: '75%', paddingBottom: '0.3rem' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', margin: 0 }}>
+          <div style={{ marginTop: '0.8rem', borderBottom: '1px solid #000000', width: '75%', paddingBottom: '0.2rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>
               {address}　御中
             </h3>
           </div>
 
           {/* Grand Amount Board */}
           <div style={{ 
-            margin: '1.5rem 0',
+            margin: '0.8rem 0',
             textAlign: 'center',
             border: '2px solid #000000',
-            padding: '0.75rem',
+            padding: '0.45rem',
             backgroundColor: '#fafafa',
-            fontSize: '2rem',
+            fontSize: '1.8rem',
             fontWeight: 'bold',
             letterSpacing: '0.05em',
             fontFamily: 'var(--font-sans)',
@@ -178,22 +190,22 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
           </div>
 
           {/* Description / Particulars */}
-          <div style={{ fontSize: '1rem', marginBottom: '1.5rem', borderBottom: '1px dashed #000000', width: '80%', paddingBottom: '0.4rem', alignSelf: 'flex-start' }}>
+          <div style={{ fontSize: '0.95rem', marginBottom: '0.8rem', borderBottom: '1px dashed #000000', width: '80%', paddingBottom: '0.3rem', alignSelf: 'flex-start' }}>
             但　<strong>ご祈祷料</strong>として、上記正に領収いたしました。
           </div>
 
           {/* Footer details & Hanko Seal */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
-            <div style={{ fontSize: '0.75rem', color: '#666', border: '1px solid #ccc', padding: '0.75rem', width: '35%' }}>
+            <div style={{ fontSize: '0.75rem', color: '#666', border: '1px solid #ccc', padding: '0.6rem', width: '35%' }}>
               【内訳】<br />
               ・ご祈祷料： ￥{amount.toLocaleString()}<br />
               ・消費税法非課税扱い
             </div>
 
             {/* Shrine issuing details & Seal square */}
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-end', width: '55%', justifyContent: 'flex-end' }}>
-              <div style={{ textAlign: 'right', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 'bold', margin: '0 0 0.25rem 0' }}>清瀧神社 社務所</h4>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', width: '55%', justifyContent: 'flex-end' }}>
+              <div style={{ textAlign: 'right', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0 0 0.2rem 0' }}>清瀧神社 社務所</h4>
                 〒279-0041 千葉県浦安市堀江4-1-5<br />
                 TEL： 047-351-5417<br />
                 FAX： 047-351-3110
@@ -201,8 +213,8 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, onClose }) 
 
               {/* Red Square Seal (Simulation) */}
               <div style={{ 
-                width: '30mm', 
-                height: '30mm', 
+                width: '28mm', 
+                height: '28mm', 
                 border: '2px solid #ff4d4f', 
                 color: '#ff4d4f',
                 display: 'flex',
