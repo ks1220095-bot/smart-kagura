@@ -60,7 +60,7 @@ export const printElement = (
             color: #000000 !important;
             font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
             width: 100%;
-            height: 100%;
+            height: auto !important;
           }
           table {
             border-collapse: collapse;
@@ -91,14 +91,14 @@ export const printElement = (
             margin: 0 !important;
             gap: 0 !important;
             width: 100% !important;
-            height: 100% !important;
+            height: auto !important;
           }
           .print-receipt-page,
           .receipt-sheet {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: 210mm !important;
-            max-height: 148mm !important;
+            width: 200mm !important;
+            height: 128mm !important;
+            max-width: 200mm !important;
+            max-height: 128mm !important;
             margin: 0 auto !important;
             box-sizing: border-box !important;
             page-break-inside: avoid !important;
