@@ -172,6 +172,9 @@ async function initSqlite() {
           receipt_name2 TEXT,
           receipt_amount2 INTEGER,
           receipts_data TEXT,
+          wood_talisman_count INTEGER DEFAULT 0,
+          wood_talisman_large_count INTEGER DEFAULT 0,
+          wood_talisman_name TEXT,
           yakudoshi_type TEXT,
           father_name TEXT,
           father_kana TEXT,
@@ -242,6 +245,9 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN receipt_name2 TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN receipt_amount2 INTEGER`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN receipts_data TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_count INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_large_count INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_name TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -335,6 +341,9 @@ async function verifyPostgresSchema() {
         receipt_name2 VARCHAR(255),
         receipt_amount2 INTEGER,
         receipts_data TEXT,
+        wood_talisman_count INTEGER DEFAULT 0,
+        wood_talisman_large_count INTEGER DEFAULT 0,
+        wood_talisman_name TEXT,
         yakudoshi_type VARCHAR(50),
         father_name VARCHAR(255),
         father_kana VARCHAR(255),
@@ -457,6 +466,15 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS receipts_data TEXT
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS wood_talisman_count INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS wood_talisman_large_count INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS wood_talisman_name TEXT
     `);
 
     await client.query(`

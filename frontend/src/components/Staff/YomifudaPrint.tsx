@@ -436,8 +436,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               </div>
             )}
 
-            {/* Representative & Talisman Name Details (Gold highlight border block - お札墨書名 & 追加授与品) */}
-            {!isIndiv && (booking.talisman_name || booking.additional_talismans) && (
+            {/* Representative & Talisman Name Details (Gold highlight border block - お札墨書名 & 追加授与品 & 追加祈願符（木札）) */}
+            {!isIndiv && (booking.talisman_name || booking.additional_talismans || ((booking.wood_talisman_count ?? 0) > 0) || ((booking.wood_talisman_large_count ?? 0) > 0)) && (
               <div style={{ 
                 marginTop: '0.3rem', 
                 padding: '0.4rem 0.55rem', 
@@ -461,6 +461,35 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                   }}>
                     <span style={{ fontSize: '0.6rem', color: 'var(--color-gold)', fontWeight: 'bold', display: 'block' }}>追加授与品（守札）</span>
                     <strong style={{ fontSize: '0.9rem', color: '#111', display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{booking.additional_talismans}</strong>
+                  </div>
+                )}
+                {(((booking.wood_talisman_count ?? 0) > 0) || ((booking.wood_talisman_large_count ?? 0) > 0)) && (
+                  <div style={{ 
+                    marginTop: (booking.talisman_name || booking.additional_talismans) ? '0.3rem' : 0, 
+                    borderTop: (booking.talisman_name || booking.additional_talismans) ? '1px dashed rgba(197, 160, 89, 0.3)' : 'none', 
+                    paddingTop: (booking.talisman_name || booking.additional_talismans) ? '0.25rem' : 0 
+                  }}>
+                    <span style={{ fontSize: '0.6rem', color: '#b22222', fontWeight: 'bold', display: 'block' }}>
+                      🎋 追加祈願符（木札）
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.1rem' }}>
+                      {(booking.wood_talisman_count ?? 0) > 0 && (
+                        <span style={{ fontSize: '0.85rem', color: '#111' }}>
+                          祈願符（約36cm）: <strong style={{ color: '#d80100', fontSize: '0.95rem' }}>{booking.wood_talisman_count}</strong> 体
+                        </span>
+                      )}
+                      {(booking.wood_talisman_large_count ?? 0) > 0 && (
+                        <span style={{ fontSize: '0.85rem', color: '#111' }}>
+                          祈願符・大（約45cm）: <strong style={{ color: '#d80100', fontSize: '0.95rem' }}>{booking.wood_talisman_large_count}</strong> 体
+                        </span>
+                      )}
+                    </div>
+                    {booking.wood_talisman_name && (
+                      <div style={{ marginTop: '0.15rem', fontSize: '0.82rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#666' }}>木札墨書名: </span>
+                        <strong style={{ color: '#d80100', fontSize: '0.9rem' }}>{booking.wood_talisman_name}</strong>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

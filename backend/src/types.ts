@@ -32,6 +32,9 @@ export interface Booking {
   // 団体お札・授与品
   talisman_name?: string;
   additional_talismans?: string;
+  wood_talisman_count?: number; // 祈願符（木札・約36cm）体数
+  wood_talisman_large_count?: number; // 祈願符（木札・大・約45cm）体数
+  wood_talisman_name?: string; // 木札に書かれる名前（墨書名）
   
   // 団体領収書
   wants_receipt?: number; // 0 or 1
@@ -137,3 +140,20 @@ export const getBookingReceipts = (b: Booking): ReceiptItem[] => {
   }
   return [];
 };
+
+export interface OrgPrayerItem {
+  id: string;
+  prayer1: string;
+  org_custom_prayer1?: string;
+  prayer2?: string;
+  org_custom_prayer2?: string;
+  hatsuhoryo: number;
+  talisman_name?: string;
+  tournament_name?: string;
+  tournament_schedule?: string;
+  construction_name?: string;
+  construction_designer?: string;
+  construction_builder?: string;
+  construction_period?: string;
+}
+

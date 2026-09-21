@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Users, AlertCircle } from 'lucide-react';
-import type { Booking } from '../../types';
-import { getBookingReceipts } from '../../types';
+import { getBookingReceipts, type Booking, type OrgPrayerItem } from '../../types';
 import { getApiUrl } from '../../config/api';
 import SlotSelector from './SlotSelector';
 import BookingSuccess from './BookingSuccess';
@@ -323,19 +322,36 @@ export const VisitorPortal: React.FC = () => {
     });
   };
 
+  // Organization Prayer Cart State
+  const [orgPrayerItems, setOrgPrayerItems] = useState<OrgPrayerItem[]>(savedDraft?.orgPrayerItems ?? []);
+  const [orgItemTalismanName, setOrgItemTalismanName] = useState(savedDraft?.orgItemTalismanName ?? '');
+
+  // Additional Wooden Talismans (祈願符 木札) State
+  const [wantsWoodTalisman, setWantsWoodTalisman] = useState<boolean>(savedDraft?.wantsWoodTalisman ?? false);
+  const [woodTalismanCount, setWoodTalismanCount] = useState<number | ''>(savedDraft?.woodTalismanCount ?? '');
+  const [woodTalismanLargeCount, setWoodTalismanLargeCount] = useState<number | ''>(savedDraft?.woodTalismanLargeCount ?? '');
+  const [woodTalismanName, setWoodTalismanName] = useState<string>(savedDraft?.woodTalismanName ?? '');
+
+  const woodTalismanTotal = wantsWoodTalisman
+    ? ((Number(woodTalismanCount) || 0) * 2000 + (Number(woodTalismanLargeCount) || 0) * 5000)
+    : 0;
+  const orgPrayersTotal = orgPrayerItems.reduce((sum, item) => sum + item.hatsuhoryo, 0);
+  const effectiveOrgHatsuhoryo = (orgPrayerItems.length > 0 ? orgPrayersTotal : hatsuhoryo) + woodTalismanTotal;
+
+  const targetReceiptCheckAmount = bookingType === 'organization' ? effectiveOrgHatsuhoryo : hatsuhoryo;
+  const totalReceiptAmount = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const isReceiptAmountMatched = totalReceiptAmount === targetReceiptCheckAmount;
+
   const handleDistributeReceiptsEqually = () => {
     if (receipts.length === 0) return;
     const count = receipts.length;
-    const basePerItem = Math.floor(hatsuhoryo / count);
-    const remainder = hatsuhoryo % count;
+    const basePerItem = Math.floor(targetReceiptCheckAmount / count);
+    const remainder = targetReceiptCheckAmount % count;
     setReceipts(prev => prev.map((item, idx) => ({
       ...item,
       amount: idx === 0 ? basePerItem + remainder : basePerItem
     })));
   };
-
-  const totalReceiptAmount = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-  const isReceiptAmountMatched = totalReceiptAmount === hatsuhoryo;
 
   // Organization Dynamic fields
   const [orgCustomPrayer1, setOrgCustomPrayer1] = useState(savedDraft?.orgCustomPrayer1 ?? '');
@@ -349,6 +365,78 @@ export const VisitorPortal: React.FC = () => {
 
   const [skipVictoryDetails, setSkipVictoryDetails] = useState(savedDraft?.skipVictoryDetails ?? false);
   const [skipConstructionDetails, setSkipConstructionDetails] = useState(savedDraft?.skipConstructionDetails ?? false);
+
+  const handleAddOrgPrayerItem = () => {
+    if (!prayer1) {
+      setErrorMsg('主願意を選択してください。');
+      return;
+    }
+    if (prayer1 === 'その他（自由入力）' && !orgCustomPrayer1.trim()) {
+      setErrorMsg('主願意の自由入力内容をご入力ください。');
+      return;
+    }
+    if (prayer2 === 'その他（自由入力）' && !orgCustomPrayer2.trim()) {
+      setErrorMsg('副願意の自由入力内容をご入力ください。');
+      return;
+    }
+
+    const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
+    if (hatsuhoryo < orgMinPrice) {
+      setErrorMsg(`団体参拝の初穂料は目安金額（${orgMinPrice.toLocaleString()}円以上）をご入力ください。`);
+      return;
+    }
+
+    const isVictory = prayer1 === '必勝祈願' || prayer2 === '必勝祈願';
+    if (isVictory && !skipVictoryDetails && (!tournamentName.trim() || !tournamentSchedule.trim())) {
+      setErrorMsg('必勝祈願の大会名称および大会日程をご入力ください（不要な場合は「詳細情報の入力をスキップする」にチェックしてください）。');
+      return;
+    }
+
+    const isConstruction = prayer1 === '工事安全' || prayer2 === '工事安全';
+    if (isConstruction && !skipConstructionDetails && (!constructionName.trim() || !constructionDesigner.trim() || !constructionBuilder.trim() || !constructionPeriod.trim())) {
+      setErrorMsg('工事安全祈願の工事名称・設計監理者・施工者・工期をすべてご入力ください（不要な場合は「詳細情報の入力をスキップする」にチェックしてください）。');
+      return;
+    }
+
+    setErrorMsg('');
+
+    const newOrgItem: OrgPrayerItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      prayer1,
+      org_custom_prayer1: prayer1 === 'その他（自由入力）' ? orgCustomPrayer1.trim() : undefined,
+      prayer2: prayer2 || undefined,
+      org_custom_prayer2: prayer2 === 'その他（自由入力）' ? orgCustomPrayer2.trim() : undefined,
+      hatsuhoryo,
+      talisman_name: orgItemTalismanName.trim() || undefined,
+      tournament_name: isVictory && !skipVictoryDetails ? tournamentName.trim() : undefined,
+      tournament_schedule: isVictory && !skipVictoryDetails ? tournamentSchedule.trim() : undefined,
+      construction_name: isConstruction && !skipConstructionDetails ? constructionName.trim() : undefined,
+      construction_designer: isConstruction && !skipConstructionDetails ? constructionDesigner.trim() : undefined,
+      construction_builder: isConstruction && !skipConstructionDetails ? constructionBuilder.trim() : undefined,
+      construction_period: isConstruction && !skipConstructionDetails ? constructionPeriod.trim() : undefined
+    };
+
+    setOrgPrayerItems(prev => [...prev, newOrgItem]);
+
+    // Reset current prayer inputs
+    setPrayer1('');
+    setOrgCustomPrayer1('');
+    setPrayer2('');
+    setOrgCustomPrayer2('');
+    setOrgItemTalismanName('');
+    setTournamentName('');
+    setTournamentSchedule('');
+    setSkipVictoryDetails(false);
+    setConstructionName('');
+    setConstructionDesigner('');
+    setConstructionBuilder('');
+    setConstructionPeriod('');
+    setSkipConstructionDetails(false);
+  };
+
+  const handleRemoveOrgPrayerItem = (id: string) => {
+    setOrgPrayerItems(prev => prev.filter(item => item.id !== id));
+  };
 
   // Submission Status
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
@@ -464,6 +552,12 @@ export const VisitorPortal: React.FC = () => {
       additionalTalismans,
       wantsReceipt,
       receipts,
+      orgPrayerItems,
+      orgItemTalismanName,
+      wantsWoodTalisman,
+      woodTalismanCount,
+      woodTalismanLargeCount,
+      woodTalismanName,
       orgCustomPrayer1,
       orgCustomPrayer2,
       tournamentName,
@@ -545,6 +639,12 @@ export const VisitorPortal: React.FC = () => {
     additionalTalismans,
     wantsReceipt,
     receipts,
+    orgPrayerItems,
+    orgItemTalismanName,
+    wantsWoodTalisman,
+    woodTalismanCount,
+    woodTalismanLargeCount,
+    woodTalismanName,
     orgCustomPrayer1,
     orgCustomPrayer2,
     tournamentName,
@@ -956,6 +1056,18 @@ export const VisitorPortal: React.FC = () => {
     }
   }, [companyName, bookingType]);
 
+  // Sync single receipt amount to total organization hatsuhoryo (including wood talismans)
+  useEffect(() => {
+    if (bookingType === 'organization') {
+      setReceipts(prev => {
+        if (prev.length === 1 && prev[0].amount !== effectiveOrgHatsuhoryo) {
+          return [{ ...prev[0], amount: effectiveOrgHatsuhoryo }];
+        }
+        return prev;
+      });
+    }
+  }, [bookingType, effectiveOrgHatsuhoryo]);
+
   const handleBookingTypeChange = (type: 'individual' | 'organization') => {
     setBookingType(type);
     setPrayer1('');
@@ -1010,21 +1122,36 @@ export const VisitorPortal: React.FC = () => {
       }
     } else {
       // Organization validation
+      if (orgPrayerItems.length === 0) {
+        if (!prayer1) {
+          return '主願意を選択し、「このご祈祷（願意）を予約リストに追加」ボタンを押してリストに1件以上追加してください。';
+        } else {
+          return '入力中のご祈祷（願意）を「このご祈祷（願意）を予約リストに追加」ボタンを押してリストに追加してください。';
+        }
+      }
+
       const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
-      if (hatsuhoryo < orgMinPrice) {
-        return `団体参拝の初穂料は基準額（${orgMinPrice.toLocaleString()}円以上）をご入力ください。`;
+      for (let i = 0; i < orgPrayerItems.length; i++) {
+        const item = orgPrayerItems[i];
+        if (item.hatsuhoryo < orgMinPrice) {
+          const pName = item.prayer1 === 'その他（自由入力）' ? item.org_custom_prayer1 : item.prayer1;
+          return `【${pName}】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${orgMinPrice.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
+        }
       }
-      if (!prayer1) {
-        return '主願意を選択してください。';
-      }
-      if (prayer1 === 'その他（自由入力）' && !orgCustomPrayer1.trim()) {
-        return '自由入力の願意を記載してください。';
-      }
+
       if (!companyName.trim() || !companyKana.trim() || !companyAddress.trim() || !companyAddressKana.trim() || 
           !representativeTitleName.trim() || !representativeKana.trim() || !staffDeptTitleName.trim() || !staffPhone.trim() || !staffEmail.trim() ||
           !talismanName.trim()) {
         return '企業情報（企業名・所在地・代表者・担当者氏名・連絡先等）および神札墨書名をすべてご入力ください。';
       }
+
+      if (wantsWoodTalisman) {
+        const totalCount = (Number(woodTalismanCount) || 0) + (Number(woodTalismanLargeCount) || 0);
+        if (totalCount <= 0) {
+          return '追加の木の御札をお求めの場合は、祈願符（木札）または祈願符（木札・大）の必要体数を1体以上ご入力ください。';
+        }
+      }
+
       if (wantsReceipt) {
         if (receipts.length === 0) {
           return '領収証の発行情報を入力してください。';
@@ -1037,18 +1164,9 @@ export const VisitorPortal: React.FC = () => {
               : '領収証の発行に必要な宛名および金額を正しくご入力ください。';
           }
         }
-      }
-      
-      const p1 = getActivePrayer1();
-      const p2 = getActivePrayer2();
-      const needsVictory = p1 === '必勝祈願' || p2 === '必勝祈願';
-      const needsConstruction = p1 === '工事安全' || p2 === '工事安全';
-
-      if (needsVictory && !skipVictoryDetails && (!tournamentName.trim() || !tournamentSchedule.trim())) {
-        return '必勝祈願に伴う大会名称および大会日程をご入力ください。';
-      }
-      if (needsConstruction && !skipConstructionDetails && (!constructionName.trim() || !constructionDesigner.trim() || !constructionBuilder.trim() || !constructionPeriod.trim())) {
-        return '工事安全祈願に伴う工事名称・設計監理者名・施工者名・工期をすべてご入力ください。';
+        if (!isReceiptAmountMatched) {
+          return `領収証の合計金額（${totalReceiptAmount.toLocaleString()}円）が、初穂料・御札の合計金額（${targetReceiptCheckAmount.toLocaleString()}円）と一致していません。`;
+        }
       }
     }
     return '';
@@ -1310,7 +1428,7 @@ export const VisitorPortal: React.FC = () => {
       booking_time: selectedTime,
       prayer1: bookingType === 'individual' ? (prayerItems[0]?.prayer1 || prayer1) : p1,
       prayer2: bookingType === 'organization' ? p2 : undefined,
-      hatsuhoryo: bookingType === 'individual' ? (prayerItems[0]?.hatsuhoryo || hatsuhoryo) : hatsuhoryo,
+      hatsuhoryo: bookingType === 'individual' ? (prayerItems[0]?.hatsuhoryo || hatsuhoryo) : effectiveOrgHatsuhoryo,
       payment_status: 'unpaid',
       attending_count: attendingCount === '' ? 1 : attendingCount,
       
@@ -1333,6 +1451,9 @@ export const VisitorPortal: React.FC = () => {
       
       talisman_name: bookingType === 'organization' ? (talismanName || companyName) : undefined,
       additional_talismans: bookingType === 'organization' ? additionalTalismans : undefined,
+      wood_talisman_count: (bookingType === 'organization' && wantsWoodTalisman) ? (Number(woodTalismanCount) || undefined) : undefined,
+      wood_talisman_large_count: (bookingType === 'organization' && wantsWoodTalisman) ? (Number(woodTalismanLargeCount) || undefined) : undefined,
+      wood_talisman_name: (bookingType === 'organization' && wantsWoodTalisman) ? (woodTalismanName || talismanName || companyName) : undefined,
       
       wants_receipt: bookingType === 'organization' ? (wantsReceipt ? 1 : 0) : 0,
       receipt_split_count: (bookingType === 'organization' && wantsReceipt) ? receipts.length : 1,
@@ -1449,7 +1570,51 @@ export const VisitorPortal: React.FC = () => {
             return baseNotes;
           })()
         }))
-      : [singlePayload];
+      : orgPrayerItems.length > 0
+        ? orgPrayerItems.map((item, idx) => ({
+            booking_type: 'organization',
+            booking_date: selectedDate,
+            booking_time: selectedTime,
+            payment_status: 'unpaid',
+            attending_count: attendingCount === '' ? 1 : attendingCount,
+            company_name: companyName,
+            company_kana: companyKana,
+            company_address: companyAddress,
+            company_address_kana: companyAddressKana,
+            representative_title_name: representativeTitleName,
+            representative_kana: representativeKana,
+            staff_dept_title_name: staffDeptTitleName,
+            staff_phone: staffPhone,
+            staff_email: staffEmail,
+            prayer1: item.prayer1,
+            org_custom_prayer1: item.org_custom_prayer1,
+            prayer2: item.prayer2,
+            org_custom_prayer2: item.org_custom_prayer2,
+            // 1st item carries wood talisman fee so total sum matches effectiveOrgHatsuhoryo
+            hatsuhoryo: idx === 0 ? item.hatsuhoryo + woodTalismanTotal : item.hatsuhoryo,
+            talisman_name: item.talisman_name || talismanName || companyName,
+            additional_talismans: idx === 0 ? additionalTalismans : undefined,
+            wood_talisman_count: (idx === 0 && wantsWoodTalisman) ? (Number(woodTalismanCount) || undefined) : undefined,
+            wood_talisman_large_count: (idx === 0 && wantsWoodTalisman) ? (Number(woodTalismanLargeCount) || undefined) : undefined,
+            wood_talisman_name: (idx === 0 && wantsWoodTalisman) ? (woodTalismanName || talismanName || companyName) : undefined,
+            wants_receipt: (idx === 0 && wantsReceipt) ? 1 : 0,
+            receipt_split_count: (idx === 0 && wantsReceipt) ? receipts.length : 1,
+            receipt_name: (idx === 0 && wantsReceipt && receipts[0]) ? receipts[0].name : undefined,
+            receipt_amount: (idx === 0 && wantsReceipt && receipts[0]) ? Number(receipts[0].amount) || undefined : undefined,
+            receipt_name2: (idx === 0 && wantsReceipt && receipts[1]) ? receipts[1].name : undefined,
+            receipt_amount2: (idx === 0 && wantsReceipt && receipts[1]) ? Number(receipts[1].amount) || undefined : undefined,
+            receipts_data: (idx === 0 && wantsReceipt) ? JSON.stringify(receipts.map(r => ({ name: r.name, amount: Number(r.amount) || 0 }))) : undefined,
+            receipts: (idx === 0 && wantsReceipt) ? receipts.map(r => ({ name: r.name, amount: Number(r.amount) || 0 })) : undefined,
+            tournament_name: item.tournament_name,
+            tournament_schedule: item.tournament_schedule,
+            construction_name: item.construction_name,
+            construction_designer: item.construction_designer,
+            construction_builder: item.construction_builder,
+            construction_period: item.construction_period,
+            has_past_prayer: hasPastPrayer,
+            notes: notes || undefined
+          }))
+        : [singlePayload];
 
     try {
       const apiUrl = getApiUrl();
@@ -2281,96 +2446,169 @@ export const VisitorPortal: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                // Organization willing select (Max 2 + custom text)
-                <>
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label>主願意 <span className="required">*</span></label>
-                      <select
-                        className="form-control"
-                        value={prayer1}
-                        onChange={(e) => { setPrayer1(e.target.value); setOrgCustomPrayer1(''); }}
-                        style={{ border: '1px solid var(--color-gold)' }}
-                      >
-                        <option value="">-- 選択してください --</option>
-                        {ORGANIZATION_PRAYERS.map(p => (
-                          <option key={p} value={p}>{p}</option>
+                // Organization willing select (Cart mode: Max 2 willing per item + custom text)
+                <div>
+                  {/* Organization Cart Display */}
+                  <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                    <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '0.95rem', marginBottom: '0.75rem', color: 'var(--color-urushi)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.5rem' }}>
+                      📋 追加されたご祈祷の内容（{orgPrayerItems.length}件）
+                    </h5>
+                    {orgPrayerItems.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', margin: 0, padding: '0.5rem 0' }}>
+                        ※現在、追加されたご祈祷はありません。下のフォームから主願意（必須）・副願意（任意）と初穂料を入力し、「このご祈祷（願意）を予約リストに追加」ボタンを押して追加してください。
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {orgPrayerItems.map((item, idx) => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div style={{ fontSize: '0.85rem' }}>
+                              <span style={{ backgroundColor: 'var(--color-gold)', color: '#fff', padding: '0.1rem 0.4rem', borderRadius: '3px', fontSize: '0.75rem', marginRight: '0.5rem' }}>
+                                第{idx + 1}祈願
+                              </span>
+                              <strong>【主願意】</strong> {item.prayer1 === 'その他（自由入力）' ? item.org_custom_prayer1 : item.prayer1}
+                              {item.prayer2 && (
+                                <>
+                                  <span style={{ margin: '0 0.35rem', color: 'var(--color-border)' }}>/</span>
+                                  <strong>【副願意】</strong> {item.prayer2 === 'その他（自由入力）' ? item.org_custom_prayer2 : item.prayer2}
+                                </>
+                              )}
+                              {item.talisman_name && (
+                                <>
+                                  <span style={{ margin: '0 0.35rem', color: 'var(--color-border)' }}>|</span>
+                                  <strong>【お札名】</strong> {item.talisman_name}
+                                </>
+                              )}
+                              <span style={{ margin: '0 0.35rem', color: 'var(--color-border)' }}>|</span>
+                              <strong>【初穂料】</strong> {item.hatsuhoryo.toLocaleString()}円
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOrgPrayerItem(item.id)}
+                              className="btn"
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#fdf3f2', color: '#d3381c', border: '1px solid #ffa39e' }}
+                            >
+                              削除
+                            </button>
+                          </div>
                         ))}
-                      </select>
-                      {prayer1 === 'その他（自由入力）' && (
-                        <input
-                          type="text"
-                          placeholder="主願意を手入力してください"
-                          className="form-control"
-                          style={{ marginTop: '0.5rem' }}
-                          value={orgCustomPrayer1}
-                          onChange={(e) => setOrgCustomPrayer1(e.target.value)}
-                        />
-                      )}
-                    </div>
-
-                    <div className="form-group">
-                      <label>副願意 （任意・2つ目）</label>
-                      <select
-                        className="form-control"
-                        value={prayer2}
-                        onChange={(e) => { setPrayer2(e.target.value); setOrgCustomPrayer2(''); }}
-                        style={{ border: '1px solid var(--color-gold)' }}
-                      >
-                        <option value="">-- なし --</option>
-                        {ORGANIZATION_PRAYERS.map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                      {prayer2 === 'その他（自由入力）' && (
-                        <input
-                          type="text"
-                          placeholder="副願意を手入力してください"
-                          className="form-control"
-                          style={{ marginTop: '0.5rem' }}
-                          value={orgCustomPrayer2}
-                          onChange={(e) => setOrgCustomPrayer2(e.target.value)}
-                        />
-                      )}
-                    </div>
+                        <div style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 'bold', borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                          ご祈祷 初穂料小計: <span style={{ color: 'var(--color-mizuiro)', fontSize: '1.1rem' }}>{orgPrayersTotal.toLocaleString()}</span> 円
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Organization Hatsuhoryo Input */}
-                  {(() => {
-                    const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
-                    const isBelowMin = hatsuhoryo < orgMinPrice;
-                    return (
-                      <div className="form-group" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <label style={{ margin: 0 }}>
-                            初穂料 (目安自動設定) <span className="required">*</span>
-                          </label>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
-                            目安: {orgMinPrice.toLocaleString()}円〜（参列{attendingCount || 1}名）
-                          </span>
-                        </div>
-                        <input
-                          type="number"
+                  {/* Add New Organization Prayer Form */}
+                  <div style={{ border: '1px solid var(--color-border)', padding: '1.25rem 1rem', borderRadius: '4px', position: 'relative', backgroundColor: '#ffffff', marginBottom: '1rem' }}>
+                    <div style={{ position: 'absolute', top: '-10px', left: '15px', backgroundColor: '#ffffff', padding: '0 0.5rem', fontSize: '0.75rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>
+                      ご祈祷内容の入力
+                    </div>
+
+                    <div className="grid-2" style={{ marginTop: '0.5rem' }}>
+                      <div className="form-group">
+                        <label>主願意 <span className="required">*</span></label>
+                        <select
                           className="form-control"
-                          min={orgMinPrice}
-                          step="5000"
-                          value={hatsuhoryo || ''}
-                          onChange={(e) => setHatsuhoryo(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
-                          style={{
-                            marginTop: '0.25rem',
-                            border: isBelowMin ? '1.5px solid #d3381c' : undefined,
-                            backgroundColor: isBelowMin ? '#fff8f7' : undefined
-                          }}
-                        />
-                        {isBelowMin && (
-                          <div style={{ fontSize: '0.75rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 500 }}>
-                            ⚠️ 団体参拝の初穂料は目安金額（{orgMinPrice.toLocaleString()}円以上）をご入力ください。
-                          </div>
+                          value={prayer1}
+                          onChange={(e) => { setPrayer1(e.target.value); setOrgCustomPrayer1(''); }}
+                          style={{ border: '1px solid var(--color-gold)' }}
+                        >
+                          <option value="">-- 選択してください --</option>
+                          {ORGANIZATION_PRAYERS.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                        {prayer1 === 'その他（自由入力）' && (
+                          <input
+                            type="text"
+                            placeholder="主願意を手入力してください"
+                            className="form-control"
+                            style={{ marginTop: '0.5rem' }}
+                            value={orgCustomPrayer1}
+                            onChange={(e) => setOrgCustomPrayer1(e.target.value)}
+                          />
                         )}
                       </div>
-                    );
-                  })()}
-                </>
+
+                      <div className="form-group">
+                        <label>副願意 （任意・2つ目）</label>
+                        <select
+                          className="form-control"
+                          value={prayer2}
+                          onChange={(e) => { setPrayer2(e.target.value); setOrgCustomPrayer2(''); }}
+                          style={{ border: '1px solid var(--color-gold)' }}
+                        >
+                          <option value="">-- なし --</option>
+                          {ORGANIZATION_PRAYERS.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                        {prayer2 === 'その他（自由入力）' && (
+                          <input
+                            type="text"
+                            placeholder="副願意を手入力してください"
+                            className="form-control"
+                            style={{ marginTop: '0.5rem' }}
+                            value={orgCustomPrayer2}
+                            onChange={(e) => setOrgCustomPrayer2(e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>この願意のお札に書かれるお名前（任意）</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', fontWeight: 'normal' }}>
+                          ※空欄の場合は会社情報で入力する「お札に書かれるお名前」が共通適用されます
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="例: 清瀧株式会社 営業本部（個別指定がある場合のみ入力）"
+                        value={orgItemTalismanName}
+                        onChange={(e) => setOrgItemTalismanName(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Organization Hatsuhoryo Input */}
+                    {(() => {
+                      const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
+                      const isBelowMin = hatsuhoryo < orgMinPrice;
+                      return (
+                        <div className="form-group" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label style={{ margin: 0 }}>
+                              初穂料 (目安自動設定) <span className="required">*</span>
+                            </label>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)' }}>
+                              目安: {orgMinPrice.toLocaleString()}円〜（参列{attendingCount || 1}名）
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            className="form-control"
+                            min={orgMinPrice}
+                            step="5000"
+                            value={hatsuhoryo || ''}
+                            onChange={(e) => setHatsuhoryo(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                            style={{
+                              marginTop: '0.25rem',
+                              border: isBelowMin ? '1.5px solid #d3381c' : undefined,
+                              backgroundColor: isBelowMin ? '#fff8f7' : undefined
+                            }}
+                          />
+                          {isBelowMin && (
+                            <div style={{ fontSize: '0.75rem', color: '#d3381c', marginTop: '0.35rem', fontWeight: 500 }}>
+                              ⚠️ 団体参拝の初穂料は目安金額（{orgMinPrice.toLocaleString()}円以上）をご入力ください。
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
               )}
 
               {/* Dynamic Sub-forms for Individual willing */}
@@ -2914,6 +3152,19 @@ export const VisitorPortal: React.FC = () => {
                 </div>
               )}
 
+              {bookingType === 'organization' && (
+                <div style={{ marginTop: '1.25rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1rem', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddOrgPrayerItem}
+                    className="btn btn-gold"
+                    style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}
+                  >
+                    ➕ このご祈祷（願意）を予約リストに追加
+                  </button>
+                </div>
+              )}
+
               {/* Show Amulet base prices (Text display only) */}
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--color-accent-gray)', fontWeight: 500 }}>お初穂料のご案内</span>
@@ -2922,12 +3173,14 @@ export const VisitorPortal: React.FC = () => {
                     ? (prayerItems.length > 0 
                         ? `${prayerItems.reduce((sum, item) => sum + item.hatsuhoryo, 0).toLocaleString()} 円（合計 ${prayerItems.length}件）より お気持ち（当日現金納め）`
                         : `${hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）`)
-                    : `${hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）`}
+                    : (orgPrayerItems.length > 0
+                        ? `${effectiveOrgHatsuhoryo.toLocaleString()} 円（ご祈祷 ${orgPrayerItems.length}件${wantsWoodTalisman && woodTalismanTotal > 0 ? ` ＋ 木札 ${woodTalismanTotal.toLocaleString()}円` : ''}）より お気持ち（当日現金納め）`
+                        : `${effectiveOrgHatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）`)}
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.25rem' }}>
                   {bookingType === 'individual' 
                     ? '※選択された願意の目安金額です。のし袋か封筒などに包み、ご持参ください。' 
-                    : '※団体参拝は5名未満は20,000円より、5名以上は30,000円よりのお気持ち（当日現金納め）とさせていただいております。'}
+                    : '※団体参拝は5名未満は20,000円より、5名以上は30,000円よりのお気持ち（当日現金納め）とさせていただいております。複数の願意を追加された場合はそれぞれの合算となります。'}
                 </p>
               </div>
             </div>
@@ -3270,6 +3523,161 @@ export const VisitorPortal: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Additional Wooden Talismans (祈願符 木札) Section */}
+                  <div style={{
+                    marginTop: '1.25rem',
+                    border: wantsWoodTalisman ? '1.5px solid #d48806' : '1px solid var(--color-border)',
+                    borderRadius: '6px',
+                    backgroundColor: wantsWoodTalisman ? '#fffbe6' : '#fafafa',
+                    padding: '1rem',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={wantsWoodTalisman}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setWantsWoodTalisman(checked);
+                          if (!checked) {
+                            setWoodTalismanCount('');
+                            setWoodTalismanLargeCount('');
+                            setWoodTalismanName('');
+                          } else {
+                            if (!woodTalismanCount && !woodTalismanLargeCount) {
+                              setWoodTalismanCount(1);
+                            }
+                            if (!woodTalismanName && (talismanName || companyName)) {
+                              setWoodTalismanName(talismanName || companyName || '');
+                            }
+                          }
+                        }}
+                        style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '0.92rem', fontWeight: 'bold', color: wantsWoodTalisman ? '#b22222' : 'var(--color-urushi)' }}>
+                          追加で木の御札をお求めの場合、祈願符（木札）・祈願符（木札・大）の必要体数を以下の入力欄にお願いします
+                        </span>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-accent-gray)', marginTop: '0.25rem', lineHeight: '1.4' }}>
+                          社名・団体名や願意を墨書した大型の木札（祈願符）を追加で授与ご希望の場合はチェックを入れてください。
+                        </div>
+                      </div>
+                    </label>
+
+                    {wantsWoodTalisman && (
+                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed #d48806' }}>
+                        {/* Notice */}
+                        <div style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #ffd591',
+                          padding: '0.65rem 0.85rem',
+                          borderRadius: '4px',
+                          fontSize: '0.82rem',
+                          lineHeight: '1.5',
+                          color: '#873800',
+                          marginBottom: '1rem'
+                        }}>
+                          📌 <strong>【追加初穂料のご案内】</strong><br />
+                          初穂料は<strong>祈願符（木札）が1体 2,000円</strong>、<strong>祈願符（木札・大）が1体 5,000円</strong>のお納めで、<strong>ご祈祷の初穂料と合算</strong>になります。
+                        </div>
+
+                        {/* Counts Input */}
+                        <div className="form-row" style={{ gap: '1rem', flexWrap: 'wrap' }}>
+                          <div className="form-group" style={{ flex: '1 1 240px', margin: 0 }}>
+                            <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#333' }}>
+                              祈願符（木札）・・・高さ約３６cm
+                              <span style={{ fontSize: '0.75rem', color: '#b22222', marginLeft: '0.5rem', fontWeight: 'normal' }}>
+                                (1体 2,000円)
+                              </span>
+                            </label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                              <input
+                                type="number"
+                                className="form-control"
+                                min="0"
+                                max="100"
+                                placeholder="0"
+                                value={woodTalismanCount}
+                                onChange={(e) => setWoodTalismanCount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
+                                style={{ width: '100px', textAlign: 'center', fontSize: '1rem', fontWeight: 'bold' }}
+                              />
+                              <span style={{ fontSize: '0.9rem', color: '#555' }}>体</span>
+                              {Number(woodTalismanCount) > 0 && (
+                                <span style={{ fontSize: '0.82rem', color: '#b22222', fontWeight: 600 }}>
+                                  ＝ {((Number(woodTalismanCount) || 0) * 2000).toLocaleString()}円
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="form-group" style={{ flex: '1 1 240px', margin: 0 }}>
+                            <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#333' }}>
+                              祈願符（木札・大）・・・高さ約４５ｃｍ
+                              <span style={{ fontSize: '0.75rem', color: '#b22222', marginLeft: '0.5rem', fontWeight: 'normal' }}>
+                                (1体 5,000円)
+                              </span>
+                            </label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                              <input
+                                type="number"
+                                className="form-control"
+                                min="0"
+                                max="100"
+                                placeholder="0"
+                                value={woodTalismanLargeCount}
+                                onChange={(e) => setWoodTalismanLargeCount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
+                                style={{ width: '100px', textAlign: 'center', fontSize: '1rem', fontWeight: 'bold' }}
+                              />
+                              <span style={{ fontSize: '0.9rem', color: '#555' }}>体</span>
+                              {Number(woodTalismanLargeCount) > 0 && (
+                                <span style={{ fontSize: '0.82rem', color: '#b22222', fontWeight: 600 }}>
+                                  ＝ {((Number(woodTalismanLargeCount) || 0) * 5000).toLocaleString()}円
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Name on Wood Talisman */}
+                        <div className="form-group" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+                          <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#333' }}>
+                            御札に書かれるお名前（木札の墨書名）
+                          </label>
+                          <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.35rem 0', lineHeight: '1.4' }}>
+                            ※木札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（未入力の場合は会社名・代表者名が適用されます）
+                          </div>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder={talismanName || (companyName ? `${companyName} 代表者名` : '例：清瀧株式会社 代表取締役 清瀧太郎')}
+                            value={woodTalismanName}
+                            onChange={(e) => setWoodTalismanName(e.target.value)}
+                          />
+                        </div>
+
+                        {/* Subtotal bar */}
+                        <div style={{
+                          marginTop: '0.75rem',
+                          backgroundColor: '#ffffff',
+                          border: '1px dashed #d48806',
+                          borderRadius: '4px',
+                          padding: '0.5rem 0.85rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '0.88rem'
+                        }}>
+                          <span style={{ color: '#555' }}>
+                            追加木札 小計（計 {(Number(woodTalismanCount) || 0) + (Number(woodTalismanLargeCount) || 0)}体）:
+                          </span>
+                          <span style={{ fontWeight: 'bold', color: '#b22222', fontSize: '1.05rem' }}>
+                            ＋{woodTalismanTotal.toLocaleString()} 円
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Receipt Options */}
                   <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                     <label className="checkbox-label" style={{ marginBottom: wantsReceipt ? '0.75rem' : '0' }}>
@@ -3412,10 +3820,10 @@ export const VisitorPortal: React.FC = () => {
                               {receipts.length > 1 && `（全${receipts.length}社分）`}
                             </div>
                             <div style={{ fontSize: '0.78rem', color: '#666' }}>
-                              お初穂料： <strong>{hatsuhoryo.toLocaleString()} 円</strong>
+                              初穂料・御札 合計： <strong>{targetReceiptCheckAmount.toLocaleString()} 円</strong>
                               {!isReceiptAmountMatched && (
                                 <span style={{ color: '#d3381c', fontWeight: 'bold', marginLeft: '0.4rem' }}>
-                                  ※お初穂料と一致していません（差額: {(totalReceiptAmount - hatsuhoryo > 0 ? '+' : '') + (totalReceiptAmount - hatsuhoryo).toLocaleString()} 円）
+                                  ※合計額と一致していません（差額: {(totalReceiptAmount - targetReceiptCheckAmount > 0 ? '+' : '') + (totalReceiptAmount - targetReceiptCheckAmount).toLocaleString()} 円）
                                 </span>
                               )}
                             </div>
@@ -3583,18 +3991,21 @@ export const VisitorPortal: React.FC = () => {
                 {bookingType === 'organization' ? (
                   <>
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>主願意</span>
-                      <span style={{ fontWeight: 'bold' }}>{getActivePrayer1()}</span>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>ご祈祷のお申込件数</span>
+                      <span style={{ fontWeight: 'bold' }}>{orgPrayerItems.length > 0 ? orgPrayerItems.length : 1} 件</span>
                     </div>
-                    {getActivePrayer2() && (
-                      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                        <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>副願意</span>
-                        <span style={{ fontWeight: 'bold' }}>{getActivePrayer2()}</span>
-                      </div>
-                    )}
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>お初穂料</span>
-                      <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{hatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）</span>
+                      <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>お初穂料 合計</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1 }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--color-mizuiro)', fontSize: '1.05rem' }}>
+                          {effectiveOrgHatsuhoryo.toLocaleString()} 円より お気持ち（当日現金納め）
+                        </span>
+                        {wantsWoodTalisman && woodTalismanTotal > 0 && (
+                          <span style={{ fontSize: '0.78rem', color: '#666', marginTop: '0.2rem' }}>
+                            （内訳: ご祈祷 {(orgPrayerItems.length > 0 ? orgPrayersTotal : hatsuhoryo).toLocaleString()}円 ＋ 木札 {woodTalismanTotal.toLocaleString()}円）
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -3743,23 +4154,114 @@ export const VisitorPortal: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Victory Prayer Info */}
-                    {tournamentName && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', backgroundColor: '#fff9e6', padding: '0.5rem', border: '1px solid var(--color-border)' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--color-gold)' }}>必勝祈願 詳細</div>
-                        <div>大会名称: {tournamentName}</div>
-                        <div>大会日程: {tournamentSchedule}</div>
+                    {/* Organization Prayer Items Card List in Step 3 */}
+                    {orgPrayerItems.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                          📋 お申込みのご祈祷一覧（{orgPrayerItems.length}件）
+                        </div>
+                        {orgPrayerItems.map((item, idx) => (
+                          <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', backgroundColor: '#fcfbf7', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--color-gold)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>第{idx + 1}祈願</span>
+                              <span style={{ color: 'var(--color-mizuiro)' }}>{item.hatsuhoryo.toLocaleString()} 円</span>
+                            </div>
+                            <div style={{ fontSize: '0.88rem' }}>
+                              <strong>主願意:</strong> {item.prayer1 === 'その他（自由入力）' ? item.org_custom_prayer1 : item.prayer1}
+                            </div>
+                            {item.prayer2 && (
+                              <div style={{ fontSize: '0.88rem' }}>
+                                <strong>副願意:</strong> {item.prayer2 === 'その他（自由入力）' ? item.org_custom_prayer2 : item.prayer2}
+                              </div>
+                            )}
+                            {item.talisman_name && (
+                              <div style={{ fontSize: '0.82rem', color: '#555' }}>
+                                <strong>お札名:</strong> {item.talisman_name}
+                              </div>
+                            )}
+                            {item.tournament_name && (
+                              <div style={{ fontSize: '0.8rem', backgroundColor: '#fff9e6', padding: '0.35rem 0.5rem', borderRadius: '3px' }}>
+                                <div><strong>必勝祈願 大会名:</strong> {item.tournament_name}</div>
+                                <div><strong>日程:</strong> {item.tournament_schedule}</div>
+                              </div>
+                            )}
+                            {item.construction_name && (
+                              <div style={{ fontSize: '0.8rem', backgroundColor: '#fff9e6', padding: '0.35rem 0.5rem', borderRadius: '3px' }}>
+                                <div><strong>工事安全祈願 工事名:</strong> {item.construction_name}</div>
+                                <div><strong>設計監理:</strong> {item.construction_designer} | <strong>施工:</strong> {item.construction_builder}</div>
+                                <div><strong>工期:</strong> {item.construction_period}</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                          <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>主願意</span>
+                          <span>{getActivePrayer1()}</span>
+                        </div>
+                        {getActivePrayer2() && (
+                          <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                            <span style={{ width: '35%', color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>副願意</span>
+                            <span>{getActivePrayer2()}</span>
+                          </div>
+                        )}
+                        {tournamentName && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', backgroundColor: '#fff9e6', padding: '0.5rem', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--color-gold)' }}>必勝祈願 詳細</div>
+                            <div>大会名称: {tournamentName}</div>
+                            <div>大会日程: {tournamentSchedule}</div>
+                          </div>
+                        )}
+                        {constructionName && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', backgroundColor: '#fff9e6', padding: '0.5rem', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--color-gold)' }}>工事安全祈願 詳細</div>
+                            <div>工事名称: {constructionName}</div>
+                            <div>設計監理: {constructionDesigner}</div>
+                            <div>施工者名: {constructionBuilder}</div>
+                            <div>工事期間: {constructionPeriod}</div>
+                          </div>
+                        )}
+                      </>
                     )}
 
-                    {/* Construction Prayer Info */}
-                    {constructionName && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', backgroundColor: '#fff9e6', padding: '0.5rem', border: '1px solid var(--color-border)' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--color-gold)' }}>工事安全祈願 詳細</div>
-                        <div>工事名称: {constructionName}</div>
-                        <div>設計監理: {constructionDesigner}</div>
-                        <div>施工者名: {constructionBuilder}</div>
-                        <div>工事期間: {constructionPeriod}</div>
+                    {/* Additional Wooden Talismans (祈願符) Step 3 Confirmation */}
+                    {wantsWoodTalisman && (
+                      <div style={{
+                        marginTop: '0.75rem',
+                        backgroundColor: '#fffbe6',
+                        border: '1.5px solid #d48806',
+                        borderRadius: '4px',
+                        padding: '0.75rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.4rem'
+                      }}>
+                        <div style={{
+                          fontWeight: 'bold',
+                          fontSize: '0.88rem',
+                          color: '#b22222',
+                          borderBottom: '1px dashed #d48806',
+                          paddingBottom: '0.35rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span>🎋 追加木の御札（祈願符）</span>
+                          <span style={{ fontSize: '0.95rem' }}>＋{woodTalismanTotal.toLocaleString()} 円</span>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                          {Number(woodTalismanCount) > 0 && (
+                            <span>・祈願符（約36cm）: <strong>{woodTalismanCount}</strong> 体 ({((Number(woodTalismanCount) || 0) * 2000).toLocaleString()}円)</span>
+                          )}
+                          {Number(woodTalismanLargeCount) > 0 && (
+                            <span>・祈願符・大（約45cm）: <strong>{woodTalismanLargeCount}</strong> 体 ({((Number(woodTalismanLargeCount) || 0) * 5000).toLocaleString()}円)</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                          <strong>木札の墨書名:</strong> {woodTalismanName || talismanName || companyName}
+                        </div>
                       </div>
                     )}
                   </>

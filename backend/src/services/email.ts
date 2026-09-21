@@ -149,7 +149,11 @@ ${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基
 ・担当者メールアドレス: ${booking.staff_email}
 ・お札に書かれるお名前: ${booking.talisman_name || '（未入力）'}
 ・追加希望の守札: ${booking.additional_talismans || '（なし）'}
-・領収証の発行希望: ${(() => {
+${(booking.wood_talisman_count || booking.wood_talisman_large_count) ? `・追加の木の御札: ${[
+  booking.wood_talisman_count ? `祈願符(約36cm) ${booking.wood_talisman_count}体` : '',
+  booking.wood_talisman_large_count ? `祈願符・大(約45cm) ${booking.wood_talisman_large_count}体` : ''
+].filter(Boolean).join('、')}
+${booking.wood_talisman_name ? `・木札墨書名: ${booking.wood_talisman_name}\n` : ''}` : ''}・領収証の発行希望: ${(() => {
   if (!booking.wants_receipt) return '希望しない';
   const receipts = getBookingReceipts(booking);
   if (receipts.length > 1) {

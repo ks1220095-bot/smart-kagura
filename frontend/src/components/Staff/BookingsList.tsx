@@ -1334,6 +1334,21 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                           <strong style={{ fontSize: '0.85rem', color: '#222', whiteSpace: 'pre-wrap' }}>{b.additional_talismans}</strong>
                                         </div>
                                       )}
+                                      {/* 追加祈願符（木札） */}
+                                      {((b.wood_talisman_count ?? 0) > 0 || (b.wood_talisman_large_count ?? 0) > 0) && (
+                                        <div style={{ backgroundColor: '#fffbe6', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #ffd591', gridColumn: 'span 2' }}>
+                                          <div style={{ fontSize: '0.65rem', color: '#b22222', fontWeight: 'bold' }}>🎋 追加祈願符（木札）</div>
+                                          <div style={{ fontSize: '0.85rem', color: '#111', marginTop: '0.1rem' }}>
+                                            {(b.wood_talisman_count ?? 0) > 0 && <span>祈願符（約36cm）: <strong>{b.wood_talisman_count}</strong>体 </span>}
+                                            {(b.wood_talisman_large_count ?? 0) > 0 && <span>祈願符・大（約45cm）: <strong>{b.wood_talisman_large_count}</strong>体</span>}
+                                          </div>
+                                          {b.wood_talisman_name && (
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--color-shu)', marginTop: '0.15rem' }}>
+                                              木札墨書名: <strong>{b.wood_talisman_name}</strong>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                       {/* 参拝代表者 */}
                                       {b.representative_title_name && (
                                         <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
@@ -2423,6 +2438,41 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       value={editFormData.additional_talismans || ''}
                       onChange={(e) => setEditFormData(prev => ({ ...prev, additional_talismans: e.target.value }))}
                     />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: 'span 2', backgroundColor: '#fffbe6', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ffd591' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b22222' }}>🎋 追加祈願符（木札）情報</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.7rem', color: '#555' }}>祈願符(約36cm) 体数</span>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={editFormData.wood_talisman_count ?? ''}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, wood_talisman_count: e.target.value === '' ? undefined : parseInt(e.target.value) || 0 }))}
+                        />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.7rem', color: '#555' }}>祈願符・大(約45cm) 体数</span>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={editFormData.wood_talisman_large_count ?? ''}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, wood_talisman_large_count: e.target.value === '' ? undefined : parseInt(e.target.value) || 0 }))}
+                        />
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#555' }}>木札墨書名</span>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="空欄の場合はお札墨書名が適用されます"
+                          value={editFormData.wood_talisman_name || ''}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, wood_talisman_name: e.target.value }))}
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.75rem' }}>申込担当者名 <span className="required">*</span></label>
