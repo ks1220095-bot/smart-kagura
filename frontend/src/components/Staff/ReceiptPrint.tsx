@@ -4,7 +4,7 @@ import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { printElement } from '../../utils/printUtils';
-import type { Booking } from '../../types';
+import { getBookingReceipts, type Booking } from '../../types';
 
 interface ReceiptPrintProps {
   booking?: Booking;
@@ -45,22 +45,17 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
   const receiptItems: ReceiptItem[] = [];
   targetBookings.forEach((b, bIdx) => {
     const dateStr = getReceiptDateString(b);
-    if (b.receipt_split_count === 2 && b.receipt_name2 && b.receipt_amount2) {
-      receiptItems.push({
-        id: `${b.id || bIdx}-1`,
-        receiptDate: dateStr,
-        address: b.receipt_name || b.company_name || b.name || '',
-        amount: b.receipt_amount || b.hatsuhoryo || 0,
-        booking: b,
-        splitIndex: 1
-      });
-      receiptItems.push({
-        id: `${b.id || bIdx}-2`,
-        receiptDate: dateStr,
-        address: b.receipt_name2,
-        amount: b.receipt_amount2,
-        booking: b,
-        splitIndex: 2
+    const bReceipts = getBookingReceipts(b);
+    if (bReceipts.length > 0) {
+      bReceipts.forEach((r, rIdx) => {
+        receiptItems.push({
+          id: `${b.id || bIdx}-${rIdx + 1}`,
+          receiptDate: dateStr,
+          address: r.name || b.company_name || b.name || '',
+          amount: Number(r.amount) || 0,
+          booking: b,
+          splitIndex: bReceipts.length > 1 ? rIdx + 1 : undefined
+        });
       });
     } else {
       receiptItems.push({

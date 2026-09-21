@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db';
-import { Booking } from '../types';
+import { Booking, getBookingReceipts } from '../types';
 import { sendMail, sendAdminNotification } from '../services/email';
 import { sendWebPushNotification } from '../services/webpush';
 import { syncAllBookingsToSpreadsheet } from '../services/sheetSync';
@@ -309,19 +309,33 @@ router.post('/', async (req, res) => {
       b.payment_status = 'unpaid';
       ensureNotesCarInfo(b);
 
+      if (Array.isArray((b as any).receipts) && (b as any).receipts.length > 0) {
+        b.receipts_data = JSON.stringify((b as any).receipts);
+        b.receipt_name = (b as any).receipts[0]?.name || b.receipt_name;
+        b.receipt_amount = (b as any).receipts[0]?.amount || b.receipt_amount;
+        b.receipt_split_count = (b as any).receipts.length;
+        if ((b as any).receipts.length > 1) {
+          b.receipt_name2 = (b as any).receipts[1]?.name;
+          b.receipt_amount2 = (b as any).receipts[1]?.amount;
+        } else {
+          b.receipt_name2 = undefined;
+          b.receipt_amount2 = undefined;
+        }
+      }
+
       const result = await db.query(`
         INSERT INTO bookings (
           receipt_number, booking_type, booking_date, booking_time, prayer1, prayer2, hatsuhoryo, payment_status, attending_count,
           name, kana, address, address_kana, phone, email,
           company_name, company_kana, company_address, company_address_kana, representative_title_name, representative_kana,
           staff_dept_title_name, staff_phone, staff_email, talisman_name, additional_talismans,
-          wants_receipt, receipt_name, receipt_amount, receipt_split_count, receipt_name2, receipt_amount2,
+          wants_receipt, receipt_name, receipt_amount, receipt_split_count, receipt_name2, receipt_amount2, receipts_data,
           yakudoshi_type, father_name, father_kana, mother_name, mother_kana, child_name, child_kana, child_birthday,
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
           construction_name, construction_designer, construction_builder, construction_period, notes,
           has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
           car_maker, car_model, car_number, child_gender, child_gender2
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -329,7 +343,7 @@ router.post('/', async (req, res) => {
         b.company_name || null, b.company_kana || null, b.company_address || null, b.company_address_kana || null, b.representative_title_name || null, b.representative_kana || null,
         b.staff_dept_title_name || null, b.staff_phone || null, b.staff_email || null, b.talisman_name || null, b.additional_talismans || null,
         b.wants_receipt || 0, b.receipt_name || null, b.receipt_amount || null,
-        b.receipt_split_count || 1, b.receipt_name2 || null, b.receipt_amount2 || null,
+        b.receipt_split_count || 1, b.receipt_name2 || null, b.receipt_amount2 || null, b.receipts_data || null,
         b.yakudoshi_type || null, b.father_name || null, b.father_kana || null, b.mother_name || null, b.mother_kana || null, b.child_name || null, b.child_kana || null, b.child_birthday || null,
         b.kotobuki_type || null, b.kotobuki_other_text || null, b.tournament_name || null, b.tournament_schedule || null,
         b.construction_name || null, b.construction_designer || null, b.construction_builder || null, b.construction_period || null,
@@ -399,12 +413,18 @@ router.post('/', async (req, res) => {
           text += `・お札染筆名　　: ${b.talisman_name || b.company_name}\n`;
           if (b.additional_talismans) text += `・追加希望守札: ${b.additional_talismans}\n`;
           if (b.wants_receipt) {
-            if (b.receipt_split_count === 2) {
-              text += `・領収証希望　: 2社名義で希望\n`;
-              text += `　- 1社目: ${b.receipt_name} (￥${b.receipt_amount?.toLocaleString()})\n`;
-              text += `　- 2社目: ${b.receipt_name2} (￥${b.receipt_amount2?.toLocaleString()})\n`;
+            const receipts = getBookingReceipts(b);
+            if (receipts.length > 1) {
+              text += `・領収証希望　: ${receipts.length}社名義で希望 (計${receipts.length}枚)\n`;
+              receipts.forEach((r, idx) => {
+                text += `　- ${idx + 1}社目: ${r.name} (￥${Number(r.amount).toLocaleString()})\n`;
+              });
+              const totalAmt = receipts.reduce((sum, r) => sum + Number(r.amount), 0);
+              text += `　- 領収証合計: ￥${totalAmt.toLocaleString()}\n`;
+            } else if (receipts.length === 1) {
+              text += `・領収証希望　: 希望する (宛名: ${receipts[0].name} / 金額: ￥${Number(receipts[0].amount).toLocaleString()})\n`;
             } else {
-              text += `・領収証希望　: 希望する (宛名: ${b.receipt_name} / 金額: ￥${b.receipt_amount?.toLocaleString()})\n`;
+              text += `・領収証希望　: 希望する\n`;
             }
           }
           
@@ -640,7 +660,7 @@ router.get('/export-csv', async (req, res) => {
     const result = await db.query(query, params);
     const bookings = result.rows;
 
-    let csv = '\ufeff受付番号,予約日,予約時間,区分,氏名/企業名,フリガナ,願意1,願意2,初穂料,支払状況,参列人数,電話番号,メール,代表者名,担当者名,領収書希望,領収書宛名,領収書金額,領収書宛名2,領収書金額2,追加守札,備考\n';
+    let csv = '\ufeff受付番号,予約日,予約時間,区分,氏名/企業名,フリガナ,願意1,願意2,初穂料,支払状況,参列人数,電話番号,メール,代表者名,担当者名,領収書希望,領収書宛名,領収書金額,領収書宛名2,領収書金額2,領収書全内訳,追加守札,備考\n';
     
     bookings.forEach((b: Booking) => {
       const typeStr = b.booking_type === 'individual' ? '個人' : '団体';
@@ -650,6 +670,14 @@ router.get('/export-csv', async (req, res) => {
       const emailStr = b.booking_type === 'individual' ? b.email : b.staff_email;
       const statusStr = b.payment_status === 'paid' ? '支払済' : '未払い';
       
+      const receipts = getBookingReceipts(b);
+      const receiptCountStr = b.wants_receipt 
+        ? (receipts.length > 1 ? `要(${receipts.length}社)` : '要') 
+        : '不要';
+      const receiptAllDetails = receipts.length > 0
+        ? receipts.map((r, idx) => `${idx + 1}社目: ${r.name} (￥${Number(r.amount).toLocaleString()})`).join(' / ')
+        : '';
+
       const row = [
         b.receipt_number,
         b.booking_date,
@@ -666,11 +694,12 @@ router.get('/export-csv', async (req, res) => {
         emailStr || '',
         `"${(b.representative_title_name || '').replace(/"/g, '""')}"`,
         `"${(b.staff_dept_title_name || '').replace(/"/g, '""')}"`,
-        b.wants_receipt ? (b.receipt_split_count === 2 ? '要(2社)' : '要') : '不要',
+        receiptCountStr,
         `"${(b.receipt_name || '').replace(/"/g, '""')}"`,
         b.receipt_amount || '',
         `"${(b.receipt_name2 || '').replace(/"/g, '""')}"`,
         b.receipt_amount2 || '',
+        `"${(receiptAllDetails || '').replace(/"/g, '""')}"`,
         `"${(b.additional_talismans || '').replace(/"/g, '""')}"`,
         `"${(b.notes || '').replace(/"/g, '""')}"`
       ].join(',');
@@ -905,7 +934,19 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    ensureNotesCarInfo(booking);
+    if (Array.isArray((booking as any).receipts)) {
+      booking.receipts_data = JSON.stringify((booking as any).receipts);
+      booking.receipt_name = (booking as any).receipts[0]?.name || booking.receipt_name;
+      booking.receipt_amount = (booking as any).receipts[0]?.amount || booking.receipt_amount;
+      booking.receipt_split_count = (booking as any).receipts.length;
+      if ((booking as any).receipts.length > 1) {
+        booking.receipt_name2 = (booking as any).receipts[1]?.name;
+        booking.receipt_amount2 = (booking as any).receipts[1]?.amount;
+      } else {
+        booking.receipt_name2 = undefined;
+        booking.receipt_amount2 = undefined;
+      }
+    }
 
     // Update Query
     await db.query(`
@@ -915,22 +956,22 @@ router.put('/:id', async (req, res) => {
         company_name = $14, company_kana = $15, company_address = $16, company_address_kana = $17, representative_title_name = $18, representative_kana = $19,
         staff_dept_title_name = $20, staff_phone = $21, staff_email = $22, talisman_name = $23, additional_talismans = $24,
         wants_receipt = $25, receipt_name = $26, receipt_amount = $27,
-        receipt_split_count = $28, receipt_name2 = $29, receipt_amount2 = $30,
-        yakudoshi_type = $31, father_name = $32, father_kana = $33, mother_name = $34, mother_kana = $35, child_name = $36, child_kana = $37, child_birthday = $38,
-        kotobuki_type = $39, kotobuki_other_text = $40, tournament_name = $41, tournament_schedule = $42,
-        construction_name = $43, construction_designer = $44, construction_builder = $45, construction_period = $46, notes = $47,
-        has_past_prayer = $48, is_twin = $49, child_name2 = $50, child_kana2 = $51, child_birthday2 = $52,
-        car_maker = $53, car_model = $54, car_number = $55,
-        child_gender = $56, child_gender2 = $57,
+        receipt_split_count = $28, receipt_name2 = $29, receipt_amount2 = $30, receipts_data = $31,
+        yakudoshi_type = $32, father_name = $33, father_kana = $34, mother_name = $35, mother_kana = $36, child_name = $37, child_kana = $38, child_birthday = $39,
+        kotobuki_type = $40, kotobuki_other_text = $41, tournament_name = $42, tournament_schedule = $43,
+        construction_name = $44, construction_designer = $45, construction_builder = $46, construction_period = $47, notes = $48,
+        has_past_prayer = $49, is_twin = $50, child_name2 = $51, child_kana2 = $52, child_birthday2 = $53,
+        car_maker = $54, car_model = $55, car_number = $56,
+        child_gender = $57, child_gender2 = $58,
         is_changed = 1
-      WHERE id = $58
+      WHERE id = $59
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
       booking.company_name || null, booking.company_kana || null, booking.company_address || null, booking.company_address_kana || null, booking.representative_title_name || null, booking.representative_kana || null,
       booking.staff_dept_title_name || null, booking.staff_phone || null, booking.staff_email || null, booking.talisman_name || null, booking.additional_talismans || null,
       booking.wants_receipt || 0, booking.receipt_name || null, booking.receipt_amount || null,
-      booking.receipt_split_count || 1, booking.receipt_name2 || null, booking.receipt_amount2 || null,
+      booking.receipt_split_count || 1, booking.receipt_name2 || null, booking.receipt_amount2 || null, booking.receipts_data || null,
       booking.yakudoshi_type || null, booking.father_name || null, booking.father_kana || null, booking.mother_name || null, booking.mother_kana || null, booking.child_name || null, booking.child_kana || null, booking.child_birthday || null,
       booking.kotobuki_type || null, booking.kotobuki_other_text || null, booking.tournament_name || null, booking.tournament_schedule || null,
       booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null,

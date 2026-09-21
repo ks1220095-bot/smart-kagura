@@ -40,6 +40,8 @@ export interface Booking {
   receipt_split_count?: number; // 1 or 2
   receipt_name2?: string;
   receipt_amount2?: number;
+  receipts_data?: string; // JSON string of ReceiptItem[]
+  receipts?: ReceiptItem[]; // Array of ReceiptItem during booking creation/editing
 
   // 個人厄年
   yakudoshi_type?: 'maeyaku' | 'honyaku' | 'atoyaku' | '';
@@ -108,3 +110,38 @@ export interface SlotAvailability {
   status: 'O' | '▲' | 'X';
   label: string;
 }
+
+export interface ReceiptItem {
+  name: string;
+  amount: number;
+}
+
+export const getBookingReceipts = (b: Booking): ReceiptItem[] => {
+  if (b.receipts_data) {
+    try {
+      const parsed = JSON.parse(b.receipts_data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((item: any) => item && typeof item.name === 'string');
+      }
+    } catch (e) {
+      console.error('Failed to parse receipts_data', e);
+    }
+  }
+  if (b.wants_receipt) {
+    const list: ReceiptItem[] = [];
+    if (b.receipt_name || b.company_name || b.name) {
+      list.push({
+        name: b.receipt_name || b.company_name || b.name || '',
+        amount: b.receipt_amount || b.hatsuhoryo || 0
+      });
+    }
+    if (b.receipt_split_count === 2 && b.receipt_name2) {
+      list.push({
+        name: b.receipt_name2,
+        amount: b.receipt_amount2 || 0
+      });
+    }
+    return list;
+  }
+  return [];
+};

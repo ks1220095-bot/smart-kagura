@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Users, AlertCircle } from 'lucide-react';
 import type { Booking } from '../../types';
+import { getBookingReceipts } from '../../types';
 import { getApiUrl } from '../../config/api';
 import SlotSelector from './SlotSelector';
 import BookingSuccess from './BookingSuccess';
@@ -284,11 +285,57 @@ export const VisitorPortal: React.FC = () => {
 
   // Organization Receipt
   const [wantsReceipt, setWantsReceipt] = useState(savedDraft?.wantsReceipt ?? false);
-  const [receiptName, setReceiptName] = useState(savedDraft?.receiptName ?? '');
-  const [receiptAmount, setReceiptAmount] = useState(savedDraft?.receiptAmount ?? 20000);
-  const [hasAdditionalReceipt, setHasAdditionalReceipt] = useState(savedDraft?.hasAdditionalReceipt ?? false);
-  const [receiptName2, setReceiptName2] = useState(savedDraft?.receiptName2 ?? '');
-  const [receiptAmount2, setReceiptAmount2] = useState(savedDraft?.receiptAmount2 ?? 0);
+  const [receipts, setReceipts] = useState<Array<{ id: string; name: string; amount: number }>>(() => {
+    if (savedDraft?.receipts && Array.isArray(savedDraft.receipts) && savedDraft.receipts.length > 0) {
+      return savedDraft.receipts;
+    }
+    if (savedDraft?.hasAdditionalReceipt) {
+      return [
+        { id: 'rec-1', name: savedDraft.receiptName || '', amount: savedDraft.receiptAmount || 10000 },
+        { id: 'rec-2', name: savedDraft.receiptName2 || '', amount: savedDraft.receiptAmount2 || 10000 }
+      ];
+    }
+    if (savedDraft?.receiptName || savedDraft?.receiptAmount) {
+      return [{ id: 'rec-1', name: savedDraft.receiptName || '', amount: savedDraft.receiptAmount || 20000 }];
+    }
+    return [{ id: 'rec-1', name: '', amount: 20000 }];
+  });
+
+  const handleAddReceipt = () => {
+    setReceipts(prev => [
+      ...prev,
+      { id: 'rec-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6), name: '', amount: 0 }
+    ]);
+  };
+
+  const handleRemoveReceipt = (index: number) => {
+    setReceipts(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, idx) => idx !== index);
+    });
+  };
+
+  const handleUpdateReceipt = (index: number, field: 'name' | 'amount', value: any) => {
+    setReceipts(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleDistributeReceiptsEqually = () => {
+    if (receipts.length === 0) return;
+    const count = receipts.length;
+    const basePerItem = Math.floor(hatsuhoryo / count);
+    const remainder = hatsuhoryo % count;
+    setReceipts(prev => prev.map((item, idx) => ({
+      ...item,
+      amount: idx === 0 ? basePerItem + remainder : basePerItem
+    })));
+  };
+
+  const totalReceiptAmount = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const isReceiptAmountMatched = totalReceiptAmount === hatsuhoryo;
 
   // Organization Dynamic fields
   const [orgCustomPrayer1, setOrgCustomPrayer1] = useState(savedDraft?.orgCustomPrayer1 ?? '');
@@ -416,8 +463,7 @@ export const VisitorPortal: React.FC = () => {
       talismanName,
       additionalTalismans,
       wantsReceipt,
-      receiptName,
-      receiptAmount,
+      receipts,
       orgCustomPrayer1,
       orgCustomPrayer2,
       tournamentName,
@@ -498,8 +544,7 @@ export const VisitorPortal: React.FC = () => {
     talismanName,
     additionalTalismans,
     wantsReceipt,
-    receiptName,
-    receiptAmount,
+    receipts,
     orgCustomPrayer1,
     orgCustomPrayer2,
     tournamentName,
@@ -583,11 +628,16 @@ export const VisitorPortal: React.FC = () => {
       setTalismanName(b.talisman_name || '');
       setAdditionalTalismans(b.additional_talismans || '');
       setWantsReceipt(b.wants_receipt === 1);
-      setReceiptName(b.receipt_name || '');
-      setReceiptAmount(b.receipt_amount || 0);
-      setHasAdditionalReceipt(b.receipt_split_count === 2);
-      setReceiptName2(b.receipt_name2 || '');
-      setReceiptAmount2(b.receipt_amount2 || 0);
+      const parsedReceipts = getBookingReceipts(b);
+      if (parsedReceipts.length > 0) {
+        setReceipts(parsedReceipts.map((r, idx) => ({
+          id: `rec-${Date.now()}-${idx}`,
+          name: r.name,
+          amount: r.amount
+        })));
+      } else {
+        setReceipts([{ id: 'rec-1', name: b.receipt_name || b.company_name || '', amount: b.receipt_amount || b.hatsuhoryo || 20000 }]);
+      }
 
       // Org dynamic fields
       if (b.prayer1 !== '社運隆盛' && b.prayer1 !== '商売繁昌' && b.prayer1 !== '安全祈願' && b.prayer1 !== '必勝祈願' && b.prayer1 !== '工事安全') {
@@ -650,8 +700,7 @@ export const VisitorPortal: React.FC = () => {
       name, kana, address, addressKana, phone, email,
       companyName, companyKana, companyAddress, companyAddressKana,
       representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
-      talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
-      hasAdditionalReceipt, receiptName2, receiptAmount2,
+      talismanName, additionalTalismans, wantsReceipt, receipts,
       hasPastPrayer, isTwin, childName2, childKana2, notes,
       birthYear, birthMonth, birthDay,
       birthYear2, birthMonth2, birthDay2,
@@ -676,8 +725,7 @@ export const VisitorPortal: React.FC = () => {
     name, kana, address, addressKana, phone, email,
     companyName, companyKana, companyAddress, companyAddressKana,
     representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
-    talismanName, additionalTalismans, wantsReceipt, receiptName, receiptAmount,
-    hasAdditionalReceipt, receiptName2, receiptAmount2,
+    talismanName, additionalTalismans, wantsReceipt, receipts,
     hasPastPrayer, isTwin, childName2, childKana2, notes,
     birthYear, birthMonth, birthDay,
     birthYear2, birthMonth2, birthDay2,
@@ -728,11 +776,15 @@ export const VisitorPortal: React.FC = () => {
         if (state.talismanName) setTalismanName(state.talismanName);
         if (state.additionalTalismans) setAdditionalTalismans(state.additionalTalismans);
         if (state.wantsReceipt !== undefined) setWantsReceipt(state.wantsReceipt);
-        if (state.receiptName) setReceiptName(state.receiptName);
-        if (state.receiptAmount) setReceiptAmount(state.receiptAmount);
-        if (state.hasAdditionalReceipt !== undefined) setHasAdditionalReceipt(state.hasAdditionalReceipt);
-        if (state.receiptName2) setReceiptName2(state.receiptName2);
-        if (state.receiptAmount2) setReceiptAmount2(state.receiptAmount2);
+        if (state.receipts && Array.isArray(state.receipts) && state.receipts.length > 0) {
+          setReceipts(state.receipts);
+        } else if (state.receiptName || state.receiptAmount) {
+          const items = [{ id: 'rec-1', name: state.receiptName || '', amount: state.receiptAmount || 20000 }];
+          if (state.hasAdditionalReceipt && state.receiptName2) {
+            items.push({ id: 'rec-2', name: state.receiptName2, amount: state.receiptAmount2 || 0 });
+          }
+          setReceipts(items);
+        }
 
         if (state.hasPastPrayer !== undefined) setHasPastPrayer(state.hasPastPrayer);
         if (state.isTwin !== undefined) setIsTwin(state.isTwin);
@@ -880,15 +932,27 @@ export const VisitorPortal: React.FC = () => {
       // Organization base pricing: under 5 people = 20k, 5 or more = 30k
       const basePrice = Number(attendingCount) < 5 ? 20000 : 30000;
       setHatsuhoryo(basePrice);
-      // Auto sync receipt amount
-      setReceiptAmount(basePrice);
+      // Auto sync receipt amount if only 1 receipt
+      setReceipts(prev => {
+        if (prev.length === 1 && prev[0].amount !== basePrice) {
+          return [{ ...prev[0], amount: basePrice }];
+        }
+        return prev;
+      });
     }
   }, [prayer1, bookingType, attendingCount, isTwin]);
 
   // Sync Organization names to default receipt name
   useEffect(() => {
-    if (bookingType === 'organization' && !receiptName) {
-      setReceiptName(companyName);
+    if (bookingType === 'organization' && companyName) {
+      setReceipts(prev => {
+        if (prev.length > 0 && !prev[0].name) {
+          const next = [...prev];
+          next[0] = { ...next[0], name: companyName };
+          return next;
+        }
+        return prev;
+      });
     }
   }, [companyName, bookingType]);
 
@@ -961,11 +1025,18 @@ export const VisitorPortal: React.FC = () => {
           !talismanName.trim()) {
         return '企業情報（企業名・所在地・代表者・担当者氏名・連絡先等）および神札墨書名をすべてご入力ください。';
       }
-      if (wantsReceipt && (!receiptName.trim() || receiptAmount <= 0)) {
-        return '領収証の発行に必要な宛名および金額を正しくご入力ください。';
-      }
-      if (wantsReceipt && hasAdditionalReceipt && (!receiptName2.trim() || receiptAmount2 <= 0)) {
-        return '追加の領収証（2社目）に必要な宛名および金額を正しくご入力ください。';
+      if (wantsReceipt) {
+        if (receipts.length === 0) {
+          return '領収証の発行情報を入力してください。';
+        }
+        for (let idx = 0; idx < receipts.length; idx++) {
+          const r = receipts[idx];
+          if (!r.name.trim() || Number(r.amount) <= 0) {
+            return receipts.length > 1
+              ? `追加の領収証（${idx + 1}社目）に必要な宛名および金額を正しくご入力ください。`
+              : '領収証の発行に必要な宛名および金額を正しくご入力ください。';
+          }
+        }
       }
       
       const p1 = getActivePrayer1();
@@ -1264,11 +1335,13 @@ export const VisitorPortal: React.FC = () => {
       additional_talismans: bookingType === 'organization' ? additionalTalismans : undefined,
       
       wants_receipt: bookingType === 'organization' ? (wantsReceipt ? 1 : 0) : 0,
-      receipt_split_count: (bookingType === 'organization' && wantsReceipt && hasAdditionalReceipt) ? 2 : 1,
-      receipt_name: bookingType === 'organization' && wantsReceipt ? receiptName : undefined,
-      receipt_amount: bookingType === 'organization' && wantsReceipt ? receiptAmount : undefined,
-      receipt_name2: (bookingType === 'organization' && wantsReceipt && hasAdditionalReceipt) ? receiptName2 : undefined,
-      receipt_amount2: (bookingType === 'organization' && wantsReceipt && hasAdditionalReceipt) ? receiptAmount2 : undefined,
+      receipt_split_count: (bookingType === 'organization' && wantsReceipt) ? receipts.length : 1,
+      receipt_name: (bookingType === 'organization' && wantsReceipt && receipts[0]) ? receipts[0].name : undefined,
+      receipt_amount: (bookingType === 'organization' && wantsReceipt && receipts[0]) ? Number(receipts[0].amount) || undefined : undefined,
+      receipt_name2: (bookingType === 'organization' && wantsReceipt && receipts[1]) ? receipts[1].name : undefined,
+      receipt_amount2: (bookingType === 'organization' && wantsReceipt && receipts[1]) ? Number(receipts[1].amount) || undefined : undefined,
+      receipts_data: (bookingType === 'organization' && wantsReceipt) ? JSON.stringify(receipts.map(r => ({ name: r.name, amount: Number(r.amount) || 0 }))) : undefined,
+      receipts: (bookingType === 'organization' && wantsReceipt) ? receipts.map(r => ({ name: r.name, amount: Number(r.amount) || 0 })) : undefined,
 
       yakudoshi_type: bookingType === 'individual' ? (prayerItems[0]?.yakudoshi_type || yakudoshiType) : undefined,
       
@@ -1476,11 +1549,7 @@ export const VisitorPortal: React.FC = () => {
     setTalismanName('');
     setAdditionalTalismans('');
     setWantsReceipt(false);
-    setReceiptName('');
-    setReceiptAmount(20000);
-    setHasAdditionalReceipt(false);
-    setReceiptName2('');
-    setReceiptAmount2(0);
+    setReceipts([{ id: 'rec-1', name: '', amount: 20000 }]);
     setOrgCustomPrayer1('');
     setOrgCustomPrayer2('');
     setTournamentName('');
@@ -3209,9 +3278,6 @@ export const VisitorPortal: React.FC = () => {
                         checked={wantsReceipt}
                         onChange={(e) => {
                           setWantsReceipt(e.target.checked);
-                          if (!e.target.checked) {
-                            setHasAdditionalReceipt(false);
-                          }
                         }}
                       />
                       領収証の発行を希望する
@@ -3219,150 +3285,152 @@ export const VisitorPortal: React.FC = () => {
 
                     {wantsReceipt && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.75rem' }}>
-                        {/* 1社目カード */}
-                        <div style={{
-                          backgroundColor: '#fbfbfb',
-                          border: '1px solid var(--color-border)',
-                          borderLeft: '4px solid var(--color-mizuiro)',
-                          borderRadius: '4px',
-                          padding: '1rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem'
-                        }}>
-                          <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-urushi)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span>📄</span>
-                            <span>{hasAdditionalReceipt ? '領収証（1社目）' : '領収証の発行情報'}</span>
-                          </div>
-                          <div className="form-row" style={{ margin: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
-                            <div className="form-group" style={{ margin: 0, flex: '2 1 240px' }}>
-                              <label>{hasAdditionalReceipt ? '領収証の宛名（1社目）' : '領収証の宛名'} <span className="required">*</span></label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                placeholder="例：株式会社〇〇"
-                                value={receiptName}
-                                onChange={(e) => setReceiptName(e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div className="form-group" style={{ margin: 0, flex: '1 1 160px' }}>
-                              <label>{hasAdditionalReceipt ? '領収証の金額（1社目・円）' : '領収証の金額 (円)'} <span className="required">*</span></label>
-                              <input
-                                type="number"
-                                className="form-control"
-                                min="1"
-                                value={receiptAmount}
-                                onChange={(e) => setReceiptAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                required
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 追加領収証チェックボックス */}
-                        <div style={{ padding: '0.25rem 0.5rem', backgroundColor: '#fcfcfc', border: '1px dashed var(--color-border)', borderRadius: '4px' }}>
-                          <label className="checkbox-label" style={{ fontWeight: '500', color: 'var(--color-urushi)', margin: 0 }}>
-                            <input
-                              type="checkbox"
-                              checked={hasAdditionalReceipt}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setHasAdditionalReceipt(checked);
-                                if (checked && receiptAmount2 === 0) {
-                                  const half = Math.floor(hatsuhoryo / 2);
-                                  setReceiptAmount(hatsuhoryo - half);
-                                  setReceiptAmount2(half);
-                                }
-                              }}
-                            />
-                            <span>追加で領収証を希望の場合（2社名義での発行など）</span>
-                          </label>
-                        </div>
-
-                        {/* 2社目カード */}
-                        {hasAdditionalReceipt && (
-                          <div style={{
-                            backgroundColor: '#fffdf7',
-                            border: '1px solid var(--color-gold)',
-                            borderLeft: '4px solid var(--color-gold)',
-                            borderRadius: '4px',
-                            padding: '1rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.75rem'
-                          }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-urushi)', borderBottom: '1px dashed rgba(197, 160, 89, 0.4)', paddingBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span>📄</span>
-                              <span>領収証（2社目）</span>
-                            </div>
-                            <div className="form-row" style={{ margin: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
-                              <div className="form-group" style={{ margin: 0, flex: '2 1 240px' }}>
-                                <label>領収証の宛名（2社目） <span className="required">*</span></label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  placeholder="例：関連企業・協力会社名など"
-                                  value={receiptName2}
-                                  onChange={(e) => setReceiptName2(e.target.value)}
-                                  required={hasAdditionalReceipt}
-                                />
-                              </div>
-                              <div className="form-group" style={{ margin: 0, flex: '1 1 160px' }}>
-                                <label>領収証の金額（2社目・円） <span className="required">*</span></label>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  min="1"
-                                  value={receiptAmount2}
-                                  onChange={(e) => setReceiptAmount2(Math.max(1, parseInt(e.target.value) || 0))}
-                                  required={hasAdditionalReceipt}
-                                />
-                              </div>
-                            </div>
-
-                            {/* 合計とお初穂料の照合バー（独立ブロック） */}
+                        {receipts.map((r, idx) => (
+                          <div
+                            key={r.id || idx}
+                            style={{
+                              backgroundColor: idx === 0 ? '#fbfbfb' : '#fffdf7',
+                              border: idx === 0 ? '1px solid var(--color-border)' : '1px solid var(--color-gold)',
+                              borderLeft: idx === 0 ? '4px solid var(--color-mizuiro)' : '4px solid var(--color-gold)',
+                              borderRadius: '4px',
+                              padding: '1rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.75rem'
+                            }}
+                          >
                             <div style={{
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
-                              padding: '0.6rem 0.75rem',
-                              backgroundColor: '#ffffff',
-                              border: '1px solid rgba(197, 160, 89, 0.35)',
-                              borderRadius: '4px',
-                              flexWrap: 'wrap',
-                              gap: '0.5rem',
-                              marginTop: '0.25rem'
+                              borderBottom: idx === 0 ? '1px dashed var(--color-border)' : '1px dashed rgba(197, 160, 89, 0.4)',
+                              paddingBottom: '0.4rem'
                             }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: (receiptAmount + receiptAmount2 === hatsuhoryo) ? 'var(--color-accent-green)' : '#d3381c' }}>
-                                  {(receiptAmount + receiptAmount2 === hatsuhoryo) ? '✓ ' : '⚠ '}
-                                  1社目: {receiptAmount.toLocaleString()} 円 ＋ 2社目: {receiptAmount2.toLocaleString()} 円 ＝ 合計 {(receiptAmount + receiptAmount2).toLocaleString()} 円
-                                </div>
-                                <div style={{ fontSize: '0.78rem', color: '#666' }}>
-                                  お初穂料： <strong>{hatsuhoryo.toLocaleString()} 円</strong>
-                                  {receiptAmount + receiptAmount2 !== hatsuhoryo && (
-                                    <span style={{ color: '#d3381c', fontWeight: 'bold', marginLeft: '0.4rem' }}>
-                                      ※合計がお初穂料と一致していません
-                                    </span>
-                                  )}
-                                </div>
+                              <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-urushi)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span>📄</span>
+                                <span>{receipts.length > 1 ? `領収証（${idx + 1}社目）` : '領収証の発行情報'}</span>
                               </div>
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                                onClick={() => {
-                                  const half = Math.floor(hatsuhoryo / 2);
-                                  setReceiptAmount(hatsuhoryo - half);
-                                  setReceiptAmount2(half);
-                                }}
-                              >
-                                初穂料を等分に配分
-                              </button>
+                              {receipts.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveReceipt(idx)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#d3381c',
+                                    fontSize: '0.8rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.2rem',
+                                    padding: '0.2rem 0.4rem',
+                                    borderRadius: '3px',
+                                    fontWeight: 'bold'
+                                  }}
+                                  title="この領収証を削除"
+                                >
+                                  <span>✕</span>
+                                  <span>削除</span>
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="form-row" style={{ margin: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
+                              <div className="form-group" style={{ margin: 0, flex: '2 1 240px' }}>
+                                <label>
+                                  {receipts.length > 1 ? `領収証の宛名（${idx + 1}社目）` : '領収証の宛名'} <span className="required">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder={idx === 0 ? (companyName ? `例：${companyName}` : '例：株式会社〇〇') : '例：関連企業・協力会社名など'}
+                                  value={r.name}
+                                  onChange={(e) => handleUpdateReceipt(idx, 'name', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0, flex: '1 1 160px' }}>
+                                <label>
+                                  {receipts.length > 1 ? `領収証の金額（${idx + 1}社目・円）` : '領収証の金額 (円)'} <span className="required">*</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  className="form-control"
+                                  min="1"
+                                  value={r.amount || ''}
+                                  onChange={(e) => handleUpdateReceipt(idx, 'amount', Math.max(0, parseInt(e.target.value) || 0))}
+                                  required
+                                />
+                              </div>
                             </div>
                           </div>
-                        )}
+                        ))}
+
+                        {/* 追加ボタン */}
+                        <div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              padding: '0.45rem 1rem',
+                              fontSize: '0.85rem',
+                              fontWeight: 'bold',
+                              borderColor: 'var(--color-gold)',
+                              color: 'var(--color-urushi)',
+                              backgroundColor: '#fffdf7'
+                            }}
+                            onClick={handleAddReceipt}
+                          >
+                            <span style={{ fontSize: '1rem', lineHeight: 1 }}>＋</span>
+                            <span>領収証を追加する（他社名義・分割発行）</span>
+                          </button>
+                          <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '0.75rem' }}>
+                            ※1回のお申込みで何社分でも無制限に追加可能です
+                          </span>
+                        </div>
+
+                        {/* 合計とお初穂料の照合バー（独立ブロック） */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.6rem 0.75rem',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid rgba(197, 160, 89, 0.35)',
+                          borderRadius: '4px',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                          marginTop: '0.25rem'
+                        }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: isReceiptAmountMatched ? 'var(--color-accent-green)' : '#d3381c' }}>
+                              {isReceiptAmountMatched ? '✓ ' : '⚠ '}
+                              領収証合計: {totalReceiptAmount.toLocaleString()} 円
+                              {receipts.length > 1 && `（全${receipts.length}社分）`}
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: '#666' }}>
+                              お初穂料： <strong>{hatsuhoryo.toLocaleString()} 円</strong>
+                              {!isReceiptAmountMatched && (
+                                <span style={{ color: '#d3381c', fontWeight: 'bold', marginLeft: '0.4rem' }}>
+                                  ※お初穂料と一致していません（差額: {(totalReceiptAmount - hatsuhoryo > 0 ? '+' : '') + (totalReceiptAmount - hatsuhoryo).toLocaleString()} 円）
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {receipts.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                              onClick={handleDistributeReceiptsEqually}
+                            >
+                              初穂料を均等配分
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -3635,38 +3703,41 @@ export const VisitorPortal: React.FC = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: 'var(--color-accent-gray)', fontSize: '0.9rem' }}>領収証の発行</span>
                         <span style={{ fontWeight: 'bold', color: wantsReceipt ? 'var(--color-urushi)' : '#888' }}>
-                          {wantsReceipt ? (hasAdditionalReceipt ? '希望する（2社名義・計2枚発行）' : '希望する（1枚発行）') : '希望しない'}
+                          {wantsReceipt ? (receipts.length > 1 ? `希望する（全${receipts.length}社名義・計${receipts.length}枚発行）` : '希望する（1枚発行）') : '希望しない'}
                         </span>
                       </div>
                       {wantsReceipt && (
                         <div style={{ backgroundColor: '#fcfbf7', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: hasAdditionalReceipt ? '1px dashed #e0dcd3' : 'none', paddingBottom: hasAdditionalReceipt ? '0.5rem' : '0', flexWrap: 'wrap', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.88rem', color: '#444' }}>
-                              {hasAdditionalReceipt ? '【1社目】宛名: ' : '宛名: '}
-                              <strong style={{ color: '#222', fontSize: '0.95rem' }}>{receiptName}</strong> 様
-                            </span>
-                            <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
-                              {receiptAmount.toLocaleString()} 円
-                            </span>
-                          </div>
-                          {hasAdditionalReceipt && (
-                            <>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.88rem', color: '#444' }}>
-                                  【2社目】宛名: <strong style={{ color: '#222', fontSize: '0.95rem' }}>{receiptName2}</strong> 様
-                                </span>
-                                <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
-                                  {receiptAmount2.toLocaleString()} 円
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e0dcd3', paddingTop: '0.4rem', fontSize: '0.82rem' }}>
-                                <span style={{ color: '#666' }}>領収証 合計金額</span>
-                                <span style={{ fontWeight: 'bold', color: (receiptAmount + receiptAmount2 === hatsuhoryo) ? 'var(--color-accent-green)' : '#d3381c' }}>
-                                  {(receiptAmount + receiptAmount2).toLocaleString()} 円
-                                  {receiptAmount + receiptAmount2 === hatsuhoryo ? '（お初穂料と一致）' : '（※お初穂料と不一致）'}
-                                </span>
-                              </div>
-                            </>
+                          {receipts.map((r, idx) => (
+                            <div
+                              key={r.id || idx}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: idx < receipts.length - 1 ? '1px dashed #e0dcd3' : 'none',
+                                paddingBottom: idx < receipts.length - 1 ? '0.5rem' : '0',
+                                flexWrap: 'wrap',
+                                gap: '0.25rem'
+                              }}
+                            >
+                              <span style={{ fontSize: '0.88rem', color: '#444' }}>
+                                {receipts.length > 1 ? `【${idx + 1}社目】宛名: ` : '宛名: '}
+                                <strong style={{ color: '#222', fontSize: '0.95rem' }}>{r.name || '（未入力）'}</strong> 様
+                              </span>
+                              <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                                {Number(r.amount).toLocaleString()} 円
+                              </span>
+                            </div>
+                          ))}
+                          {receipts.length > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e0dcd3', paddingTop: '0.4rem', fontSize: '0.82rem' }}>
+                              <span style={{ color: '#666' }}>領収証 合計金額</span>
+                              <span style={{ fontWeight: 'bold', color: isReceiptAmountMatched ? 'var(--color-accent-green)' : '#d3381c' }}>
+                                {totalReceiptAmount.toLocaleString()} 円
+                                {isReceiptAmountMatched ? '（お初穂料と一致）' : '（※お初穂料と不一致）'}
+                              </span>
+                            </div>
                           )}
                         </div>
                       )}

@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { getBookingReceipts } from '../types';
 
 dotenv.config();
 
@@ -148,7 +149,18 @@ ${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基
 ・担当者メールアドレス: ${booking.staff_email}
 ・お札に書かれるお名前: ${booking.talisman_name || '（未入力）'}
 ・追加希望の守札: ${booking.additional_talismans || '（なし）'}
-・領収証の発行希望: ${booking.wants_receipt ? (booking.receipt_split_count === 2 ? `2社名義で希望 (1社目: ${booking.receipt_name} ￥${booking.receipt_amount?.toLocaleString()}円 / 2社目: ${booking.receipt_name2} ￥${booking.receipt_amount2?.toLocaleString()}円)` : `希望する (宛名: ${booking.receipt_name} / 金額: ${booking.receipt_amount?.toLocaleString()}円)`) : '希望しない'}
+・領収証の発行希望: ${(() => {
+  if (!booking.wants_receipt) return '希望しない';
+  const receipts = getBookingReceipts(booking);
+  if (receipts.length > 1) {
+    return `${receipts.length}社名義で希望 (全${receipts.length}枚)\n` +
+      receipts.map((r, idx) => `　- ${idx + 1}社目: ${r.name} ￥${Number(r.amount).toLocaleString()}円`).join('\n') +
+      `\n　(領収証合計: ￥${receipts.reduce((acc, r) => acc + Number(r.amount), 0).toLocaleString()}円)`;
+  } else if (receipts.length === 1) {
+    return `希望する (宛名: ${receipts[0].name} / 金額: ${Number(receipts[0].amount).toLocaleString()}円)`;
+  }
+  return '希望する';
+})()}
 `;
     // Detailed options for organization
     if (booking.tournament_name) {
