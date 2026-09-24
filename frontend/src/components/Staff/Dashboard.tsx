@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter } from 'lucide-react';
+import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import type { Booking } from '../../types';
 import { getApiUrl } from '../../config/api';
 import { printElement } from '../../utils/printUtils';
@@ -1788,6 +1790,10 @@ const getTimeSlotTheme = (timeStr: string) => {
 export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [sortMode, setSortMode] = useState<ScheduleSortMode>('created_asc');
+  const [pageSize, setPageSize] = useState<number>(15);
+  const [selectedPage, setSelectedPage] = useState<'all' | number>('all');
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
   const [orderedBookings, setOrderedBookings] = useState<Booking[]>(() => {
     return sortScheduleBookings(bookings.filter(b => b.booking_date === date), 'created_asc');
   });
@@ -1816,14 +1822,6 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
     setOrderedBookings(nextList);
   };
 
-  const handlePrint = () => {
-    printElement(printRef.current, {
-      title: '清瀧神社 ご祈祷日程内訳表',
-      orientation: 'landscape',
-      size: 'A4'
-    });
-  };
-
   const getWarekiDateString = (dateStr: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -1838,19 +1836,152 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
     return `令和${eraStr}年${month}月${day}日（${dayOfWeek}）`;
   };
 
-  const count = orderedBookings.length;
-  // 自動スケーリング設定
-  const printPadding = count > 24 ? '4mm 6mm' : count > 20 ? '6mm 8mm' : count > 15 ? '8mm 10mm' : count > 8 ? '12mm 15mm' : '20mm';
-  const printFontSize = count > 24 ? '0.62rem' : count > 20 ? '0.68rem' : count > 15 ? '0.74rem' : count > 8 ? '0.8rem' : '0.9rem';
-  const printTitleSize = count > 24 ? '1.15rem' : count > 15 ? '1.3rem' : '1.75rem';
-  const printHeaderMargin = count > 24 ? '0.2rem' : count > 15 ? '0.4rem' : '1.5rem';
-  const printRowPadding = count > 24 ? '0.2rem 0.35rem' : count > 20 ? '0.28rem 0.4rem' : count > 15 ? '0.4rem 0.5rem' : '0.6rem 0.5rem';
-  
+  const totalBookings = orderedBookings.length;
+  const effectivePageSize = pageSize >= 999 ? Math.max(totalBookings, 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalBookings / effectivePageSize));
+
+  // ページ切り替え時に無効なページ番号が残らないよう自動調整
+  useEffect(() => {
+    if (selectedPage !== 'all' && typeof selectedPage === 'number') {
+      if (selectedPage > totalPages) {
+        setSelectedPage('all');
+      }
+    }
+  }, [totalPages, selectedPage]);
+
+  // ページごとにチャンク分割
+  const pages: Booking[][] = [];
+  if (totalBookings === 0) {
+    pages.push([]);
+  } else {
+    for (let i = 0; i < totalBookings; i += effectivePageSize) {
+      pages.push(orderedBookings.slice(i, i + effectivePageSize));
+    }
+  }
+
+  // 全体集計値
   const totalPaid = orderedBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
   const totalUnpaid = orderedBookings.filter(b => b.payment_status === 'unpaid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const indivCount = orderedBookings.filter(b => b.booking_type === 'individual').length;
+  const orgCount = orderedBookings.filter(b => b.booking_type === 'organization').length;
+  const totalAttendees = orderedBookings.reduce((sum, b) => sum + (b.attending_count || 1), 0);
+
+  // ページ件数に応じたフォントサイズ・行間
+  const getLayoutMetrics = (size: number) => {
+    if (size <= 10) {
+      return {
+        tableFontSize: '0.86rem',
+        rowPadding: '0.45rem 0.5rem',
+        titleSize: '1.45rem',
+        badgeFontSize: '0.8rem'
+      };
+    }
+    if (size <= 12) {
+      return {
+        tableFontSize: '0.82rem',
+        rowPadding: '0.36rem 0.45rem',
+        titleSize: '1.4rem',
+        badgeFontSize: '0.78rem'
+      };
+    }
+    if (size <= 15) {
+      return {
+        tableFontSize: '0.80rem',
+        rowPadding: '0.28rem 0.42rem',
+        titleSize: '1.35rem',
+        badgeFontSize: '0.74rem'
+      };
+    }
+    if (size <= 20) {
+      return {
+        tableFontSize: '0.72rem',
+        rowPadding: '0.20rem 0.35rem',
+        titleSize: '1.25rem',
+        badgeFontSize: '0.68rem'
+      };
+    }
+    // 全件を1枚に収める場合
+    const c = totalBookings;
+    return {
+      tableFontSize: c > 24 ? '0.62rem' : c > 20 ? '0.68rem' : c > 15 ? '0.74rem' : '0.82rem',
+      rowPadding: c > 24 ? '0.18rem 0.3rem' : c > 20 ? '0.24rem 0.35rem' : '0.3rem 0.4rem',
+      titleSize: c > 24 ? '1.15rem' : '1.35rem',
+      badgeFontSize: c > 24 ? '0.62rem' : '0.72rem'
+    };
+  };
+
+  const metrics = getLayoutMetrics(pageSize);
+
+  // 印刷ダイアログ起動
+  const handlePrint = () => {
+    printElement(printRef.current, {
+      title: `清瀧神社_ご祈祷日程内訳表_${date}`,
+      orientation: 'landscape',
+      size: 'A4'
+    });
+  };
+
+  // PDF出力
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setIsExportingPdf(true);
+    try {
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      const sheetElements = printRef.current.querySelectorAll<HTMLElement>('.schedule-sheet');
+      if (sheetElements.length === 0) {
+        alert('印刷対象のページが見つかりません。');
+        return;
+      }
+
+      for (let i = 0; i < sheetElements.length; i++) {
+        const sheet = sheetElements[i];
+        if (i > 0) {
+          pdf.addPage('a4', 'landscape');
+        }
+
+        // 一時的にno-print要素を非表示
+        const noPrintEls = sheet.querySelectorAll<HTMLElement>('.no-print');
+        noPrintEls.forEach(el => { el.style.display = 'none'; });
+
+        const canvas = await html2canvas(sheet, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+
+        // no-print要素を復元
+        noPrintEls.forEach(el => { el.style.display = ''; });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData, 'JPEG', 0, 4, 297, 202, undefined, 'FAST');
+      }
+
+      const pageSuffix = selectedPage === 'all' ? `全${totalPages}頁` : `第${selectedPage}頁`;
+      const fileName = `清瀧神社_ご祈祷日程内訳表_${date}_${pageSuffix}.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('PDFの出力中にエラーが発生しました。再度お試しください。');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  // 描画対象ページ（全件か、指定の1ページのみか）
+  const pagesToRender = selectedPage === 'all'
+    ? pages.map((pageBookings, idx) => ({ pageBookings, pageIdx: idx }))
+    : [{ pageBookings: pages[(selectedPage as number) - 1] || [], pageIdx: (selectedPage as number) - 1 }];
 
   return createPortal(
     <div className="print-modal-overlay">
+      {/* 画面上部コントロールバー */}
       <div className="no-print" style={{
         backgroundColor: 'var(--color-urushi)',
         padding: '0.6rem 1.25rem',
@@ -1864,23 +1995,24 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
       }}>
         <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
           <Printer size={18} />
-          ご祈祷日程内訳表 印刷プレビュー (横向き印刷推奨)
+          ご祈祷日程内訳表 印刷プレビュー (A4横)
         </h4>
 
-        {/* Sorting controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        {/* コントロール群 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* 並び順切替 */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '0.4rem', 
+            gap: '0.35rem', 
             backgroundColor: '#2c2523', 
-            padding: '0.35rem 0.75rem', 
+            padding: '0.3rem 0.6rem', 
             borderRadius: '4px',
             border: '1.5px solid var(--color-gold)',
             boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
           }}>
-            <ArrowUpDown size={15} style={{ color: 'var(--color-gold)' }} />
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>並び順切替:</span>
+            <ArrowUpDown size={14} style={{ color: 'var(--color-gold)' }} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>並び順:</span>
             <select
               value={sortMode}
               onChange={(e) => handleSortChange(e.target.value as ScheduleSortMode)}
@@ -1889,18 +2021,91 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                 color: '#111111',
                 border: '1px solid var(--color-gold)',
                 borderRadius: '3px',
-                padding: '0.3rem 0.6rem',
-                fontSize: '0.85rem',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8rem',
                 fontWeight: 'bold',
                 outline: 'none',
                 cursor: 'pointer'
               }}
             >
-              <option value="created_asc">📅 実際の受付順（早い順 / 先着順）</option>
-              <option value="created_desc">📅 実際の受付順（遅い順 / 新着順）</option>
-              <option value="name_asc">🔤 お名前順（五十音順）</option>
+              <option value="created_asc">📅 実際の受付順（早い順）</option>
+              <option value="created_desc">📅 実際の受付順（遅い順）</option>
+              <option value="name_asc">🔤 お名前順（五十音）</option>
               <option value="receipt_asc">🔢 受付番号順</option>
               {sortMode === 'custom' && <option value="custom">✋ 手動並び替え中</option>}
+            </select>
+          </div>
+
+          {/* 1ページの件数切替 */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.35rem', 
+            backgroundColor: '#2c2523', 
+            padding: '0.3rem 0.6rem', 
+            borderRadius: '4px',
+            border: '1.5px solid var(--color-gold)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+          }}>
+            <FileText size={14} style={{ color: 'var(--color-gold)' }} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>1ページの件数:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#111111',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '3px',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value={15}>【推奨】15件ずつ（標準）</option>
+              <option value={12}>12件ずつ（ゆったり大きめ）</option>
+              <option value={10}>10件ずつ（特大文字）</option>
+              <option value={20}>20件ずつ（多件数・高密度）</option>
+              <option value={999}>全件を1枚に収める</option>
+            </select>
+          </div>
+
+          {/* 印刷対象ページ切替 */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.35rem', 
+            backgroundColor: '#2c2523', 
+            padding: '0.3rem 0.6rem', 
+            borderRadius: '4px',
+            border: '1.5px solid var(--color-gold)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+          }}>
+            <Layers size={14} style={{ color: 'var(--color-gold)' }} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>印刷対象:</span>
+            <select
+              value={selectedPage}
+              onChange={(e) => setSelectedPage(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#111111',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '3px',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">全ページを一括印刷（全 {totalPages} 枚）</option>
+              {pages.map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  第 {i + 1} ページのみ印刷（{i * effectivePageSize + 1}〜{Math.min((i + 1) * effectivePageSize, totalBookings)}件）
+                </option>
+              ))}
             </select>
           </div>
 
@@ -1910,204 +2115,367 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
               onClick={() => handleSortChange('created_asc')}
               className="btn"
               style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.8rem',
+                padding: '0.3rem 0.6rem',
+                fontSize: '0.78rem',
                 backgroundColor: '#ffffff',
                 color: 'var(--color-urushi)',
                 border: '1px solid var(--color-gold)',
                 fontWeight: 'bold',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.3rem',
+                gap: '0.25rem',
                 cursor: 'pointer'
               }}
             >
-              <RotateCcw size={13} />
+              <RotateCcw size={12} />
               受付順にリセット
             </button>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={handlePrint} className="btn btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            {/* PDFダウンロードボタン */}
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.35rem 0.8rem',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
+                backgroundColor: isExportingPdf ? '#555' : '#ffffff',
+                color: 'var(--color-urushi)',
+                borderColor: 'var(--color-gold)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                cursor: isExportingPdf ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isExportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {isExportingPdf ? 'PDF生成中...' : 'PDF保存 (A4横)'}
+            </button>
+
+            {/* 印刷ボタン */}
+            <button 
+              onClick={handlePrint} 
+              className="btn btn-primary" 
+              style={{ padding: '0.35rem 0.95rem', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+            >
+              <Printer size={14} />
               印刷する (A4横)
             </button>
-            <button onClick={onClose} className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <ArrowLeft size={14} />
+
+            {/* 閉じるボタン */}
+            <button 
+              onClick={onClose} 
+              className="btn btn-secondary" 
+              style={{ padding: '0.35rem 0.8rem', fontSize: '0.82rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <ArrowLeft size={13} />
               元の画面に戻る
             </button>
           </div>
         </div>
       </div>
 
-      <div className="schedule-print-wrapper" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-        <div 
-          ref={printRef}
-          className="schedule-print-sheet print-landscape-page"
-          style={{
-            backgroundColor: 'white',
-            width: '297mm',
-            height: '210mm',
-            padding: printPadding,
-            boxSizing: 'border-box',
-            fontFamily: 'var(--font-serif)',
-            display: 'flex',
-            flexDirection: 'column',
-            color: 'black',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-          }}
-        >
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '2px solid black', paddingBottom: '0.4rem', marginBottom: printHeaderMargin }}>
-            <h2 style={{ fontSize: printTitleSize, margin: 0, fontWeight: 'bold', letterSpacing: '0.1em' }}>
-              清瀧神社 ご祈祷日程内訳表
-            </h2>
-            <span style={{ fontSize: count > 15 ? '0.75rem' : '0.9rem', fontWeight: 600 }}>
-              対象日： {getWarekiDateString(date)}
-            </span>
-          </div>
+      {/* 印刷用紙プレビュー領域 */}
+      <div 
+        ref={printRef}
+        className="schedule-print-wrapper" 
+        style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          padding: '2rem 1rem',
+          gap: '2.5rem'
+        }}
+      >
+        {pagesToRender.map(({ pageBookings, pageIdx }) => {
+          const startItem = pageIdx * effectivePageSize + 1;
+          const endItem = Math.min((pageIdx + 1) * effectivePageSize, totalBookings);
+          const pageAttendees = pageBookings.reduce((sum, b) => sum + (b.attending_count || 1), 0);
+          const pageFee = pageBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+          const pagePaidFee = pageBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+          const isLastPage = pageIdx === totalPages - 1;
 
-          {/* Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: printFontSize }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid black', textAlign: 'left' }}>
-                <th className="no-print" style={{ padding: printRowPadding, fontWeight: 'bold', width: '4%', textAlign: 'center', color: '#c5a059', backgroundColor: '#fcfaf5' }}>移動</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '5%', textAlign: 'center' }}>No.</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '9%' }}>時間</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '8%' }}>区分</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '34%' }}>氏名 / 会社・団体名</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '23%' }}>願意</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '7%', textAlign: 'right' }}>人数</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '10%', textAlign: 'right' }}>初穂料</th>
-                <th style={{ padding: printRowPadding, fontWeight: 'bold', width: '7%', textAlign: 'center' }}>支払状況</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orderedBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-                    ご祈祷の予約はありません。
-                  </td>
-                </tr>
-              ) : (
-                orderedBookings.map((b, idx) => {
-                  const isIndiv = b.booking_type === 'individual';
-                  const name = isIndiv ? b.name : b.company_name;
-                  const theme = getTimeSlotTheme(b.booking_time);
-                  const isFirstOfSlot = idx === 0 || orderedBookings[idx - 1].booking_time !== b.booking_time;
+          return (
+            <div 
+              key={pageIdx}
+              className="schedule-sheet print-schedule-page"
+              style={{
+                backgroundColor: 'white',
+                width: '297mm',
+                height: '202mm',
+                maxHeight: '202mm',
+                padding: '8mm 12mm',
+                boxSizing: 'border-box',
+                fontFamily: 'var(--font-serif)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                color: 'black',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                pageBreakInside: 'avoid',
+                breakInside: 'avoid',
+                pageBreakAfter: isLastPage ? 'avoid' : 'always',
+                breakAfter: isLastPage ? 'avoid' : 'page',
+                overflow: 'hidden',
+                position: 'relative'
+              }}
+            >
+              {/* Header */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'baseline', 
+                borderBottom: '2px solid black', 
+                paddingBottom: '0.35rem', 
+                marginBottom: '0.35rem' 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
+                  <h2 style={{ fontSize: metrics.titleSize, margin: 0, fontWeight: 'bold', letterSpacing: '0.08em' }}>
+                    清瀧神社 ご祈祷日程内訳表
+                  </h2>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '1.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                    対象日： {getWarekiDateString(date)}
+                  </span>
+                  <span style={{ 
+                    fontSize: '0.85rem', 
+                    fontWeight: 'bold', 
+                    backgroundColor: '#f4f4f4', 
+                    border: '1px solid #999', 
+                    borderRadius: '3px', 
+                    padding: '2px 8px',
+                    letterSpacing: '0.05em'
+                  }}>
+                    ［ {pageIdx + 1} / {totalPages} ページ ］
+                  </span>
+                </div>
+              </div>
 
-                  return (
-                    <tr 
-                      key={b.id || idx} 
-                      style={{ 
-                        backgroundColor: theme.bg,
-                        borderBottom: '1px solid #d0d7de',
-                        borderTop: isFirstOfSlot && idx > 0 ? `2px solid ${theme.border}` : 'none'
-                      }}
-                    >
-                      <td className="no-print" style={{ padding: '0.2rem', textAlign: 'center', verticalAlign: 'middle', backgroundColor: '#fdfbf7', borderRight: '1px solid #eee' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                          <button
-                            type="button"
-                            onClick={() => moveRow(idx, 'up')}
-                            disabled={idx === 0}
-                            style={{
-                              background: '#ffffff',
-                              border: '1px solid #c5a059',
-                              borderRadius: '2px',
-                              padding: '2px 4px',
-                              cursor: idx === 0 ? 'default' : 'pointer',
-                              opacity: idx === 0 ? 0.2 : 0.9,
-                              lineHeight: 1,
-                              color: 'var(--color-urushi)',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                            }}
-                            title="1つ上へ移動"
-                          >
-                            <ChevronUp size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveRow(idx, 'down')}
-                            disabled={idx === orderedBookings.length - 1}
-                            style={{
-                              background: '#ffffff',
-                              border: '1px solid #c5a059',
-                              borderRadius: '2px',
-                              padding: '2px 4px',
-                              cursor: idx === orderedBookings.length - 1 ? 'default' : 'pointer',
-                              opacity: idx === orderedBookings.length - 1 ? 0.2 : 0.9,
-                              lineHeight: 1,
-                              color: 'var(--color-urushi)',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                            }}
-                            title="1つ下へ移動"
-                          >
-                            <ChevronDown size={12} />
-                          </button>
-                        </div>
-                      </td>
-                      <td style={{ 
-                        padding: printRowPadding, 
-                        textAlign: 'center', 
-                        fontWeight: 'bold', 
-                        color: 'var(--color-urushi)',
-                        borderLeft: `4px solid ${theme.badgeBg}`
-                      }}>
-                        {idx + 1}
-                      </td>
-                      <td style={{ 
-                        padding: printRowPadding, 
-                        fontWeight: 'bold'
-                      }}>
-                        <span style={{
-                          backgroundColor: theme.badgeBg,
-                          color: theme.badgeText,
-                          padding: '2px 6px',
-                          borderRadius: '3px',
-                          display: 'inline-block',
-                          fontSize: count > 24 ? '0.65rem' : count > 15 ? '0.72rem' : '0.8rem',
-                          fontWeight: 'bold',
-                          letterSpacing: '0.05em'
-                        }}>
-                          {b.booking_time}
-                        </span>
-                      </td>
-                      <td style={{ padding: printRowPadding }}>{isIndiv ? '個人' : '団体'}</td>
-                      <td style={{ padding: printRowPadding, fontWeight: 600 }}>{name}</td>
-                      <td style={{ padding: printRowPadding }}>
-                        {b.prayer1}
-                        {b.prayer2 ? ` / ${b.prayer2}` : ''}
-                      </td>
-                      <td style={{ padding: printRowPadding, textAlign: 'right' }}>{b.attending_count} 名</td>
-                      <td style={{ padding: printRowPadding, textAlign: 'right', fontWeight: 600 }}>{b.hatsuhoryo.toLocaleString()} 円</td>
-                      <td style={{ padding: printRowPadding, textAlign: 'center' }}>
-                        {b.payment_status === 'paid' ? '支払済' : '未納'}
-                      </td>
+              {/* Table */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: metrics.tableFontSize, tableLayout: 'fixed' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid black', textAlign: 'left', backgroundColor: '#fafafa' }}>
+                      <th className="no-print" style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '32px', textAlign: 'center', color: '#c5a059', backgroundColor: '#fcfaf5' }}>移動</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '4%', textAlign: 'center' }}>No.</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '8%' }}>時間</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '6%' }}>区分</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '32%' }}>氏名 / 会社・団体名</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '26%' }}>願意</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '6%', textAlign: 'right' }}>人数</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '10%', textAlign: 'right' }}>初穂料</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '8%', textAlign: 'center' }}>支払状況</th>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  </thead>
+                  <tbody>
+                    {pageBookings.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>
+                          ご祈祷の予約はありません。
+                        </td>
+                      </tr>
+                    ) : (
+                      pageBookings.map((b, rowIdx) => {
+                        const globalIdx = (pageIdx * effectivePageSize) + rowIdx;
+                        const isIndiv = b.booking_type === 'individual';
+                        const name = isIndiv ? (b.name || '') : (b.company_name || '');
+                        const kana = isIndiv ? b.kana : b.company_kana;
+                        const theme = getTimeSlotTheme(b.booking_time);
+                        const isFirstOfSlot = rowIdx === 0 || pageBookings[rowIdx - 1].booking_time !== b.booking_time;
 
-          <div style={{ 
-            marginTop: 'auto', 
-            paddingTop: '0.5rem', 
-            borderTop: '2px dashed #ccc', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            fontSize: count > 24 ? '0.7rem' : count > 15 ? '0.75rem' : '0.85rem' 
-          }}>
-            <div>
-              <span>予定件数： {count} 件</span>
-              <span style={{ marginLeft: '1.5rem' }}>（個人：{orderedBookings.filter(b => b.booking_type === 'individual').length}件 / 団体：{orderedBookings.filter(b => b.booking_type === 'organization').length}件）</span>
+                        return (
+                          <tr 
+                            key={b.id || globalIdx} 
+                            style={{ 
+                              backgroundColor: theme.bg,
+                              borderBottom: '1px solid #d0d7de',
+                              borderTop: isFirstOfSlot && rowIdx > 0 ? `2px solid ${theme.border}` : 'none'
+                            }}
+                          >
+                            <td className="no-print" style={{ padding: '0.15rem', textAlign: 'center', verticalAlign: 'middle', backgroundColor: '#fdfbf7', borderRight: '1px solid #eee' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => moveRow(globalIdx, 'up')}
+                                  disabled={globalIdx === 0}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: '1px solid #c5a059',
+                                    borderRadius: '2px',
+                                    padding: '1px 3px',
+                                    cursor: globalIdx === 0 ? 'default' : 'pointer',
+                                    opacity: globalIdx === 0 ? 0.2 : 0.9,
+                                    lineHeight: 1,
+                                    color: 'var(--color-urushi)',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  }}
+                                  title="1つ上へ移動"
+                                >
+                                  <ChevronUp size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveRow(globalIdx, 'down')}
+                                  disabled={globalIdx === orderedBookings.length - 1}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: '1px solid #c5a059',
+                                    borderRadius: '2px',
+                                    padding: '1px 3px',
+                                    cursor: globalIdx === orderedBookings.length - 1 ? 'default' : 'pointer',
+                                    opacity: globalIdx === orderedBookings.length - 1 ? 0.2 : 0.9,
+                                    lineHeight: 1,
+                                    color: 'var(--color-urushi)',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  }}
+                                  title="1つ下へ移動"
+                                >
+                                  <ChevronDown size={11} />
+                                </button>
+                              </div>
+                            </td>
+                            <td style={{ 
+                              padding: metrics.rowPadding, 
+                              textAlign: 'center', 
+                              fontWeight: 'bold', 
+                              color: 'var(--color-urushi)',
+                              borderLeft: `4px solid ${theme.badgeBg}`
+                            }}>
+                              {globalIdx + 1}
+                            </td>
+                            <td style={{ 
+                              padding: metrics.rowPadding, 
+                              fontWeight: 'bold'
+                            }}>
+                              <span style={{
+                                backgroundColor: theme.badgeBg,
+                                color: theme.badgeText,
+                                padding: '2px 5px',
+                                borderRadius: '3px',
+                                display: 'inline-block',
+                                fontSize: metrics.badgeFontSize,
+                                fontWeight: 'bold',
+                                letterSpacing: '0.05em'
+                              }}>
+                                {b.booking_time}
+                              </span>
+                            </td>
+                            <td style={{ padding: metrics.rowPadding }}>
+                              <span style={{
+                                padding: '1px 4px',
+                                borderRadius: '2px',
+                                fontSize: '0.74rem',
+                                backgroundColor: isIndiv ? 'rgba(50, 136, 163, 0.1)' : 'rgba(197, 160, 89, 0.15)',
+                                color: isIndiv ? 'var(--color-mizuiro)' : 'var(--color-urushi)',
+                                fontWeight: 600
+                              }}>
+                                {isIndiv ? '個人' : '団体'}
+                              </span>
+                            </td>
+                            <td style={{ padding: metrics.rowPadding, wordBreak: 'break-word' }}>
+                              <div style={{ fontWeight: 600, color: '#111' }}>
+                                {name || '（未入力）'}
+                                {kana && (
+                                  <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'normal', marginLeft: '0.35rem' }}>
+                                    （{kana}）
+                                  </span>
+                                )}
+                              </div>
+                              {!isIndiv && b.representative_title_name && (
+                                <div style={{ fontSize: '0.72rem', color: '#444', marginTop: '1px' }}>
+                                  役職・代表: {b.representative_title_name}
+                                </div>
+                              )}
+                              {isIndiv && b.child_name && (
+                                <div style={{ fontSize: '0.72rem', color: '#555', marginTop: '1px' }}>
+                                  お子様: {b.child_name} {b.child_kana ? `(${b.child_kana})` : ''}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: metrics.rowPadding, wordBreak: 'break-word' }}>
+                              <div style={{ fontWeight: 500 }}>
+                                {b.prayer1}
+                                {b.prayer2 ? ` / ${b.prayer2}` : ''}
+                              </div>
+                              {((b.wood_talisman_count && b.wood_talisman_count > 0) || (b.wood_talisman_large_count && b.wood_talisman_large_count > 0)) && (
+                                <div style={{ fontSize: '0.7rem', color: '#865123', marginTop: '2px', fontWeight: 600 }}>
+                                  {b.wood_talisman_count ? `[木札36cm × ${b.wood_talisman_count}体] ` : ''}
+                                  {b.wood_talisman_large_count ? `[大木札45cm × ${b.wood_talisman_large_count}体] ` : ''}
+                                  {b.wood_talisman_name ? `(墨書: ${b.wood_talisman_name})` : ''}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: metrics.rowPadding, textAlign: 'right', fontWeight: 500 }}>
+                              {b.attending_count || 1} 名
+                            </td>
+                            <td style={{ padding: metrics.rowPadding, textAlign: 'right', fontWeight: 600 }}>
+                              {(b.hatsuhoryo || 0).toLocaleString()} 円
+                            </td>
+                            <td style={{ padding: metrics.rowPadding, textAlign: 'center' }}>
+                              <span style={{
+                                padding: '2px 5px',
+                                borderRadius: '3px',
+                                fontSize: '0.72rem',
+                                fontWeight: 'bold',
+                                backgroundColor: b.payment_status === 'paid' ? '#e6f4ea' : '#fce8e6',
+                                color: b.payment_status === 'paid' ? '#137333' : '#c5221f'
+                              }}>
+                                {b.payment_status === 'paid' ? '支払済' : '未納'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer */}
+              <div style={{ 
+                marginTop: 'auto', 
+                paddingTop: '0.4rem', 
+                borderTop: '2px dashed #999', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                fontSize: '0.78rem' 
+              }}>
+                {isLastPage ? (
+                  <>
+                    <div style={{ color: '#222' }}>
+                      <span>【当日の総計】 予定総件数： <strong>{totalBookings}</strong> 件</span>
+                      <span style={{ marginLeft: '1.2rem' }}>（個人：<strong>{indivCount}</strong>件 / 団体：<strong>{orgCount}</strong>件 / 参列計：<strong>{totalAttendees}</strong>名）</span>
+                    </div>
+                    <div>
+                      <span>初穂料合計 (受取済)： <strong style={{ fontSize: '0.9rem', color: '#137333' }}>￥{totalPaid.toLocaleString()}</strong></span>
+                      {totalUnpaid > 0 && (
+                        <span style={{ marginLeft: '1.2rem', color: '#c5221f', fontWeight: 'bold' }}>
+                          未収： ￥{totalUnpaid.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ color: '#555' }}>
+                      <span>※次ページへ続く（第 <strong>{startItem}</strong> 〜 <strong>{endItem}</strong> 件 / 全 <strong>{totalBookings}</strong> 件中）</span>
+                    </div>
+                    <div style={{ color: '#333' }}>
+                      <span>【このページの小計】 参列： <strong>{pageAttendees}</strong> 名 / 初穂料： <strong>￥{pageFee.toLocaleString()}</strong></span>
+                      <span style={{ marginLeft: '1rem', color: '#137333' }}>（受取済： ￥{pagePaidFee.toLocaleString()}）</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <div>
-              <span>初穂料合計 (受取済)： <strong>￥{totalPaid.toLocaleString()}</strong></span>
-              <span style={{ marginLeft: '1.5rem', color: '#d3381c' }}>未収： ￥{totalUnpaid.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
     </div>,
     document.body

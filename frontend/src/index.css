@@ -441,14 +441,34 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     break-after: avoid !important;
   }
 
-  .schedule-print-sheet {
-    width: 285mm !important;
-    height: 195mm !important;
+  .schedule-sheet,
+  .schedule-print-sheet,
+  .print-schedule-page {
+    width: 297mm !important;
+    height: 202mm !important;
+    max-width: 297mm !important;
+    max-height: 202mm !important;
+    padding: 8mm 12mm !important;
     background: white !important;
     box-shadow: none !important;
+    border: none !important;
     margin: 0 auto !important;
+    box-sizing: border-box !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+
+  .schedule-sheet:last-child,
+  .schedule-print-sheet:last-child,
+  .print-schedule-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 }
 

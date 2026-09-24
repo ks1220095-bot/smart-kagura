@@ -85,13 +85,40 @@ export const printElement = (
             box-shadow: none !important;
             border: none !important;
           }
-          .receipt-print-wrapper {
+          .receipt-print-wrapper,
+          .schedule-print-wrapper {
             display: block !important;
             padding: 0 !important;
             margin: 0 !important;
             gap: 0 !important;
             width: 100% !important;
             height: auto !important;
+          }
+          .schedule-sheet,
+          .print-schedule-page {
+            width: 297mm !important;
+            height: 202mm !important;
+            max-width: 297mm !important;
+            max-height: 202mm !important;
+            padding: 8mm 12mm !important;
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+            box-shadow: none !important;
+            border: none !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            background: #ffffff !important;
+          }
+          .schedule-sheet:last-child,
+          .print-schedule-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
           }
           .print-receipt-page,
           .receipt-sheet {
