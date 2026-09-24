@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import type { Booking } from '../../types';
+import { type Booking, getBookingChildren } from '../../types';
 import { getApiUrl } from '../../config/api';
 import { printElement } from '../../utils/printUtils';
 
@@ -2391,11 +2391,15 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                                   役職・代表: {b.representative_title_name}
                                 </div>
                               )}
-                              {isIndiv && b.child_name && (
-                                <div style={{ fontSize: '0.72rem', color: '#555', marginTop: '1px' }}>
-                                  お子様: {b.child_name} {b.child_kana ? `(${b.child_kana})` : ''}
-                                </div>
-                              )}
+                              {isIndiv && (() => {
+                                const children = getBookingChildren(b);
+                                if (children.length === 0) return null;
+                                return (
+                                  <div style={{ fontSize: '0.72rem', color: '#555', marginTop: '1px' }}>
+                                    祝子: {children.map(c => `${c.name}${c.age_text ? `(${c.age_text})` : ''}`).join('、')}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td style={{ padding: metrics.rowPadding, wordBreak: 'break-word' }}>
                               <div style={{ fontWeight: 500 }}>

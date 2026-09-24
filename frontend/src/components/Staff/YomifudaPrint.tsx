@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import type { Booking } from '../../types';
+import { type Booking, getBookingChildren } from '../../types';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -247,54 +247,66 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             )}
 
             {/* Individual child metadata (Highlight child & parents info with Ruby) */}
-            {isIndiv && booking.child_name && (
-              <div style={{ 
-                marginTop: '0.3rem', 
-                padding: '0.45rem 0.55rem', 
-                backgroundColor: 'rgba(216, 1, 0, 0.02)', 
-                border: '1.5px solid rgba(216, 1, 0, 0.12)', 
-                borderRadius: '4px',
-                fontSize: '0.8rem', 
-                lineHeight: '1.35' 
-              }}>
-                <div style={{ borderBottom: booking.child_name2 ? '1px dashed rgba(216, 1, 0, 0.1)' : 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
-                  <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報 {booking.child_gender ? `[${booking.child_gender}]` : ''}</span>
-                  <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana}</span>
-                  <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name}</strong>
-                  <span style={{ fontSize: '0.7rem', color: '#777' }}>
-                    生年月日: {booking.child_birthday ? formatImperialDate(booking.child_birthday) : ''} {booking.child_birthday && formatAgeSuffix(booking.child_birthday, booking.booking_date)}
-                  </span>
-                </div>
-
-                {booking.child_name2 && (
-                  <div style={{ borderBottom: 'none', paddingBottom: '0.2rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>お子様情報（ご息女・第二子） {booking.child_gender2 ? `[${booking.child_gender2}]` : ''}</span>
-                    <span style={{ fontSize: '0.65rem', color: '#666' }}>フリガナ: {booking.child_kana2}</span>
-                    <strong style={{ fontSize: '1.15rem', display: 'block' }}>{booking.child_name2}</strong>
-                    <span style={{ fontSize: '0.7rem', color: '#777' }}>
-                      生年月日: {booking.child_birthday2 ? formatImperialDate(booking.child_birthday2) : ''} {booking.child_birthday2 && formatAgeSuffix(booking.child_birthday2, booking.booking_date)}
-                    </span>
-                  </div>
-                )}
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', borderTop: '1px dashed rgba(216, 1, 0, 0.1)', paddingTop: '0.3rem', marginTop: '0.2rem' }}>
-                  {booking.father_name && (
-                    <div>
-                      <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>父親フリガナ</span>
-                      <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.father_kana || '（ふりがな無）'}</span>
-                      <strong style={{ fontSize: '0.95rem' }}>{booking.father_name}</strong>
+            {isIndiv && (() => {
+              const children = getBookingChildren(booking);
+              if (children.length === 0) return null;
+              const isMulti = children.length >= 2;
+              const isMany = children.length >= 3;
+              return (
+                <div style={{ 
+                  marginTop: '0.25rem', 
+                  padding: isMany ? '0.35rem 0.45rem' : '0.45rem 0.55rem', 
+                  backgroundColor: 'rgba(216, 1, 0, 0.02)', 
+                  border: '1.5px solid rgba(216, 1, 0, 0.12)', 
+                  borderRadius: '4px',
+                  fontSize: isMany ? '0.75rem' : '0.8rem', 
+                  lineHeight: '1.35' 
+                }}>
+                  {children.map((c, cIdx) => (
+                    <div 
+                      key={cIdx} 
+                      style={{ 
+                        borderBottom: cIdx < children.length - 1 ? '1px dashed rgba(216, 1, 0, 0.15)' : 'none', 
+                        paddingBottom: isMany ? '0.15rem' : '0.2rem', 
+                        marginBottom: isMany ? '0.15rem' : '0.2rem' 
+                      }}
+                    >
+                      <span style={{ fontSize: isMany ? '0.58rem' : '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>
+                        祝子{isMulti ? `（第${cIdx + 1}子）` : ''} {c.gender ? `[${c.gender}]` : ''}
+                      </span>
+                      {c.kana && (
+                        <span style={{ fontSize: isMany ? '0.62rem' : '0.65rem', color: '#666', display: 'block' }}>フリガナ: {c.kana}</span>
+                      )}
+                      <strong style={{ fontSize: isMany ? '1.05rem' : '1.15rem', display: 'block', margin: '0.05rem 0' }}>{c.name}</strong>
+                      {c.birthday && (
+                        <span style={{ fontSize: isMany ? '0.65rem' : '0.7rem', color: '#777', display: 'block' }}>
+                          生年月日: {formatImperialDate(c.birthday)} {formatAgeSuffix(c.birthday, booking.booking_date)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {(booking.father_name || booking.mother_name) && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', borderTop: '1px dashed rgba(216, 1, 0, 0.1)', paddingTop: '0.25rem', marginTop: '0.15rem' }}>
+                      {booking.father_name && (
+                        <div>
+                          <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>父親フリガナ</span>
+                          <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.father_kana || '（ふりがな無）'}</span>
+                          <strong style={{ fontSize: isMany ? '0.88rem' : '0.95rem' }}>{booking.father_name}</strong>
+                        </div>
+                      )}
+                      {booking.mother_name && (
+                        <div>
+                          <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>母親フリガナ</span>
+                          <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.mother_kana || '（ふりがな無）'}</span>
+                          <strong style={{ fontSize: isMany ? '0.88rem' : '0.95rem' }}>{booking.mother_name}</strong>
+                        </div>
+                      )}
                     </div>
                   )}
-                  {booking.mother_name && (
-                    <div>
-                      <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>母親フリガナ</span>
-                      <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.mother_kana || '（ふりがな無）'}</span>
-                      <strong style={{ fontSize: '0.95rem' }}>{booking.mother_name}</strong>
-                    </div>
-                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 個人祈祷用（厄年、寿祝い、十三参り、成人祝等）の生年月日・年齢ハイライト表示 */}
             {isIndiv && (booking.prayer1 === '厄年のお祓い' || booking.prayer1 === '寿祝い' || booking.prayer1 === '十三参り' || booking.prayer1 === '成人祝い' || booking.prayer1 === '十三詣り') && (() => {

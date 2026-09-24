@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Booking } from '../../types';
-import { getBookingReceipts } from '../../types';
+import type { Booking, ChildItem } from '../../types';
+import { getBookingReceipts, getBookingChildren } from '../../types';
 import { getApiUrl } from '../../config/api';
 
 interface BookingsListProps {
@@ -74,6 +74,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [editReceipts, setEditReceipts] = useState<Array<{ name: string; amount: number }>>([]);
   const [editWoodTalismanNames, setEditWoodTalismanNames] = useState<string[]>([]);
   const [editWoodTalismanLargeNames, setEditWoodTalismanLargeNames] = useState<string[]>([]);
+  const [editChildren, setEditChildren] = useState<ChildItem[]>([]);
   const [savingDetail, setSavingDetail] = useState(false);
 
   const handleOpenEditModal = (booking: Booking) => {
@@ -84,6 +85,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       setEditReceipts(bReceipts.map(r => ({ name: r.name, amount: Number(r.amount) || 0 })));
     } else {
       setEditReceipts([{ name: booking.receipt_name || booking.company_name || '', amount: booking.receipt_amount || booking.hatsuhoryo || 20000 }]);
+    }
+
+    const bChildren = getBookingChildren(booking);
+    if (bChildren.length > 0) {
+      setEditChildren(bChildren);
+    } else if (booking.child_name) {
+      setEditChildren([{ name: booking.child_name, kana: booking.child_kana || '', birthday: booking.child_birthday || '', gender: booking.child_gender }]);
+    } else {
+      setEditChildren([{ name: '', kana: '', birthday: '', gender: undefined }]);
     }
 
     const stdCount = booking.wood_talisman_count ?? 0;
@@ -104,6 +114,26 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     const finalLrg = Array.from({ length: lrgCount }, (_, i) => (lrgNames[i] !== undefined ? lrgNames[i] : (booking.wood_talisman_name || defaultName)));
     setEditWoodTalismanNames(finalStd);
     setEditWoodTalismanLargeNames(finalLrg);
+  };
+
+  const handleUpdateEditChild = (index: number, field: keyof ChildItem, value: any) => {
+    setEditChildren(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleAddEditChild = () => {
+    if (editChildren.length >= 4) return;
+    setEditChildren(prev => [...prev, { name: '', kana: '', birthday: '', gender: undefined }]);
+  };
+
+  const handleRemoveEditChild = (index: number) => {
+    setEditChildren(prev => {
+      if (prev.length <= 1) return [{ name: '', kana: '', birthday: '', gender: undefined }];
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleUpdateEditWoodTalismanName = (index: number, val: string) => {
@@ -191,8 +221,19 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         combinedWoodTalismanName = parts.join(' / ');
       }
 
-      const payload = {
+      const validChildren = editChildren.filter(c => c.name.trim() !== '');
+      const payload: any = {
         ...editFormData,
+        children_data: validChildren.length > 0 ? JSON.stringify(validChildren) : undefined,
+        child_name: validChildren[0]?.name || editFormData.child_name || undefined,
+        child_kana: validChildren[0]?.kana || editFormData.child_kana || undefined,
+        child_birthday: validChildren[0]?.birthday || editFormData.child_birthday || undefined,
+        child_gender: validChildren[0]?.gender || editFormData.child_gender || undefined,
+        is_twin: validChildren.length > 1 ? 1 : (editFormData.is_twin || 0),
+        child_name2: validChildren[1]?.name || (editFormData.is_twin === 1 ? editFormData.child_name2 : undefined),
+        child_kana2: validChildren[1]?.kana || (editFormData.is_twin === 1 ? editFormData.child_kana2 : undefined),
+        child_birthday2: validChildren[1]?.birthday || (editFormData.is_twin === 1 ? editFormData.child_birthday2 : undefined),
+        child_gender2: validChildren[1]?.gender || (editFormData.is_twin === 1 ? editFormData.child_gender2 : undefined),
         receipts: Number(editFormData.wants_receipt) === 1 ? editReceipts : undefined,
         receipts_data: Number(editFormData.wants_receipt) === 1 ? JSON.stringify(editReceipts) : undefined,
         wood_talisman_items_data: woodTalismanItemsDataStr,
@@ -1195,7 +1236,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
                        {/* Display child details and notes inside an accordion */}
                       {(() => {
-                        const hasChild = isIndiv && !!b.child_name;
+                        const bookingChildren = isIndiv ? getBookingChildren(b) : [];
+                        const hasChild = bookingChildren.length > 0;
                         const hasParents = isIndiv && (!!b.father_name || !!b.mother_name);
                         const hasYakudoshi = isIndiv && !!b.yakudoshi_type;
                         const hasKotobuki = isIndiv && !!b.kotobuki_type;
@@ -1286,28 +1328,18 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     padding: '0.35rem 0.5rem',
                                     borderRadius: '3px'
                                   }}>
-                                    <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                      👶 {b.is_twin === 1 ? '第1子: ' : ''}{b.child_name} ({b.child_kana}){b.child_gender ? ` [${b.child_gender}]` : ''}
-                                    </div>
-                                    {b.child_birthday && (
-                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
-                                        生年月日: {b.child_birthday}
-                                      </div>
-                                    )}
-                                    
-                                    {/* 双子（第二子） */}
-                                    {b.is_twin === 1 && b.child_name2 && (
-                                      <div style={{ borderTop: '1px dashed rgba(197,160,89,0.2)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
+                                    {bookingChildren.map((child, cIdx) => (
+                                      <div key={cIdx} style={{ borderTop: cIdx > 0 ? '1px dashed rgba(197,160,89,0.2)' : 'none', marginTop: cIdx > 0 ? '0.25rem' : '0', paddingTop: cIdx > 0 ? '0.25rem' : '0' }}>
                                         <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                          👶 第2子: {b.child_name2} ({b.child_kana2}){b.child_gender2 ? ` [${b.child_gender2}]` : ''}
+                                          👶 {bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name} ({child.kana}){child.gender ? ` [${child.gender}]` : ''}
                                         </div>
-                                        {b.child_birthday2 && (
+                                        {child.birthday && (
                                           <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
-                                            生年月日: {b.child_birthday2}
+                                            生年月日: {child.birthday} {child.age_text ? `(${child.age_text})` : ''}
                                           </div>
                                         )}
                                       </div>
-                                    )}
+                                    ))}
                                   </div>
                                 )}
 
@@ -2266,105 +2298,101 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
                 {/* 2-a. お子様情報セクション（七五三・初宮等） */}
                 <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>👶 お子様・ご両親情報 (七五三・初宮など用)</span>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>第一子 氏名</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={editFormData.child_name || ''}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_name: e.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>第一子 フリガナ</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={editFormData.child_kana || ''}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_kana: e.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>第一子 生年月日 (YYYY-MM-DD)</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="例: 2018-05-05"
-                        value={editFormData.child_birthday || ''}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_birthday: e.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>第一子 性別</label>
-                      <select
-                        className="form-control"
-                        value={editFormData.child_gender || ''}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, child_gender: (e.target.value || undefined) as any }))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                      👶 お子様情報 (七五三・初宮等 / 最大4名)
+                    </span>
+                    {editChildren.length < 4 && (
+                      <button
+                        type="button"
+                        onClick={handleAddEditChild}
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '0.2rem 0.5rem',
+                          backgroundColor: '#fff',
+                          border: '1px solid var(--color-gold)',
+                          borderRadius: '3px',
+                          color: 'var(--color-urushi)',
+                          cursor: 'pointer',
+                          fontWeight: 'bold'
+                        }}
                       >
-                        <option value="">-- 未選択 --</option>
-                        <option value="男">男の子</option>
-                        <option value="女">女の子</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group" style={{ margin: '0.5rem 0 0 0', gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={editFormData.is_twin === 1}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, is_twin: e.target.checked ? 1 : 0 }))}
-                        />
-                        <span>双子（二人目のお子様）の情報を登録する</span>
-                      </label>
-                    </div>
-
-                    {editFormData.is_twin === 1 && (
-                      <>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label style={{ fontSize: '0.75rem' }}>第二子 氏名</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={editFormData.child_name2 || ''}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_name2: e.target.value }))}
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label style={{ fontSize: '0.75rem' }}>第二子 フリガナ</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={editFormData.child_kana2 || ''}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_kana2: e.target.value }))}
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label style={{ fontSize: '0.75rem' }}>第二子 生年月日 (YYYY-MM-DD)</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="例: 2018-05-05"
-                            value={editFormData.child_birthday2 || ''}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_birthday2: e.target.value }))}
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label style={{ fontSize: '0.75rem' }}>第二子 性別</label>
-                          <select
-                            className="form-control"
-                            value={editFormData.child_gender2 || ''}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, child_gender2: (e.target.value || undefined) as any }))}
-                          >
-                            <option value="">-- 未選択 --</option>
-                            <option value="男">男の子</option>
-                            <option value="女">女の子</option>
-                          </select>
-                        </div>
-                      </>
+                        ＋ お子様を追加
+                      </button>
                     )}
+                  </div>
 
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {editChildren.map((child, idx) => (
+                      <div key={idx} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '0.6rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#4a5568' }}>
+                            第{idx + 1}子
+                          </span>
+                          {editChildren.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditChild(idx)}
+                              style={{
+                                fontSize: '0.65rem',
+                                color: '#e53e3e',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            >
+                              削除
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.72rem' }}>氏名</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={child.name || ''}
+                              onChange={(e) => handleUpdateEditChild(idx, 'name', e.target.value)}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.72rem' }}>フリガナ</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={child.kana || ''}
+                              onChange={(e) => handleUpdateEditChild(idx, 'kana', e.target.value)}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.72rem' }}>生年月日 (YYYY-MM-DD)</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: 2020-05-05"
+                              value={child.birthday || ''}
+                              onChange={(e) => handleUpdateEditChild(idx, 'birthday', e.target.value)}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.72rem' }}>性別</label>
+                            <select
+                              className="form-control"
+                              value={child.gender || ''}
+                              onChange={(e) => handleUpdateEditChild(idx, 'gender', (e.target.value || undefined) as any)}
+                            >
+                              <option value="">-- 未選択 --</option>
+                              <option value="男">男の子</option>
+                              <option value="女">女の子</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.5rem' }}>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label style={{ fontSize: '0.75rem' }}>父親 氏名</label>
                       <input

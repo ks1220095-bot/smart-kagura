@@ -184,6 +184,7 @@ async function initSqlite() {
           child_name TEXT,
           child_kana TEXT,
           child_birthday TEXT,
+          children_data TEXT,
           kotobuki_type TEXT,
           kotobuki_other_text TEXT,
           tournament_name TEXT,
@@ -250,6 +251,7 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_large_count INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_name TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_items_data TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN children_data TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -355,6 +357,7 @@ async function verifyPostgresSchema() {
         child_name VARCHAR(255),
         child_kana VARCHAR(255),
         child_birthday VARCHAR(50),
+        children_data TEXT,
         kotobuki_type VARCHAR(100),
         kotobuki_other_text VARCHAR(255),
         tournament_name VARCHAR(255),
@@ -481,6 +484,9 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS wood_talisman_items_data TEXT
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS children_data TEXT
     `);
 
     await client.query(`

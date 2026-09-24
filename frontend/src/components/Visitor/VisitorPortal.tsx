@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Users, AlertCircle } from 'lucide-react';
-import { getBookingReceipts, type Booking, type OrgPrayerItem } from '../../types';
+import { getBookingReceipts, getBookingChildren, type Booking, type OrgPrayerItem, type ChildItem } from '../../types';
 import { getApiUrl } from '../../config/api';
 import SlotSelector from './SlotSelector';
 import BookingSuccess from './BookingSuccess';
@@ -34,9 +34,13 @@ const INDIVIDUAL_PRAYERS = [
   { value: '就職祈願', price: 5000 }
 ];
 
-export const getIndividualMinPrice = (prayer: string, twin?: boolean) => {
+export const getIndividualMinPrice = (prayer: string, twin?: boolean, childCount?: number) => {
   if (prayer === '初宮詣（お宮参り）' && twin) {
     return 15000;
+  }
+  if (prayer === '七五三詣') {
+    const count = (childCount && childCount > 0) ? childCount : (twin ? 2 : 1);
+    return 10000 * count;
   }
   const match = INDIVIDUAL_PRAYERS.find(p => p.value === prayer);
   return match ? match.price : 5000;
@@ -105,6 +109,10 @@ const FAQ_ITEMS = [
   {
     q: 'Q. 初宮詣（お宮参り）の授与品に”歯固め石”はありますか？',
     a: 'A. いいえ、ございません（もし必要な方は、境内の石をお持ちいただき、ご利用後に元の場所へお戻し下さい）。'
+  },
+  {
+    q: 'Q. 記念撮影で出張カメラマン（プロカメラマン）を同行しても良いですか？撮影許可証は必要ですか？',
+    a: 'A. 撮影でカメラマンの方をお願いされるご家族様には撮影許可証などは設けておりません。他のご参拝の方のご迷惑にならないよう、どうぞお撮り下さいませ。（※なお、神事の厳修のため、社殿・拝殿内へのカメラマンのお立ち入り・ご祈祷中の撮影はご遠慮いただいております）。'
   }
 ];
 
@@ -133,6 +141,43 @@ const getEraString = (y: number) => {
   }
 };
 
+export const getChildAgeDetail = (yStr: string, mStr: string, dStr: string, targetDateStr?: string) => {
+  const y = parseInt(yStr, 10);
+  const m = parseInt(mStr, 10);
+  const d = parseInt(dStr, 10);
+  if (!y || !m || !d) return null;
+
+  const tDate = targetDateStr ? new Date(targetDateStr) : new Date();
+  let manAge = tDate.getFullYear() - y;
+  const mDiff = tDate.getMonth() - (m - 1);
+  if (mDiff < 0 || (mDiff === 0 && tDate.getDate() < d)) {
+    manAge--;
+  }
+  if (manAge < 0) manAge = 0;
+
+  const kazoeAge = (tDate.getFullYear() - y) + 1;
+
+  let celebrationStage = '';
+  if (manAge === 3 || kazoeAge === 3) {
+    celebrationStage = '3歳のお祝い';
+  } else if (manAge === 5 || kazoeAge === 5) {
+    celebrationStage = '5歳のお祝い';
+  } else if (manAge === 7 || kazoeAge === 7) {
+    celebrationStage = '7歳のお祝い';
+  } else if (manAge > 0) {
+    celebrationStage = `${manAge}歳`;
+  }
+
+  const eraPart = getEraString(y).split(' / ')[0];
+  return {
+    eraText: `${eraPart}${m}月${d}日生`,
+    manAge,
+    kazoeAge,
+    celebrationStage,
+    fullText: `${eraPart}${m}月${d}日生（満${manAge}歳 / 数え${kazoeAge}歳${celebrationStage ? `・${celebrationStage}` : ''}）`
+  };
+};
+
 interface PrayerItem {
   id: string;
   prayer1: string;
@@ -144,6 +189,7 @@ interface PrayerItem {
   child_name?: string;
   child_kana?: string;
   child_birthday?: string;
+  children_data?: string;
   father_name?: string;
   father_kana?: string;
   mother_name?: string;
@@ -187,10 +233,21 @@ export const VisitorPortal: React.FC = () => {
   // Calligraphy warnings, past prayer logs, twin baby forms and FAQ states
   const [hasPastPrayer, setHasPastPrayer] = useState<number>(savedDraft?.hasPastPrayer ?? 0);
   const [isTwin, setIsTwin] = useState(savedDraft?.isTwin ?? false);
+  const [shichigosanChildCount, setShichigosanChildCount] = useState<number>(savedDraft?.shichigosanChildCount ?? 1);
   const [childName2, setChildName2] = useState(savedDraft?.childName2 ?? '');
   const [childKana2, setChildKana2] = useState(savedDraft?.childKana2 ?? '');
   const [childBirthday2, setChildBirthday2] = useState(savedDraft?.childBirthday2 ?? '');
   const [childGender2, setChildGender2] = useState<'男' | '女' | ''>(savedDraft?.childGender2 ?? '');
+
+  const [childName3, setChildName3] = useState(savedDraft?.childName3 ?? '');
+  const [childKana3, setChildKana3] = useState(savedDraft?.childKana3 ?? '');
+  const [childBirthday3, setChildBirthday3] = useState(savedDraft?.childBirthday3 ?? '');
+  const [childGender3, setChildGender3] = useState<'男' | '女' | ''>(savedDraft?.childGender3 ?? '');
+
+  const [childName4, setChildName4] = useState(savedDraft?.childName4 ?? '');
+  const [childKana4, setChildKana4] = useState(savedDraft?.childKana4 ?? '');
+  const [childBirthday4, setChildBirthday4] = useState(savedDraft?.childBirthday4 ?? '');
+  const [childGender4, setChildGender4] = useState<'男' | '女' | ''>(savedDraft?.childGender4 ?? '');
   const [notes, setNotes] = useState(savedDraft?.notes ?? '');
 
   // Child birthday dropdown segments
@@ -201,6 +258,14 @@ export const VisitorPortal: React.FC = () => {
   const [birthYear2, setBirthYear2] = useState(savedDraft?.birthYear2 ?? '');
   const [birthMonth2, setBirthMonth2] = useState(savedDraft?.birthMonth2 ?? '');
   const [birthDay2, setBirthDay2] = useState(savedDraft?.birthDay2 ?? '');
+
+  const [birthYear3, setBirthYear3] = useState(savedDraft?.birthYear3 ?? '');
+  const [birthMonth3, setBirthMonth3] = useState(savedDraft?.birthMonth3 ?? '');
+  const [birthDay3, setBirthDay3] = useState(savedDraft?.birthDay3 ?? '');
+
+  const [birthYear4, setBirthYear4] = useState(savedDraft?.birthYear4 ?? '');
+  const [birthMonth4, setBirthMonth4] = useState(savedDraft?.birthMonth4 ?? '');
+  const [birthDay4, setBirthDay4] = useState(savedDraft?.birthDay4 ?? '');
 
   // Talisman viewer modal states (scraping)
   const [talismansList, setTalismansList] = useState<any[]>([]);
@@ -917,6 +982,65 @@ export const VisitorPortal: React.FC = () => {
     }
   }, [birthYear2, birthMonth2, birthDay2]);
 
+  useEffect(() => {
+    if (birthYear3 && birthMonth3 && birthDay3) {
+      setChildBirthday3(`${birthYear3}-${birthMonth3.padStart(2, '0')}-${birthDay3.padStart(2, '0')}`);
+    } else {
+      setChildBirthday3('');
+    }
+  }, [birthYear3, birthMonth3, birthDay3]);
+
+  useEffect(() => {
+    if (birthYear4 && birthMonth4 && birthDay4) {
+      setChildBirthday4(`${birthYear4}-${birthMonth4.padStart(2, '0')}-${birthDay4.padStart(2, '0')}`);
+    } else {
+      setChildBirthday4('');
+    }
+  }, [birthYear4, birthMonth4, birthDay4]);
+
+  const getChildItemAtIndex = (idx: number) => {
+    if (idx === 1) return {
+      name: childName, kana: childKana, birthday: childBirthday, gender: childGender,
+      y: birthYear, m: birthMonth, d: birthDay,
+      setName: setChildName, setKana: setChildKana, setGender: setChildGender,
+      setY: setBirthYear, setM: setBirthMonth, setD: setBirthDay
+    };
+    if (idx === 2) return {
+      name: childName2, kana: childKana2, birthday: childBirthday2, gender: childGender2,
+      y: birthYear2, m: birthMonth2, d: birthDay2,
+      setName: setChildName2, setKana: setChildKana2, setGender: setChildGender2,
+      setY: setBirthYear2, setM: setBirthMonth2, setD: setBirthDay2
+    };
+    if (idx === 3) return {
+      name: childName3, kana: childKana3, birthday: childBirthday3, gender: childGender3,
+      y: birthYear3, m: birthMonth3, d: birthDay3,
+      setName: setChildName3, setKana: setChildKana3, setGender: setChildGender3,
+      setY: setBirthYear3, setM: setBirthMonth3, setD: setBirthDay3
+    };
+    return {
+      name: childName4, kana: childKana4, birthday: childBirthday4, gender: childGender4,
+      y: birthYear4, m: birthMonth4, d: birthDay4,
+      setName: setChildName4, setKana: setChildKana4, setGender: setChildGender4,
+      setY: setBirthYear4, setM: setBirthMonth4, setD: setBirthDay4
+    };
+  };
+
+  const buildChildrenData = (count: number): ChildItem[] => {
+    const list: ChildItem[] = [];
+    for (let i = 1; i <= count; i++) {
+      const c = getChildItemAtIndex(i);
+      const ageInfo = getChildAgeDetail(c.y, c.m, c.d, selectedDate);
+      list.push({
+        name: c.name,
+        kana: c.kana,
+        gender: (c.gender === '男' || c.gender === '女') ? c.gender : undefined,
+        birthday: c.birthday,
+        age_text: ageInfo ? `${ageInfo.celebrationStage || `${ageInfo.manAge}歳`} (満${ageInfo.manAge}歳/数え${ageInfo.kazoeAge}歳)` : undefined
+      });
+    }
+    return list;
+  };
+
   // Save fields on changes (skip complete screen)
   const isCompleted = sessionStorage.getItem('booking_completed') === 'true';
   useEffect(() => {
@@ -929,11 +1053,17 @@ export const VisitorPortal: React.FC = () => {
       companyName, companyKana, companyAddress, companyAddressKana,
       representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
       talismanName, additionalTalismans, wantsReceipt, receipts,
-      hasPastPrayer, isTwin, childName2, childKana2, notes,
+      hasPastPrayer, isTwin, shichigosanChildCount,
+      childName2, childKana2, childBirthday2, childGender2,
+      childName3, childKana3, childBirthday3, childGender3,
+      childName4, childKana4, childBirthday4, childGender4,
+      notes,
       birthYear, birthMonth, birthDay,
       birthYear2, birthMonth2, birthDay2,
+      birthYear3, birthMonth3, birthDay3,
+      birthYear4, birthMonth4, birthDay4,
       userBirthYear, userBirthMonth, userBirthDay,
-      activeMainTab, childName, childKana, childBirthday, childGender, childGender2,
+      activeMainTab, childName, childKana, childBirthday, childGender,
       yakudoshiType, fatherName, fatherKana, motherName, motherKana,
       childSkipFather, childSkipMother,
       kotobukiType, kotobukiOtherText,
@@ -954,11 +1084,17 @@ export const VisitorPortal: React.FC = () => {
     companyName, companyKana, companyAddress, companyAddressKana,
     representativeTitleName, representativeKana, staffDeptTitleName, staffPhone, staffEmail,
     talismanName, additionalTalismans, wantsReceipt, receipts,
-    hasPastPrayer, isTwin, childName2, childKana2, notes,
+    hasPastPrayer, isTwin, shichigosanChildCount,
+    childName2, childKana2, childBirthday2, childGender2,
+    childName3, childKana3, childBirthday3, childGender3,
+    childName4, childKana4, childBirthday4, childGender4,
+    notes,
     birthYear, birthMonth, birthDay,
     birthYear2, birthMonth2, birthDay2,
+    birthYear3, birthMonth3, birthDay3,
+    birthYear4, birthMonth4, birthDay4,
     userBirthYear, userBirthMonth, userBirthDay,
-    activeMainTab, childName, childKana, childBirthday,
+    activeMainTab, childName, childKana, childBirthday, childGender,
     yakudoshiType, fatherName, fatherKana, motherName, motherKana,
     childSkipFather, childSkipMother,
     kotobukiType, kotobukiOtherText,
@@ -1016,8 +1152,21 @@ export const VisitorPortal: React.FC = () => {
 
         if (state.hasPastPrayer !== undefined) setHasPastPrayer(state.hasPastPrayer);
         if (state.isTwin !== undefined) setIsTwin(state.isTwin);
+        if (state.shichigosanChildCount) setShichigosanChildCount(state.shichigosanChildCount);
         if (state.childName2) setChildName2(state.childName2);
         if (state.childKana2) setChildKana2(state.childKana2);
+        if (state.childBirthday2) setChildBirthday2(state.childBirthday2);
+        if (state.childGender2) setChildGender2(state.childGender2);
+
+        if (state.childName3) setChildName3(state.childName3);
+        if (state.childKana3) setChildKana3(state.childKana3);
+        if (state.childBirthday3) setChildBirthday3(state.childBirthday3);
+        if (state.childGender3) setChildGender3(state.childGender3);
+
+        if (state.childName4) setChildName4(state.childName4);
+        if (state.childKana4) setChildKana4(state.childKana4);
+        if (state.childBirthday4) setChildBirthday4(state.childBirthday4);
+        if (state.childGender4) setChildGender4(state.childGender4);
         if (state.notes) setNotes(state.notes);
 
         if (state.birthYear) setBirthYear(state.birthYear);
@@ -1027,6 +1176,14 @@ export const VisitorPortal: React.FC = () => {
         if (state.birthYear2) setBirthYear2(state.birthYear2);
         if (state.birthMonth2) setBirthMonth2(state.birthMonth2);
         if (state.birthDay2) setBirthDay2(state.birthDay2);
+
+        if (state.birthYear3) setBirthYear3(state.birthYear3);
+        if (state.birthMonth3) setBirthMonth3(state.birthMonth3);
+        if (state.birthDay3) setBirthDay3(state.birthDay3);
+
+        if (state.birthYear4) setBirthYear4(state.birthYear4);
+        if (state.birthMonth4) setBirthMonth4(state.birthMonth4);
+        if (state.birthDay4) setBirthDay4(state.birthDay4);
 
         // 新しく追加したステートの復元
         if (state.userBirthYear) setUserBirthYear(state.userBirthYear);
@@ -1155,7 +1312,7 @@ export const VisitorPortal: React.FC = () => {
   // 1. Manage Hatsuhoryo changes based on willingness and organization headcount
   useEffect(() => {
     if (bookingType === 'individual') {
-      setHatsuhoryo(getIndividualMinPrice(prayer1, isTwin));
+      setHatsuhoryo(getIndividualMinPrice(prayer1, isTwin, prayer1 === '七五三詣' ? shichigosanChildCount : 1));
     } else {
       // Organization base pricing: under 5 people = 20k, 5 or more = 30k
       const basePrice = Number(attendingCount) < 5 ? 20000 : 30000;
@@ -1168,7 +1325,7 @@ export const VisitorPortal: React.FC = () => {
         return prev;
       });
     }
-  }, [prayer1, bookingType, attendingCount, isTwin]);
+  }, [prayer1, bookingType, attendingCount, isTwin, shichigosanChildCount]);
 
   // Sync Organization names to default receipt name
   useEffect(() => {
@@ -1226,7 +1383,8 @@ export const VisitorPortal: React.FC = () => {
       }
       for (let i = 0; i < prayerItems.length; i++) {
         const item = prayerItems[i];
-        const minPrice = getIndividualMinPrice(item.prayer1, Boolean(item.is_twin));
+        const childCount = item.children_data ? getBookingChildren(item).length : (item.is_twin ? 2 : 1);
+        const minPrice = getIndividualMinPrice(item.prayer1, Boolean(item.is_twin), childCount);
         const effectiveMin = (isEditMode && item.prayer1 === '安産祈願' && item.hatsuhoryo >= 5000) ? 5000 : minPrice;
         if (item.hatsuhoryo < effectiveMin) {
           return `【${item.prayer1}（${item.name}様）】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${effectiveMin.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
@@ -1342,7 +1500,7 @@ export const VisitorPortal: React.FC = () => {
       return;
     }
 
-    const minPrice = getIndividualMinPrice(prayer1, isTwin);
+    const minPrice = getIndividualMinPrice(prayer1, isTwin, prayer1 === '七五三詣' ? shichigosanChildCount : 1);
     const effectiveMin = (isEditMode && prayer1 === '安産祈願' && hatsuhoryo >= 5000) ? 5000 : minPrice;
     if (hatsuhoryo < effectiveMin) {
       alert(`初穂料は選択された願意の目安金額（${effectiveMin.toLocaleString()}円以上）をご入力ください。`);
@@ -1374,7 +1532,27 @@ export const VisitorPortal: React.FC = () => {
       alert('厄年区分を選択してください。');
       return;
     }
-    if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り') {
+    if (prayer1 === '七五三詣') {
+      for (let i = 1; i <= shichigosanChildCount; i++) {
+        const c = getChildItemAtIndex(i);
+        if (!c.name.trim() || !c.kana.trim() || !c.birthday || !c.gender) {
+          alert(`七五三詣のお子様（${i}人目）のお名前、フリガナ、性別、生年月日はすべて必須です。`);
+          return;
+        }
+      }
+      if (childSkipFather && childSkipMother) {
+        alert('父親または母親のいずれか一方のお名前は必ずご登録ください。');
+        return;
+      }
+      if (!childSkipFather && (!fatherName.trim() || !fatherKana.trim())) {
+        alert('父親のお名前とフリガナを入力してください（片親のご家庭など登録されない場合は「父親のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+      if (!childSkipMother && (!motherName.trim() || !motherKana.trim())) {
+        alert('母親のお名前とフリガナを入力してください（片親のご家庭など登録されない場合は「母親のお名前を登録しない」にチェックを入れてください）。');
+        return;
+      }
+    } else if (prayer1 === '初宮詣（お宮参り）' || prayer1 === '十三参り') {
       const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
       if (isCurrentTwin) {
         if (!childName.trim() || !childKana.trim() || !childBirthday || !childGender || !childName2.trim() || !childKana2.trim() || !childBirthday2 || !childGender2) {
@@ -1435,6 +1613,12 @@ export const VisitorPortal: React.FC = () => {
     // Add to prayerItems
     const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
     const isChildPrayer = prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り';
+    const effectiveCount = prayer1 === '七五三詣' ? shichigosanChildCount : (isCurrentTwin ? 2 : 1);
+    const childrenList = isChildPrayer ? buildChildrenData(effectiveCount) : [];
+    const childrenDataStr = childrenList.length > 0 ? JSON.stringify(childrenList) : undefined;
+    const c1 = getChildItemAtIndex(1);
+    const c2 = getChildItemAtIndex(2);
+
     const newItem: PrayerItem = {
       id: Math.random().toString(36).substring(2, 9),
       prayer1,
@@ -1442,21 +1626,22 @@ export const VisitorPortal: React.FC = () => {
       name: resolvedName,
       kana: resolvedKana,
       yakudoshi_type: prayer1 === '厄年のお祓い' ? yakudoshiType : undefined,
-      child_name: isChildPrayer ? childName : undefined,
-      child_kana: isChildPrayer ? childKana : undefined,
-      child_birthday: isChildPrayer ? childBirthday : undefined,
-      child_gender: isChildPrayer ? ((childGender === '男' || childGender === '女') ? childGender : undefined) : undefined,
+      child_name: isChildPrayer ? c1.name : undefined,
+      child_kana: isChildPrayer ? c1.kana : undefined,
+      child_birthday: isChildPrayer ? c1.birthday : undefined,
+      child_gender: isChildPrayer ? ((c1.gender === '男' || c1.gender === '女') ? c1.gender : undefined) : undefined,
+      children_data: childrenDataStr,
       father_name: (isChildPrayer && !childSkipFather) ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
       father_kana: (isChildPrayer && !childSkipFather) ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
       mother_name: (isChildPrayer && !childSkipMother) ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
       mother_kana: (isChildPrayer && !childSkipMother) ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
       kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
       kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
-      is_twin: isCurrentTwin ? 1 : 0,
-      child_name2: isCurrentTwin ? childName2 : undefined,
-      child_kana2: isCurrentTwin ? childKana2 : undefined,
-      child_birthday2: isCurrentTwin ? childBirthday2 : undefined,
-      child_gender2: isCurrentTwin ? ((childGender2 === '男' || childGender2 === '女') ? childGender2 : undefined) : undefined,
+      is_twin: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? 1 : 0,
+      child_name2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.name : undefined,
+      child_kana2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.kana : undefined,
+      child_birthday2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.birthday : undefined,
+      child_gender2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? ((c2.gender === '男' || c2.gender === '女') ? c2.gender : undefined) : undefined,
       car_maker: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定（手書き記入）' : (carMaker.trim() || '未定')) : undefined,
       car_model: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carModel.trim() || '未定')) : undefined,
       car_number: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carNumber.trim() || '未定')) : undefined
@@ -1501,15 +1686,35 @@ export const VisitorPortal: React.FC = () => {
     setPrayerKana('');
     setHatsuhoryo(5000);
     setIsTwin(false);
+    setShichigosanChildCount(1);
+    setChildName('');
+    setChildKana('');
+    setChildBirthday('');
+    setChildGender('');
     setChildName2('');
     setChildKana2('');
     setChildBirthday2('');
+    setChildGender2('');
+    setChildName3('');
+    setChildKana3('');
+    setChildBirthday3('');
+    setChildGender3('');
+    setChildName4('');
+    setChildKana4('');
+    setChildBirthday4('');
+    setChildGender4('');
     setBirthYear('');
     setBirthMonth('');
     setBirthDay('');
     setBirthYear2('');
     setBirthMonth2('');
     setBirthDay2('');
+    setBirthYear3('');
+    setBirthMonth3('');
+    setBirthDay3('');
+    setBirthYear4('');
+    setBirthMonth4('');
+    setBirthDay4('');
     setCarMaker('');
     setCarModel('');
     setFatherName('');
@@ -1627,6 +1832,7 @@ export const VisitorPortal: React.FC = () => {
       child_kana2: bookingType === 'individual' && isTwin ? childKana2 : undefined,
       child_birthday2: bookingType === 'individual' && isTwin ? childBirthday2 : undefined,
       child_gender2: bookingType === 'individual' && isTwin ? ((childGender2 === '男' || childGender2 === '女') ? childGender2 : undefined) : undefined,
+      children_data: bookingType === 'individual' ? (prayerItems[0]?.children_data) : undefined,
       notes: (() => {
         const userBday = userBirthYear && userBirthMonth && userBirthDay
           ? `【生年月日】${getEraString(Number(userBirthYear)).split(' / ')[0]} (${userBirthYear}-${userBirthMonth.padStart(2, '0')}-${userBirthDay.padStart(2, '0')})`
@@ -1672,6 +1878,7 @@ export const VisitorPortal: React.FC = () => {
           child_kana: item.child_kana,
           child_birthday: item.child_birthday,
           child_gender: item.child_gender,
+          children_data: item.children_data,
           father_name: item.father_name,
           father_kana: item.father_kana,
           mother_name: item.mother_name,
@@ -2772,6 +2979,71 @@ export const VisitorPortal: React.FC = () => {
                   <div className="alert-warning" style={{ margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>お子様およびご両親の登録情報</h5>
 
+                    {/* 境内での記念撮影・カメラマン撮影について */}
+                    <div style={{
+                      backgroundColor: '#f6faf7',
+                      border: '1.5px solid #2e7d32',
+                      borderRadius: '6px',
+                      padding: '0.85rem 1rem',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1b5e20', fontWeight: 'bold', fontSize: '0.92rem', marginBottom: '0.35rem' }}>
+                        <span style={{ fontSize: '1.15rem' }}>📷</span>
+                        <span>境内での記念撮影・カメラマン撮影について</span>
+                      </div>
+                      <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.85rem', color: '#2e7d32', lineHeight: '1.5', fontWeight: 600 }}>
+                        撮影でカメラマンの方をお願いされるご家族様には撮影許可証などは設けておりません。他のご参拝の方のご迷惑にならないよう、どうぞお撮り下さいませ。
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.78rem', color: '#666', lineHeight: '1.4' }}>
+                        ※なお、神前での厳粛なご祈祷を厳修するため、社殿・拝殿内へのカメラマンのお立ち入り・ご祈祷中の撮影はご遠慮いただいております。境内外での記念撮影をどうぞご自由にお楽しみください。
+                      </p>
+                    </div>
+
+                    {/* 七五三詣：お祝いのお子様人数セレクター */}
+                    {prayer1 === '七五三詣' && (
+                      <div style={{ backgroundColor: '#fff', border: '1px solid rgba(197, 160, 89, 0.4)', borderRadius: '6px', padding: '0.85rem 1rem' }}>
+                        <label style={{ display: 'block', fontWeight: 'bold', fontSize: '0.88rem', color: 'var(--color-urushi)', marginBottom: '0.5rem' }}>
+                          お祝いのお子様の人数 <span className="required">*</span>
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+                          {[1, 2, 3, 4].map(num => (
+                            <button
+                              key={num}
+                              type="button"
+                              className="btn"
+                              style={{
+                                backgroundColor: shichigosanChildCount === num ? 'var(--color-urushi, #9e2a2b)' : '#fdfaf5',
+                                color: shichigosanChildCount === num ? '#fff' : '#444',
+                                borderColor: shichigosanChildCount === num ? 'var(--color-urushi, #9e2a2b)' : 'rgba(197, 160, 89, 0.4)',
+                                fontWeight: shichigosanChildCount === num ? 'bold' : 'normal',
+                                padding: '0.6rem 0.5rem',
+                                fontSize: '0.85rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '0.15rem'
+                              }}
+                              onClick={() => {
+                                setShichigosanChildCount(num);
+                                setHatsuhoryo(10000 * num);
+                              }}
+                            >
+                              <span>{num}人 {num === 1 ? '（単身）' : num === 2 ? '（兄弟・姉妹・双子等）' : '（兄弟姉妹等）'}</span>
+                              <span style={{ fontSize: '0.72rem', opacity: shichigosanChildCount === num ? 0.95 : 0.7 }}>
+                                初穂料目安: {(10000 * num).toLocaleString()}円
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.5rem', lineHeight: '1.4' }}>
+                          ※兄弟・姉妹・双子など、同時に七五三のお祝いをお受けになるお子様全員をご登録いただけます。初穂料はお子様1名につき10,000円（お札・千歳飴・記念授与品一式）が目安となります。
+                        </div>
+                      </div>
+                    )}
+
                     {prayer1 === '初宮詣（お宮参り）' && (
                       <div className="form-group" style={{ margin: 0 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal' }}>
@@ -2795,153 +3067,152 @@ export const VisitorPortal: React.FC = () => {
                       </div>
                     )}
 
-                    <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
-                        {isTwin ? 'お子様（一人目）' : 'お子様情報'}
-                      </span>
-                      <div className="form-row" style={{ marginBottom: '0.5rem' }}>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label>お子様の氏名 <span className="required">*</span></label>
-                          <input type="text" className="form-control" placeholder="例：清瀧 太郎" value={childName} onChange={(e) => setChildName(e.target.value)} />
-                          {prayer1 !== '初宮詣（お宮参り）' && (
-                            <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                              ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
-                            </div>
-                          )}
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label>お子様フリガナ <span className="required">*</span></label>
-                          <input type="text" className="form-control" placeholder="例：セイリュウ タロウ" value={childKana} onChange={(e) => setChildKana(e.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
-                        <label>お子様の性別 <span className="required">*</span></label>
-                        <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
-                            <input 
-                              type="radio" 
-                              name="child_gender" 
-                              value="男" 
-                              checked={childGender === '男'} 
-                              onChange={() => setChildGender('男')} 
-                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                            />
-                            <span>男の子</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
-                            <input 
-                              type="radio" 
-                              name="child_gender" 
-                              value="女" 
-                              checked={childGender === '女'} 
-                              onChange={() => setChildGender('女')} 
-                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                            />
-                            <span>女の子</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label>生年月日 <span className="required">*</span></label>
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <select className="form-control" style={{ width: '180px' }} value={birthYear} onChange={(e) => setBirthYear(e.target.value)}>
-                            <option value="">-- 年 (和暦/西暦) --</option>
-                            {yearOptions.map(y => (
-                              <option key={y} value={y.toString()}>{getEraString(y)}</option>
-                            ))}
-                          </select>
-                          <select className="form-control" style={{ width: '90px' }} value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)}>
-                            <option value="">-- 月 --</option>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                              <option key={m} value={m.toString()}>{m}月</option>
-                            ))}
-                          </select>
-                          <select className="form-control" style={{ width: '90px' }} value={birthDay} onChange={(e) => setBirthDay(e.target.value)}>
-                            <option value="">-- 日 --</option>
-                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                              <option key={d} value={d.toString()}>{d}日</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {prayer1 === '初宮詣（お宮参り）' && isTwin && (
-                      <div style={{ border: '1px solid rgba(197, 160, 89, 0.2)', padding: '0.75rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.4)' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>
-                          お子様（二人目）
-                        </span>
-                        <div className="form-row" style={{ marginBottom: '0.5rem' }}>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label>お子様の氏名 <span className="required">*</span></label>
-                            <input type="text" className="form-control" placeholder="例：清瀧 次郎" value={childName2} onChange={(e) => setChildName2(e.target.value)} />
-                            {prayer1 !== '初宮詣（お宮参り）' && (
-                              <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
-                                ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                    {/* 各お子様情報の入力カード */}
+                    {(() => {
+                      const renderChildCard = (idx: number, cardLabel: string) => {
+                        const c = getChildItemAtIndex(idx);
+                        return (
+                          <div key={idx} style={{ border: '1px solid rgba(197, 160, 89, 0.25)', padding: '0.85rem', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.7)', width: '100%', boxSizing: 'border-box' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.6rem' }}>
+                              {cardLabel}
+                            </span>
+                            <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                              <div className="form-group" style={{ margin: 0, width: '100%' }}>
+                                <label>お子様の氏名 <span className="required">*</span></label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder={idx === 1 ? '例：清瀧 太郎' : idx === 2 ? '例：清瀧 次郎' : idx === 3 ? '例：清瀧 三郎' : '例：清瀧 四郎'}
+                                  value={c.name}
+                                  onChange={(e) => c.setName(e.target.value)}
+                                  style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                                {prayer1 !== '初宮詣（お宮参り）' && (
+                                  <div style={{ fontSize: '0.7rem', color: '#d3381c', margin: '0.35rem 0 0 0', lineHeight: '1.3' }}>
+                                    ※お札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（吉や𠮷、高や髙、邊や邉、斉や齊や齋、瀬や瀨、柳や栁、等々）
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label>お子様フリガナ <span className="required">*</span></label>
-                            <input type="text" className="form-control" placeholder="例：セイリュウ ジロウ" value={childKana2} onChange={(e) => setChildKana2(e.target.value)} />
-                          </div>
-                        </div>
+                              <div className="form-group" style={{ margin: 0, width: '100%' }}>
+                                <label>お子様フリガナ <span className="required">*</span></label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder={idx === 1 ? '例：セイリュウ タロウ' : idx === 2 ? '例：セイリュウ ジロウ' : idx === 3 ? '例：セイリュウ サブロウ' : '例：セイリュウ シロウ'}
+                                  value={c.kana}
+                                  onChange={(e) => c.setKana(e.target.value)}
+                                  style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                              </div>
+                            </div>
 
-                        <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
-                          <label>お子様の性別（二人目） <span className="required">*</span></label>
-                          <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
-                              <input 
-                                type="radio" 
-                                name="child_gender2" 
-                                value="男" 
-                                checked={childGender2 === '男'} 
-                                onChange={() => setChildGender2('男')} 
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                              />
-                              <span>男の子</span>
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
-                              <input 
-                                type="radio" 
-                                name="child_gender2" 
-                                value="女" 
-                                checked={childGender2 === '女'} 
-                                onChange={() => setChildGender2('女')} 
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                              />
-                              <span>女の子</span>
-                            </label>
-                          </div>
-                        </div>
+                            <div className="form-group" style={{ margin: '0 0 0.5rem 0' }}>
+                              <label>お子様の性別 <span className="required">*</span></label>
+                              <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.35rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                                  <input 
+                                    type="radio" 
+                                    name={`child_gender_${idx}`} 
+                                    value="男" 
+                                    checked={c.gender === '男'} 
+                                    onChange={() => c.setGender('男')} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <span>男の子</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                                  <input 
+                                    type="radio" 
+                                    name={`child_gender_${idx}`} 
+                                    value="女" 
+                                    checked={c.gender === '女'} 
+                                    onChange={() => c.setGender('女')} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <span>女の子</span>
+                                </label>
+                              </div>
+                            </div>
 
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label>生年月日 <span className="required">*</span></label>
-                          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <select className="form-control" style={{ width: '180px' }} value={birthYear2} onChange={(e) => setBirthYear2(e.target.value)}>
-                              <option value="">-- 年 (和暦/西暦) --</option>
-                              {yearOptions.map(y => (
-                                <option key={y} value={y.toString()}>{getEraString(y)}</option>
-                              ))}
-                            </select>
-                            <select className="form-control" style={{ width: '90px' }} value={birthMonth2} onChange={(e) => setBirthMonth2(e.target.value)}>
-                              <option value="">-- 月 --</option>
-                              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                <option key={m} value={m.toString()}>{m}月</option>
-                              ))}
-                            </select>
-                            <select className="form-control" style={{ width: '90px' }} value={birthDay2} onChange={(e) => setBirthDay2(e.target.value)}>
-                              <option value="">-- 日 --</option>
-                              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                <option key={d} value={d.toString()}>{d}日</option>
-                              ))}
-                            </select>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label>生年月日 <span className="required">*</span></label>
+                              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <select className="form-control" style={{ width: '180px' }} value={c.y} onChange={(e) => c.setY(e.target.value)}>
+                                  <option value="">-- 年 (和暦/西暦) --</option>
+                                  {yearOptions.map(y => (
+                                    <option key={y} value={y.toString()}>{getEraString(y)}</option>
+                                  ))}
+                                </select>
+                                <select className="form-control" style={{ width: '90px' }} value={c.m} onChange={(e) => c.setM(e.target.value)}>
+                                  <option value="">-- 月 --</option>
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m.toString()}>{m}月</option>
+                                  ))}
+                                </select>
+                                <select className="form-control" style={{ width: '90px' }} value={c.d} onChange={(e) => c.setD(e.target.value)}>
+                                  <option value="">-- 日 --</option>
+                                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                    <option key={d} value={d.toString()}>{d}日</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* 祝齢・年齢リアルタイム表示 */}
+                              {(() => {
+                                const ageInfo = getChildAgeDetail(c.y, c.m, c.d, selectedDate);
+                                if (!ageInfo) return null;
+                                return (
+                                  <div style={{
+                                    marginTop: '0.5rem',
+                                    padding: '0.4rem 0.65rem',
+                                    backgroundColor: '#fef7e6',
+                                    border: '1px solid #f0c36d',
+                                    borderRadius: '4px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    fontSize: '0.8rem',
+                                    color: '#8a6d3b',
+                                    flexWrap: 'wrap'
+                                  }}>
+                                    <span style={{ fontWeight: 'bold' }}>🎂 祝齢・年齢判定:</span>
+                                    <span>{ageInfo.eraText}</span>
+                                    <span style={{
+                                      backgroundColor: '#9e2a2b',
+                                      color: '#fff',
+                                      padding: '0.1rem 0.4rem',
+                                      borderRadius: '3px',
+                                      fontWeight: 'bold',
+                                      fontSize: '0.75rem'
+                                    }}>
+                                      満{ageInfo.manAge}歳 / 数え{ageInfo.kazoeAge}歳
+                                      {ageInfo.celebrationStage ? `【${ageInfo.celebrationStage}】` : ''}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    )}
+                        );
+                      };
+
+                      if (prayer1 === '七五三詣') {
+                        return Array.from({ length: shichigosanChildCount }, (_, idx) => {
+                          const num = idx + 1;
+                          const label = `お子様（${num === 1 ? '一人目' : num === 2 ? '二人目' : num === 3 ? '三人目' : '四人目'}）`;
+                          return renderChildCard(num, label);
+                        });
+                      } else if (prayer1 === '初宮詣（お宮参り）') {
+                        return (
+                          <>
+                            {renderChildCard(1, isTwin ? 'お子様（一人目）' : 'お子様情報')}
+                            {isTwin && renderChildCard(2, 'お子様（二人目）')}
+                          </>
+                        );
+                      } else {
+                        return renderChildCard(1, 'お子様情報');
+                      }
+                    })()}
 
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', borderTop: '1px solid rgba(197, 160, 89, 0.3)', paddingTop: '0.6rem', lineHeight: '1.4' }}>
                       ※ご両親のお名前・フリガナを入力してください。<br />
@@ -4127,7 +4398,7 @@ export const VisitorPortal: React.FC = () => {
               <div style={{ fontSize: '0.85rem', color: 'var(--color-urushi-light)', lineHeight: '1.6' }}>
                 <p>・ご祈祷の準備の関係上、**開始時刻の15分前**にはご来社いただきますようお願いいたします。</p>
                 <p style={{ color: '#d3381c', fontWeight: 'bold' }}>・ご祈祷の開始時刻5分前を過ぎるとその時間のご祈祷は受け付けない場合がございます、ご了承願います。</p>
-                <p style={{ color: '#d3381c', fontWeight: 'bold' }}>・カメラマンの方は、神社社殿へのお立ち入りはご遠慮いただきます。</p>
+                <p style={{ color: '#2e7d32', fontWeight: 'bold' }}>・**境内での記念撮影・カメラマン撮影について**: 撮影でカメラマンの方をお願いされるご家族様には撮影許可証などは設けておりません。他のご参拝の方のご迷惑にならないよう、どうぞお撮り下さいませ。（※なお、神前での厳粛なご祈祷を厳修するため、社殿・拝殿内へのカメラマンのお立ち入り・ご祈祷中の撮影はご遠慮いただきます）</p>
                 <p>・お初穂料はご神前にお供えいたしますので、のし袋か封筒などに入れご持参ください。</p>
                 <p>・ご祈祷の所要時間は、約20〜30分ほどかかります。</p>
                 <p>・神社で恒例祭典等の行事があります場合、ご予約がお受けできない日時がございます。</p>
@@ -4301,20 +4572,22 @@ export const VisitorPortal: React.FC = () => {
                         {item.prayer1 === '厄年のお祓い' && item.yakudoshi_type && (
                           <div style={{ fontSize: '0.9rem', color: '#8a6d3b' }}><strong>厄年区分:</strong> {item.yakudoshi_type === 'maeyaku' ? '前厄' : item.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}</div>
                         )}
-                        {item.child_name && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--color-border)', fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
-                            <div>お子様名: {item.child_name} 様 ({item.child_kana}){item.child_gender ? ` [${item.child_gender}]` : ''}</div>
-                            <div>生年月日: {item.child_birthday}</div>
-                            {item.child_name2 && (
-                              <>
-                                <div style={{ marginTop: '0.2rem', borderTop: '1px dashed #eee', paddingTop: '0.2rem' }}>お子様名（二人目）: {item.child_name2} 様 ({item.child_kana2}){item.child_gender2 ? ` [${item.child_gender2}]` : ''}</div>
-                                <div>生年月日（二人目）: {item.child_birthday2}</div>
-                              </>
-                            )}
-                            {item.father_name && <div>父親: {item.father_name} ({item.father_kana})</div>}
-                            {item.mother_name && <div>母親: {item.mother_name} ({item.mother_kana})</div>}
-                          </div>
-                        )}
+                        {(() => {
+                          const children = getBookingChildren(item);
+                          if (children.length === 0) return null;
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--color-border)', fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
+                              {children.map((c, cIdx) => (
+                                <div key={cIdx} style={{ borderBottom: cIdx < children.length - 1 ? '1px dashed #eee' : 'none', paddingBottom: '0.25rem' }}>
+                                  <div><strong>お子様{children.length > 1 ? `（${cIdx + 1}人目）` : ''}:</strong> {c.name} 様 ({c.kana}){c.gender ? ` [${c.gender}の子]` : ''}</div>
+                                  <div>生年月日: {c.birthday} {c.age_text ? `(${c.age_text})` : ''}</div>
+                                </div>
+                              ))}
+                              {item.father_name && <div>父親: {item.father_name} ({item.father_kana})</div>}
+                              {item.mother_name && <div>母親: {item.mother_name} ({item.mother_kana})</div>}
+                            </div>
+                          );
+                        })()}
                         {item.prayer1 === '寿祝い' && item.kotobuki_type && (
                           <div style={{ fontSize: '0.9rem', color: '#8a6d3b' }}><strong>寿祝い区分:</strong> {item.kotobuki_type === 'その他' ? item.kotobuki_other_text : item.kotobuki_type}</div>
                         )}

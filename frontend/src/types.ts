@@ -58,6 +58,7 @@ export interface Booking {
   child_name?: string;
   child_kana?: string;
   child_birthday?: string;
+  children_data?: string; // JSON string of ChildItem[] for multiple children (七五三・初宮・双子・きょうだい)
 
   // 個人寿祝い
   kotobuki_type?: string;
@@ -165,4 +166,54 @@ export interface OrgPrayerItem {
   construction_builder?: string;
   construction_period?: string;
 }
+
+export interface ChildItem {
+  name: string;
+  kana: string;
+  gender?: '男' | '女';
+  birthday: string;
+  age_text?: string;
+}
+
+export const getBookingChildren = (b: {
+  children_data?: string;
+  child_name?: string;
+  child_kana?: string;
+  child_gender?: '男' | '女';
+  child_birthday?: string;
+  child_name2?: string;
+  child_kana2?: string;
+  child_gender2?: '男' | '女';
+  child_birthday2?: string;
+  [key: string]: any;
+}): ChildItem[] => {
+  if (b.children_data) {
+    try {
+      const parsed = JSON.parse(b.children_data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  const list: ChildItem[] = [];
+  if (b.child_name) {
+    list.push({
+      name: b.child_name,
+      kana: b.child_kana || '',
+      gender: b.child_gender,
+      birthday: b.child_birthday || ''
+    });
+  }
+  if (b.child_name2) {
+    list.push({
+      name: b.child_name2,
+      kana: b.child_kana2 || '',
+      gender: b.child_gender2,
+      birthday: b.child_birthday2 || ''
+    });
+  }
+  return list;
+};
 

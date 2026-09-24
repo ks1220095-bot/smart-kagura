@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db';
-import { Booking, getBookingReceipts } from '../types';
+import { Booking, getBookingReceipts, getBookingChildren } from '../types';
 import { sendMail, sendAdminNotification } from '../services/email';
 import { sendWebPushNotification } from '../services/webpush';
 import { syncAllBookingsToSpreadsheet } from '../services/sheetSync';
@@ -335,8 +335,8 @@ router.post('/', async (req, res) => {
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
           construction_name, construction_designer, construction_builder, construction_period, notes,
           has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
-          car_maker, car_model, car_number, child_gender, child_gender2
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65)
+          car_maker, car_model, car_number, child_gender, child_gender2, children_data
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -352,7 +352,8 @@ router.post('/', async (req, res) => {
         b.notes || null,
         b.has_past_prayer || 0, b.is_twin || 0, b.child_name2 || null, b.child_kana2 || null, b.child_birthday2 || null, b.is_manual || 0,
         b.car_maker || null, b.car_model || null, b.car_number || null,
-        b.child_gender || null, b.child_gender2 || null
+        b.child_gender || null, b.child_gender2 || null,
+        b.children_data || null
       ]);
       b.id = result.rows[0].id;
       createdBookings.push(b);
@@ -394,9 +395,17 @@ router.post('/', async (req, res) => {
             const yakuLabel = b.yakudoshi_type === 'maeyaku' ? '前厄' : b.yakudoshi_type === 'honyaku' ? '本厄' : '後厄';
             text += `・厄年区分　　　　: ${yakuLabel}\n`;
           }
-          if (b.child_name) {
-            text += `・お子様のお名前　: ${b.child_name} (${b.child_kana})\n`;
-            text += `・お子様の生年月日: ${b.child_birthday}\n`;
+          const bChildren = getBookingChildren(b);
+          if (bChildren.length > 0) {
+            if (bChildren.length === 1) {
+              text += `・お子様のお名前　: ${bChildren[0].name} (${bChildren[0].kana})${bChildren[0].gender ? ` [${bChildren[0].gender}]` : ''}\n`;
+              text += `・お子様の生年月日: ${bChildren[0].birthday}${bChildren[0].age_text ? ` (${bChildren[0].age_text})` : ''}\n`;
+            } else {
+              text += `・お祝いのお子様（全${bChildren.length}名）:\n`;
+              bChildren.forEach((child, cIdx) => {
+                text += `　- ${cIdx + 1}人目: ${child.name} (${child.kana})${child.gender ? ` [${child.gender}]` : ''} 生年月日: ${child.birthday}${child.age_text ? ` (${child.age_text})` : ''}\n`;
+              });
+            }
             if (b.father_name) text += `・父親の氏名: ${b.father_name} (${b.father_kana})\n`;
             if (b.mother_name) text += `・母親の氏名: ${b.mother_name} (${b.mother_kana})\n`;
           }
@@ -490,8 +499,9 @@ router.post('/', async (req, res) => {
    ※ご祈祷の開始時刻5分前を過ぎるとその時間のご祈祷は受け付けない場合がございます、ご了承願います。
    到着されましたら、社務所受付にてご予約された方のお名前をお伝えください。
 
-2. カメラマン同行について
-   プロ・アマチュア問わず、外部のカメラマンの方の神社社殿（拝殿）内へのお立ち入り・同伴撮影はご遠慮いただきます。
+2. 境内での記念撮影・カメラマン同行について
+   撮影でカメラマンの方をお願いされるご家族様には、撮影許可証などは設けておりません。他のご参拝の方のご迷惑にならないよう、どうぞお撮り下さいませ。
+   （※神事の厳修のため、プロ・アマチュア問わず、社殿・拝殿内へのお立ち入り・ご祈祷中の撮影はご遠慮いただきます）
 
 3. 所要時間について
    ご祈祷の時間は、おおむね20分ほどかかります。
@@ -996,8 +1006,9 @@ router.put('/:id', async (req, res) => {
         has_past_prayer = $53, is_twin = $54, child_name2 = $55, child_kana2 = $56, child_birthday2 = $57,
         car_maker = $58, car_model = $59, car_number = $60,
         child_gender = $61, child_gender2 = $62,
+        children_data = $63,
         is_changed = 1
-      WHERE id = $63
+      WHERE id = $64
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
@@ -1013,6 +1024,7 @@ router.put('/:id', async (req, res) => {
       booking.has_past_prayer || 0, booking.is_twin || 0, booking.child_name2 || null, booking.child_kana2 || null, booking.child_birthday2 || null,
       booking.car_maker || null, booking.car_model || null, booking.car_number || null,
       booking.child_gender || null, booking.child_gender2 || null,
+      booking.children_data || null,
       req.params.id
     ]);
 

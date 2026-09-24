@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { getBookingReceipts } from '../types';
+import { getBookingReceipts, getBookingChildren } from '../types';
 
 dotenv.config();
 
@@ -128,10 +128,18 @@ ${booking.prayer2 ? `・副願意: ${booking.prayer2}\n` : ''}・初穂料（基
       const yakudoshiMap: any = { maeyaku: '前厄', honyaku: '本厄', atoyaku: '後厄' };
       text += `・厄年区分: ${yakudoshiMap[booking.yakudoshi_type] || booking.yakudoshi_type}\n`;
     }
-    if (booking.child_name) {
-      text += `・お祝いのお子様: ${booking.child_name} 様 (${booking.child_kana})
-・お子様生年月日: ${booking.child_birthday}
-・ご両親氏名: ${[
+    const bChildren = getBookingChildren(booking);
+    if (bChildren.length > 0) {
+      if (bChildren.length === 1) {
+        text += `・お祝いのお子様: ${bChildren[0].name} 様 (${bChildren[0].kana})${bChildren[0].gender ? ` [${bChildren[0].gender}]` : ''}\n`;
+        text += `・お子様生年月日: ${bChildren[0].birthday}${bChildren[0].age_text ? ` (${bChildren[0].age_text})` : ''}\n`;
+      } else {
+        text += `・お祝いのお子様（全${bChildren.length}名）:\n`;
+        bChildren.forEach((child, cIdx) => {
+          text += `　- ${cIdx + 1}人目: ${child.name} 様 (${child.kana})${child.gender ? ` [${child.gender}]` : ''} 生年月日: ${child.birthday}${child.age_text ? ` (${child.age_text})` : ''}\n`;
+        });
+      }
+      text += `・ご両親氏名: ${[
         booking.father_name ? `父: ${booking.father_name}(${booking.father_kana})` : '',
         booking.mother_name ? `母: ${booking.mother_name}(${booking.mother_kana})` : ''
       ].filter(Boolean).join('、')}
