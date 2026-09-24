@@ -330,13 +330,13 @@ router.post('/', async (req, res) => {
           company_name, company_kana, company_address, company_address_kana, representative_title_name, representative_kana,
           staff_dept_title_name, staff_phone, staff_email, talisman_name, additional_talismans,
           wants_receipt, receipt_name, receipt_amount, receipt_split_count, receipt_name2, receipt_amount2, receipts_data,
-          wood_talisman_count, wood_talisman_large_count, wood_talisman_name,
+          wood_talisman_count, wood_talisman_large_count, wood_talisman_name, wood_talisman_items_data,
           yakudoshi_type, father_name, father_kana, mother_name, mother_kana, child_name, child_kana, child_birthday,
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
           construction_name, construction_designer, construction_builder, construction_period, notes,
           has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
           car_maker, car_model, car_number, child_gender, child_gender2
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -345,7 +345,7 @@ router.post('/', async (req, res) => {
         b.staff_dept_title_name || null, b.staff_phone || null, b.staff_email || null, b.talisman_name || null, b.additional_talismans || null,
         b.wants_receipt || 0, b.receipt_name || null, b.receipt_amount || null,
         b.receipt_split_count || 1, b.receipt_name2 || null, b.receipt_amount2 || null, b.receipts_data || null,
-        b.wood_talisman_count || 0, b.wood_talisman_large_count || 0, b.wood_talisman_name || null,
+        b.wood_talisman_count || 0, b.wood_talisman_large_count || 0, b.wood_talisman_name || null, b.wood_talisman_items_data || null,
         b.yakudoshi_type || null, b.father_name || null, b.father_kana || null, b.mother_name || null, b.mother_kana || null, b.child_name || null, b.child_kana || null, b.child_birthday || null,
         b.kotobuki_type || null, b.kotobuki_other_text || null, b.tournament_name || null, b.tournament_schedule || null,
         b.construction_name || null, b.construction_designer || null, b.construction_builder || null, b.construction_period || null,
@@ -447,7 +447,24 @@ router.post('/', async (req, res) => {
         if (first.wood_talisman_large_count) {
           text += `・祈願符（木札・大・約45cm）: ${first.wood_talisman_large_count}体 (￥${(first.wood_talisman_large_count * 5000).toLocaleString()})\n`;
         }
-        if (first.wood_talisman_name) {
+        let parsedItems: { standard?: string[]; large?: string[] } | null = null;
+        if (first.wood_talisman_items_data) {
+          try { parsedItems = JSON.parse(first.wood_talisman_items_data); } catch(e) {}
+        }
+        if (parsedItems && ((parsedItems.standard && parsedItems.standard.length > 0) || (parsedItems.large && parsedItems.large.length > 0))) {
+          if (parsedItems.standard && parsedItems.standard.length > 0) {
+            text += `  【祈願符（約36cm）墨書名】\n`;
+            parsedItems.standard.forEach((name, i) => {
+              text += `   ${i + 1}体目: ${name || '（未入力・会社名代表者名適用）'}\n`;
+            });
+          }
+          if (parsedItems.large && parsedItems.large.length > 0) {
+            text += `  【祈願符・大（約45cm）墨書名】\n`;
+            parsedItems.large.forEach((name, i) => {
+              text += `   ${i + 1}体目: ${name || '（未入力・会社名代表者名適用）'}\n`;
+            });
+          }
+        } else if (first.wood_talisman_name) {
           text += `・木札の墨書名: ${first.wood_talisman_name}\n`;
         }
       }
@@ -972,15 +989,15 @@ router.put('/:id', async (req, res) => {
         staff_dept_title_name = $20, staff_phone = $21, staff_email = $22, talisman_name = $23, additional_talismans = $24,
         wants_receipt = $25, receipt_name = $26, receipt_amount = $27,
         receipt_split_count = $28, receipt_name2 = $29, receipt_amount2 = $30, receipts_data = $31,
-        wood_talisman_count = $32, wood_talisman_large_count = $33, wood_talisman_name = $34,
-        yakudoshi_type = $35, father_name = $36, father_kana = $37, mother_name = $38, mother_kana = $39, child_name = $40, child_kana = $41, child_birthday = $42,
-        kotobuki_type = $43, kotobuki_other_text = $44, tournament_name = $45, tournament_schedule = $46,
-        construction_name = $47, construction_designer = $48, construction_builder = $49, construction_period = $50, notes = $51,
-        has_past_prayer = $52, is_twin = $53, child_name2 = $54, child_kana2 = $55, child_birthday2 = $56,
-        car_maker = $57, car_model = $58, car_number = $59,
-        child_gender = $60, child_gender2 = $61,
+        wood_talisman_count = $32, wood_talisman_large_count = $33, wood_talisman_name = $34, wood_talisman_items_data = $35,
+        yakudoshi_type = $36, father_name = $37, father_kana = $38, mother_name = $39, mother_kana = $40, child_name = $41, child_kana = $42, child_birthday = $43,
+        kotobuki_type = $44, kotobuki_other_text = $45, tournament_name = $46, tournament_schedule = $47,
+        construction_name = $48, construction_designer = $49, construction_builder = $50, construction_period = $51, notes = $52,
+        has_past_prayer = $53, is_twin = $54, child_name2 = $55, child_kana2 = $56, child_birthday2 = $57,
+        car_maker = $58, car_model = $59, car_number = $60,
+        child_gender = $61, child_gender2 = $62,
         is_changed = 1
-      WHERE id = $62
+      WHERE id = $63
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
@@ -988,7 +1005,7 @@ router.put('/:id', async (req, res) => {
       booking.staff_dept_title_name || null, booking.staff_phone || null, booking.staff_email || null, booking.talisman_name || null, booking.additional_talismans || null,
       booking.wants_receipt || 0, booking.receipt_name || null, booking.receipt_amount || null,
       booking.receipt_split_count || 1, booking.receipt_name2 || null, booking.receipt_amount2 || null, booking.receipts_data || null,
-      booking.wood_talisman_count || 0, booking.wood_talisman_large_count || 0, booking.wood_talisman_name || null,
+      booking.wood_talisman_count || 0, booking.wood_talisman_large_count || 0, booking.wood_talisman_name || null, booking.wood_talisman_items_data || null,
       booking.yakudoshi_type || null, booking.father_name || null, booking.father_kana || null, booking.mother_name || null, booking.mother_kana || null, booking.child_name || null, booking.child_kana || null, booking.child_birthday || null,
       booking.kotobuki_type || null, booking.kotobuki_other_text || null, booking.tournament_name || null, booking.tournament_schedule || null,
       booking.construction_name || null, booking.construction_designer || null, booking.construction_builder || null, booking.construction_period || null,

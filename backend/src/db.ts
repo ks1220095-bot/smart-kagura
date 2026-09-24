@@ -175,6 +175,7 @@ async function initSqlite() {
           wood_talisman_count INTEGER DEFAULT 0,
           wood_talisman_large_count INTEGER DEFAULT 0,
           wood_talisman_name TEXT,
+          wood_talisman_items_data TEXT,
           yakudoshi_type TEXT,
           father_name TEXT,
           father_kana TEXT,
@@ -248,6 +249,7 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_count INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_large_count INTEGER DEFAULT 0`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_name TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_items_data TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -344,6 +346,7 @@ async function verifyPostgresSchema() {
         wood_talisman_count INTEGER DEFAULT 0,
         wood_talisman_large_count INTEGER DEFAULT 0,
         wood_talisman_name TEXT,
+        wood_talisman_items_data TEXT,
         yakudoshi_type VARCHAR(50),
         father_name VARCHAR(255),
         father_kana VARCHAR(255),
@@ -475,6 +478,9 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS wood_talisman_name TEXT
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS wood_talisman_items_data TEXT
     `);
 
     await client.query(`

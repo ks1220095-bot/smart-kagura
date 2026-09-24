@@ -35,6 +35,7 @@ export interface Booking {
   wood_talisman_count?: number; // 祈願符（木札・約36cm）体数
   wood_talisman_large_count?: number; // 祈願符（木札・大・約45cm）体数
   wood_talisman_name?: string; // 木札に書かれる名前（墨書名）
+  wood_talisman_items_data?: string; // 各体数ごとの個別名前JSON { standard?: string[], large?: string[] }
   
   // 団体領収書
   wants_receipt?: number; // 0 or 1

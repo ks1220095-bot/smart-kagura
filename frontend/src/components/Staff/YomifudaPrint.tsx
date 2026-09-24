@@ -484,12 +484,50 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                         </span>
                       )}
                     </div>
-                    {booking.wood_talisman_name && (
-                      <div style={{ marginTop: '0.15rem', fontSize: '0.82rem' }}>
-                        <span style={{ fontSize: '0.65rem', color: '#666' }}>木札墨書名: </span>
-                        <strong style={{ color: '#d80100', fontSize: '0.9rem' }}>{booking.wood_talisman_name}</strong>
-                      </div>
-                    )}
+                    {(() => {
+                      let parsed: { standard?: string[]; large?: string[] } | null = null;
+                      if (booking.wood_talisman_items_data) {
+                        try { parsed = JSON.parse(booking.wood_talisman_items_data); } catch(e) {}
+                      }
+                      const hasParsedItems = parsed && ((parsed.standard && parsed.standard.length > 0) || (parsed.large && parsed.large.length > 0));
+
+                      if (hasParsedItems && parsed) {
+                        return (
+                          <div style={{ marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.8rem' }}>
+                            {parsed.standard && parsed.standard.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold' }}>【約36cm 墨書名】</span>
+                                {parsed.standard.map((name, i) => (
+                                  <div key={`std-${i}`} style={{ paddingLeft: '0.4rem', color: '#d80100', fontWeight: 'bold' }}>
+                                    {parsed.standard!.length > 1 ? `${i + 1}体目: ` : ''}{name || booking.company_name || '（未入力）'}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {parsed.large && parsed.large.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginTop: '0.1rem' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold' }}>【大・約45cm 墨書名】</span>
+                                {parsed.large.map((name, i) => (
+                                  <div key={`lrg-${i}`} style={{ paddingLeft: '0.4rem', color: '#d80100', fontWeight: 'bold' }}>
+                                    {parsed.large!.length > 1 ? `${i + 1}体目: ` : ''}{name || booking.company_name || '（未入力）'}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      if (booking.wood_talisman_name) {
+                        return (
+                          <div style={{ marginTop: '0.15rem', fontSize: '0.82rem' }}>
+                            <span style={{ fontSize: '0.65rem', color: '#666' }}>木札墨書名: </span>
+                            <strong style={{ color: '#d80100', fontSize: '0.9rem' }}>{booking.wood_talisman_name}</strong>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
               </div>

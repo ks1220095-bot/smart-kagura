@@ -331,6 +331,110 @@ export const VisitorPortal: React.FC = () => {
   const [woodTalismanCount, setWoodTalismanCount] = useState<number | ''>(savedDraft?.woodTalismanCount ?? '');
   const [woodTalismanLargeCount, setWoodTalismanLargeCount] = useState<number | ''>(savedDraft?.woodTalismanLargeCount ?? '');
   const [woodTalismanName, setWoodTalismanName] = useState<string>(savedDraft?.woodTalismanName ?? '');
+  const [woodTalismanNames, setWoodTalismanNames] = useState<string[]>(() => {
+    if (savedDraft?.woodTalismanNames && Array.isArray(savedDraft.woodTalismanNames)) {
+      return savedDraft.woodTalismanNames;
+    }
+    const count = Number(savedDraft?.woodTalismanCount) || 0;
+    return count > 0 ? Array(count).fill('') : [];
+  });
+  const [woodTalismanLargeNames, setWoodTalismanLargeNames] = useState<string[]>(() => {
+    if (savedDraft?.woodTalismanLargeNames && Array.isArray(savedDraft.woodTalismanLargeNames)) {
+      return savedDraft.woodTalismanLargeNames;
+    }
+    const count = Number(savedDraft?.woodTalismanLargeCount) || 0;
+    return count > 0 ? Array(count).fill('') : [];
+  });
+
+  const handleWoodTalismanCountChange = (val: number | '') => {
+    setWoodTalismanCount(val);
+    const count = val === '' ? 0 : Math.max(0, val);
+    setWoodTalismanNames(prev => {
+      const next = [...prev];
+      if (next.length < count) {
+        while (next.length < count) next.push('');
+      } else if (next.length > count) {
+        return next.slice(0, count);
+      }
+      return next;
+    });
+  };
+
+  const handleWoodTalismanLargeCountChange = (val: number | '') => {
+    setWoodTalismanLargeCount(val);
+    const count = val === '' ? 0 : Math.max(0, val);
+    setWoodTalismanLargeNames(prev => {
+      const next = [...prev];
+      if (next.length < count) {
+        while (next.length < count) next.push('');
+      } else if (next.length > count) {
+        return next.slice(0, count);
+      }
+      return next;
+    });
+  };
+
+  const handleUpdateWoodTalismanName = (index: number, val: string) => {
+    setWoodTalismanNames(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
+
+  const handleUpdateWoodTalismanLargeName = (index: number, val: string) => {
+    setWoodTalismanLargeNames(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
+
+  const handleApplyDefaultNameToAllWoodTalismans = () => {
+    const defaultBaseName = talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '');
+    if (!defaultBaseName) {
+      alert('会社名または代表者名を入力してから実行してください。');
+      return;
+    }
+    const stdCount = Number(woodTalismanCount) || 0;
+    const lrgCount = Number(woodTalismanLargeCount) || 0;
+    setWoodTalismanNames(Array(stdCount).fill(defaultBaseName));
+    setWoodTalismanLargeNames(Array(lrgCount).fill(defaultBaseName));
+  };
+
+  const getCombinedWoodTalismanName = () => {
+    const defaultBaseName = talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '');
+    const stdCount = Number(woodTalismanCount) || 0;
+    const lrgCount = Number(woodTalismanLargeCount) || 0;
+    const stdItems = stdCount > 0 ? woodTalismanNames.slice(0, stdCount) : [];
+    const lrgItems = lrgCount > 0 ? woodTalismanLargeNames.slice(0, lrgCount) : [];
+    const totalCount = stdItems.length + lrgItems.length;
+    if (totalCount === 0) return '';
+    if (totalCount === 1) {
+      if (stdItems.length === 1) return stdItems[0].trim() || defaultBaseName;
+      return lrgItems[0].trim() || defaultBaseName;
+    }
+    const parts: string[] = [];
+    if (stdItems.length > 0) {
+      const list = stdItems.map((n, i) => `${i + 1}:${n.trim() || defaultBaseName}`).join(' ');
+      parts.push(`【36cm】${list}`);
+    }
+    if (lrgItems.length > 0) {
+      const list = lrgItems.map((n, i) => `${i + 1}:${n.trim() || defaultBaseName}`).join(' ');
+      parts.push(`【大45cm】${list}`);
+    }
+    return parts.join(' / ');
+  };
+
+  const getWoodTalismanItemsDataStr = () => {
+    const defaultBaseName = talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '');
+    const stdCount = Number(woodTalismanCount) || 0;
+    const lrgCount = Number(woodTalismanLargeCount) || 0;
+    return JSON.stringify({
+      standard: stdCount > 0 ? woodTalismanNames.slice(0, stdCount).map(n => n.trim() || defaultBaseName) : [],
+      large: lrgCount > 0 ? woodTalismanLargeNames.slice(0, lrgCount).map(n => n.trim() || defaultBaseName) : []
+    });
+  };
 
   const woodTalismanTotal = wantsWoodTalisman
     ? ((Number(woodTalismanCount) || 0) * 2000 + (Number(woodTalismanLargeCount) || 0) * 5000)
@@ -558,6 +662,8 @@ export const VisitorPortal: React.FC = () => {
       woodTalismanCount,
       woodTalismanLargeCount,
       woodTalismanName,
+      woodTalismanNames,
+      woodTalismanLargeNames,
       orgCustomPrayer1,
       orgCustomPrayer2,
       tournamentName,
@@ -645,6 +751,8 @@ export const VisitorPortal: React.FC = () => {
     woodTalismanCount,
     woodTalismanLargeCount,
     woodTalismanName,
+    woodTalismanNames,
+    woodTalismanLargeNames,
     orgCustomPrayer1,
     orgCustomPrayer2,
     tournamentName,
@@ -737,6 +845,26 @@ export const VisitorPortal: React.FC = () => {
         })));
       } else {
         setReceipts([{ id: 'rec-1', name: b.receipt_name || b.company_name || '', amount: b.receipt_amount || b.hatsuhoryo || 20000 }]);
+      }
+
+      // Additional Wood Talismans
+      const hasWoodTalisman = Boolean((b.wood_talisman_count && b.wood_talisman_count > 0) || (b.wood_talisman_large_count && b.wood_talisman_large_count > 0));
+      setWantsWoodTalisman(hasWoodTalisman);
+      setWoodTalismanCount(b.wood_talisman_count || '');
+      setWoodTalismanLargeCount(b.wood_talisman_large_count || '');
+      setWoodTalismanName(b.wood_talisman_name || '');
+      let parsedWoodItems: { standard?: string[]; large?: string[] } | null = null;
+      if (b.wood_talisman_items_data) {
+        try { parsedWoodItems = JSON.parse(b.wood_talisman_items_data); } catch(e) {}
+      }
+      if (parsedWoodItems) {
+        setWoodTalismanNames(parsedWoodItems.standard || []);
+        setWoodTalismanLargeNames(parsedWoodItems.large || []);
+      } else {
+        const stdCount = b.wood_talisman_count || 0;
+        const lrgCount = b.wood_talisman_large_count || 0;
+        setWoodTalismanNames(stdCount > 0 ? Array(stdCount).fill(b.wood_talisman_name || '') : []);
+        setWoodTalismanLargeNames(lrgCount > 0 ? Array(lrgCount).fill(b.wood_talisman_name || '') : []);
       }
 
       // Org dynamic fields
@@ -1453,7 +1581,8 @@ export const VisitorPortal: React.FC = () => {
       additional_talismans: bookingType === 'organization' ? additionalTalismans : undefined,
       wood_talisman_count: (bookingType === 'organization' && wantsWoodTalisman) ? (Number(woodTalismanCount) || undefined) : undefined,
       wood_talisman_large_count: (bookingType === 'organization' && wantsWoodTalisman) ? (Number(woodTalismanLargeCount) || undefined) : undefined,
-      wood_talisman_name: (bookingType === 'organization' && wantsWoodTalisman) ? (woodTalismanName || talismanName || companyName) : undefined,
+      wood_talisman_name: (bookingType === 'organization' && wantsWoodTalisman) ? (getCombinedWoodTalismanName() || undefined) : undefined,
+      wood_talisman_items_data: (bookingType === 'organization' && wantsWoodTalisman) ? getWoodTalismanItemsDataStr() : undefined,
       
       wants_receipt: bookingType === 'organization' ? (wantsReceipt ? 1 : 0) : 0,
       receipt_split_count: (bookingType === 'organization' && wantsReceipt) ? receipts.length : 1,
@@ -1596,7 +1725,8 @@ export const VisitorPortal: React.FC = () => {
             additional_talismans: idx === 0 ? additionalTalismans : undefined,
             wood_talisman_count: (idx === 0 && wantsWoodTalisman) ? (Number(woodTalismanCount) || undefined) : undefined,
             wood_talisman_large_count: (idx === 0 && wantsWoodTalisman) ? (Number(woodTalismanLargeCount) || undefined) : undefined,
-            wood_talisman_name: (idx === 0 && wantsWoodTalisman) ? (woodTalismanName || talismanName || companyName) : undefined,
+            wood_talisman_name: (idx === 0 && wantsWoodTalisman) ? (getCombinedWoodTalismanName() || undefined) : undefined,
+            wood_talisman_items_data: (idx === 0 && wantsWoodTalisman) ? getWoodTalismanItemsDataStr() : undefined,
             wants_receipt: (idx === 0 && wantsReceipt) ? 1 : 0,
             receipt_split_count: (idx === 0 && wantsReceipt) ? receipts.length : 1,
             receipt_name: (idx === 0 && wantsReceipt && receipts[0]) ? receipts[0].name : undefined,
@@ -3543,12 +3673,11 @@ export const VisitorPortal: React.FC = () => {
                             setWoodTalismanCount('');
                             setWoodTalismanLargeCount('');
                             setWoodTalismanName('');
+                            setWoodTalismanNames([]);
+                            setWoodTalismanLargeNames([]);
                           } else {
                             if (!woodTalismanCount && !woodTalismanLargeCount) {
-                              setWoodTalismanCount(1);
-                            }
-                            if (!woodTalismanName && (talismanName || companyName)) {
-                              setWoodTalismanName(talismanName || companyName || '');
+                              handleWoodTalismanCountChange(1);
                             }
                           }
                         }}
@@ -3598,7 +3727,7 @@ export const VisitorPortal: React.FC = () => {
                                 max="100"
                                 placeholder="0"
                                 value={woodTalismanCount}
-                                onChange={(e) => setWoodTalismanCount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
+                                onChange={(e) => handleWoodTalismanCountChange(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
                                 style={{ width: '100px', textAlign: 'center', fontSize: '1rem', fontWeight: 'bold' }}
                               />
                               <span style={{ fontSize: '0.9rem', color: '#555' }}>体</span>
@@ -3625,7 +3754,7 @@ export const VisitorPortal: React.FC = () => {
                                 max="100"
                                 placeholder="0"
                                 value={woodTalismanLargeCount}
-                                onChange={(e) => setWoodTalismanLargeCount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
+                                onChange={(e) => handleWoodTalismanLargeCountChange(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
                                 style={{ width: '100px', textAlign: 'center', fontSize: '1rem', fontWeight: 'bold' }}
                               />
                               <span style={{ fontSize: '0.9rem', color: '#555' }}>体</span>
@@ -3638,21 +3767,136 @@ export const VisitorPortal: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Name on Wood Talisman */}
-                        <div className="form-group" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-                          <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#333' }}>
-                            御札に書かれるお名前（木札の墨書名）
-                          </label>
-                          <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.15rem 0 0.35rem 0', lineHeight: '1.4' }}>
+                        {/* Individual Names on Wood Talismans (Anti-Squash Vertical Layout) */}
+                        <div style={{ marginTop: '1.25rem' }}>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '0.5rem',
+                            borderBottom: '1px solid #ffd591',
+                            paddingBottom: '0.4rem',
+                            marginBottom: '0.65rem'
+                          }}>
+                            <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-urushi)', margin: 0 }}>
+                              🎋 各木札に書かれるお名前（墨書名）の入力
+                            </label>
+                            {((Number(woodTalismanCount) || 0) > 0 || (Number(woodTalismanLargeCount) || 0) > 0) && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={handleApplyDefaultNameToAllWoodTalismans}
+                                style={{
+                                  fontSize: '0.78rem',
+                                  padding: '0.25rem 0.65rem',
+                                  backgroundColor: '#ffffff',
+                                  borderColor: 'var(--color-gold)',
+                                  color: 'var(--color-urushi)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem',
+                                  cursor: 'pointer',
+                                  fontWeight: 600
+                                }}
+                                title="入力中の会社名・代表者名をすべての木札のお名前に一括反映します"
+                              >
+                                <span>📋</span>
+                                <span>会社名・代表者名をすべてに反映</span>
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.2rem 0 0.75rem 0', lineHeight: '1.4' }}>
                             ※木札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（未入力の場合は会社名・代表者名が適用されます）
                           </div>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder={talismanName || (companyName ? `${companyName} 代表者名` : '例：清瀧株式会社 代表取締役 清瀧太郎')}
-                            value={woodTalismanName}
-                            onChange={(e) => setWoodTalismanName(e.target.value)}
-                          />
+
+                          {/* 36cm Individual Names */}
+                          {Number(woodTalismanCount) > 0 && (
+                            <div style={{ marginBottom: '1rem', width: '100%' }}>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#873800', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span>🏷️</span>
+                                <span>祈願符（木札・約36cm）のお名前（全 {woodTalismanCount} 体）</span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                                {Array.from({ length: Number(woodTalismanCount) }).map((_, idx) => (
+                                  <div
+                                    key={`36cm-${idx}`}
+                                    style={{
+                                      backgroundColor: '#ffffff',
+                                      border: '1px solid #ffd591',
+                                      borderRadius: '4px',
+                                      padding: '0.65rem 0.85rem',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      width: '100%',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  >
+                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', marginBottom: '0.3rem' }}>
+                                      【36cm・{idx + 1}体目】お名前（墨書名）
+                                    </label>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      style={{ width: '100%', minHeight: '40px', boxSizing: 'border-box', fontSize: '0.92rem' }}
+                                      placeholder={idx === 0 
+                                        ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
+                                        : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
+                                      value={woodTalismanNames[idx] || ''}
+                                      onChange={(e) => handleUpdateWoodTalismanName(idx, e.target.value)}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 45cm Large Individual Names */}
+                          {Number(woodTalismanLargeCount) > 0 && (
+                            <div style={{ marginBottom: '1rem', width: '100%' }}>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#873800', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span>🏷️</span>
+                                <span>祈願符（木札・大・約45cm）のお名前（全 {woodTalismanLargeCount} 体）</span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                                {Array.from({ length: Number(woodTalismanLargeCount) }).map((_, idx) => (
+                                  <div
+                                    key={`45cm-${idx}`}
+                                    style={{
+                                      backgroundColor: '#ffffff',
+                                      border: '1px solid #ffd591',
+                                      borderRadius: '4px',
+                                      padding: '0.65rem 0.85rem',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      width: '100%',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  >
+                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', marginBottom: '0.3rem' }}>
+                                      【大45cm・{idx + 1}体目】お名前（墨書名）
+                                    </label>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      style={{ width: '100%', minHeight: '40px', boxSizing: 'border-box', fontSize: '0.92rem' }}
+                                      placeholder={idx === 0 
+                                        ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
+                                        : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
+                                      value={woodTalismanLargeNames[idx] || ''}
+                                      onChange={(e) => handleUpdateWoodTalismanLargeName(idx, e.target.value)}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {Number(woodTalismanCount) === 0 && Number(woodTalismanLargeCount) === 0 && (
+                            <div style={{ fontSize: '0.82rem', color: '#777', fontStyle: 'italic', padding: '0.5rem 0' }}>
+                              ※上記で体数を入力すると、各体数分のお名前（墨書名）入力欄が表示されます。
+                            </div>
+                          )}
                         </div>
 
                         {/* Subtotal bar */}
@@ -4259,9 +4503,30 @@ export const VisitorPortal: React.FC = () => {
                             <span>・祈願符・大（約45cm）: <strong>{woodTalismanLargeCount}</strong> 体 ({((Number(woodTalismanLargeCount) || 0) * 5000).toLocaleString()}円)</span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                          <strong>木札の墨書名:</strong> {woodTalismanName || talismanName || companyName}
-                        </div>
+                        {Number(woodTalismanCount) > 0 && woodTalismanNames.length > 0 && (
+                          <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
+                            <span style={{ fontWeight: 600, color: '#873800' }}>【祈願符（約36cm）墨書名】</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem', paddingLeft: '0.5rem' }}>
+                              {woodTalismanNames.slice(0, Number(woodTalismanCount)).map((name, i) => (
+                                <div key={i}>
+                                  {i + 1}体目: <strong>{name.trim() || (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '（未入力・会社名代表者名適用）'))}</strong>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {Number(woodTalismanLargeCount) > 0 && woodTalismanLargeNames.length > 0 && (
+                          <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
+                            <span style={{ fontWeight: 600, color: '#873800' }}>【祈願符・大（約45cm）墨書名】</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem', paddingLeft: '0.5rem' }}>
+                              {woodTalismanLargeNames.slice(0, Number(woodTalismanLargeCount)).map((name, i) => (
+                                <div key={i}>
+                                  {i + 1}体目: <strong>{name.trim() || (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '（未入力・会社名代表者名適用）'))}</strong>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
