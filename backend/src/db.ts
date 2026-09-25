@@ -215,6 +215,7 @@ async function initSqlite() {
           cancelled_at TEXT,
           child_gender TEXT,
           child_gender2 TEXT,
+          saishu TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -252,6 +253,7 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_name TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_items_data TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN children_data TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN saishu TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -388,6 +390,7 @@ async function verifyPostgresSchema() {
         cancelled_at VARCHAR(50),
         child_gender VARCHAR(10),
         child_gender2 VARCHAR(10),
+        saishu VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -487,6 +490,9 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS children_data TEXT
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS saishu VARCHAR(100)
     `);
 
     await client.query(`

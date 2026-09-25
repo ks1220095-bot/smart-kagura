@@ -91,6 +91,7 @@ export interface Booking {
   car_maker?: string;
   car_model?: string;
   car_number?: string;
+  saishu?: string; // 斎主（ご祈祷をご奉仕する神職名）
 }
 
 export interface CalendarEvent {

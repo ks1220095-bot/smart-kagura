@@ -72,6 +72,9 @@ export const printElement = (
           .no-print {
             display: none !important;
           }
+          .print-only {
+            display: block !important;
+          }
           /* 用紙ごとの余白・サイズ調整 */
           .print-landscape-page {
             width: 100% !important;

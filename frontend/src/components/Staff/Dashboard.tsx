@@ -1545,6 +1545,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>
+            斎主（ご祈祷担当神職）
+          </label>
+          <input
+            type="text"
+            list="saishu-edit-presets"
+            value={editingBooking.saishu || ''}
+            onChange={(e) => setEditingBooking({ ...editingBooking, saishu: e.target.value })}
+            placeholder="例: 宮司、禰宜、権禰宜（または自由入力）"
+            style={{
+              width: '100%',
+              padding: '0.45rem 0.6rem',
+              fontSize: '0.85rem',
+              border: '1px solid #ccc',
+              borderRadius: '3px'
+            }}
+          />
+          <datalist id="saishu-edit-presets">
+            <option value="宮司" />
+            <option value="禰宜" />
+            <option value="権禰宜" />
+            <option value="出仕" />
+          </datalist>
+        </div>
+
         {/* Related Bookings Batch Reschedule Box */}
         {editRelatedBookings.length > 0 && (
           <div style={{
@@ -1787,12 +1813,24 @@ const getTimeSlotTheme = (timeStr: string) => {
   return { bg: '#f8f9fa', border: '#adb5bd', badgeBg: '#495057', badgeText: '#ffffff', tag: `${t}枠` };
 };
 
-export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; onClose: () => void }> = ({ bookings, date, onClose }) => {
+export const ScheduleInnerPrint: React.FC<{ 
+  bookings: Booking[]; 
+  date: string; 
+  onClose: () => void;
+  onRefreshBookings?: () => void | Promise<void>;
+}> = ({ bookings, date, onClose, onRefreshBookings }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [sortMode, setSortMode] = useState<ScheduleSortMode>('created_asc');
   const [pageSize, setPageSize] = useState<number>(15);
   const [selectedPage, setSelectedPage] = useState<'all' | number>('all');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  // 斎主管理用の状態
+  const [daySaishuPreset, setDaySaishuPreset] = useState<string>('宮司');
+  const [saishuSaving, setSaishuSaving] = useState<boolean>(false);
+  const [saishuSaveMsg, setSaishuSaveMsg] = useState<string>('');
+  const [editingCustomSlot, setEditingCustomSlot] = useState<string | null>(null);
+  const [customInputVal, setCustomInputVal] = useState<string>('');
 
   const [orderedBookings, setOrderedBookings] = useState<Booking[]>(() => {
     return sortScheduleBookings(bookings.filter(b => b.booking_date === date), 'created_asc');
@@ -1803,6 +1841,70 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
       setOrderedBookings(sortScheduleBookings(bookings.filter(b => b.booking_date === date), sortMode));
     }
   }, [bookings, date, sortMode]);
+
+  // 時間枠ごとの斎主設定（同時間枠の全予約へ自動連動＆DB保存）
+  const handleUpdateSlotSaishu = async (slotTime: string, newSaishu: string) => {
+    const saishuVal = newSaishu ? newSaishu.trim() : '';
+    setOrderedBookings(prev => prev.map(b => {
+      if (b.booking_time === slotTime) {
+        return { ...b, saishu: saishuVal };
+      }
+      return b;
+    }));
+
+    setSaishuSaving(true);
+    try {
+      const res = await fetch(`${getApiUrl()}/api/bookings/slot-saishu`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, time: slotTime, saishu: saishuVal })
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update slot saishu');
+      }
+      setSaishuSaveMsg(`${slotTime}枠の斎主を「${saishuVal || '未設定'}」に保存しました`);
+      setTimeout(() => setSaishuSaveMsg(''), 3000);
+      if (onRefreshBookings) {
+        onRefreshBookings();
+      }
+    } catch (err) {
+      console.error('Error saving slot saishu:', err);
+      alert('斎主の保存に失敗しました。');
+    } finally {
+      setSaishuSaving(false);
+    }
+  };
+
+  // 本日の全枠の斎主を一括設定
+  const handleUpdateDaySaishu = async (targetSaishu: string) => {
+    const saishuVal = targetSaishu ? targetSaishu.trim() : '';
+    if (!saishuVal && !confirm('本日のすべての時間枠の斎主をクリア（未設定に）しますか？')) {
+      return;
+    }
+    setOrderedBookings(prev => prev.map(b => ({ ...b, saishu: saishuVal })));
+
+    setSaishuSaving(true);
+    try {
+      const res = await fetch(`${getApiUrl()}/api/bookings/day-saishu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, saishu: saishuVal })
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update day saishu');
+      }
+      setSaishuSaveMsg(`本日の全枠の斎主を「${saishuVal || '未設定'}」に一括保存しました`);
+      setTimeout(() => setSaishuSaveMsg(''), 3500);
+      if (onRefreshBookings) {
+        onRefreshBookings();
+      }
+    } catch (err) {
+      console.error('Error saving day saishu:', err);
+      alert('当日の斎主一括保存に失敗しました。');
+    } finally {
+      setSaishuSaving(false);
+    }
+  };
 
   const handleSortChange = (mode: ScheduleSortMode) => {
     setSortMode(mode);
@@ -1860,8 +1962,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
   }
 
   // 全体集計値
-  const totalPaid = orderedBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
-  const totalUnpaid = orderedBookings.filter(b => b.payment_status === 'unpaid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const totalFee = orderedBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
   const indivCount = orderedBookings.filter(b => b.booking_type === 'individual').length;
   const orgCount = orderedBookings.filter(b => b.booking_type === 'organization').length;
   const totalAttendees = orderedBookings.reduce((sum, b) => sum + (b.attending_count || 1), 0);
@@ -1945,9 +2046,12 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           pdf.addPage('a4', 'landscape');
         }
 
-        // 一時的にno-print要素を非表示
+        // 一時的にno-print要素を非表示、print-only要素を表示
         const noPrintEls = sheet.querySelectorAll<HTMLElement>('.no-print');
         noPrintEls.forEach(el => { el.style.display = 'none'; });
+
+        const printOnlyEls = sheet.querySelectorAll<HTMLElement>('.print-only');
+        printOnlyEls.forEach(el => { el.style.display = 'block'; });
 
         const canvas = await html2canvas(sheet, {
           scale: 2,
@@ -1956,8 +2060,9 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           backgroundColor: '#ffffff'
         });
 
-        // no-print要素を復元
+        // no-print要素 & print-only要素を復元
         noPrintEls.forEach(el => { el.style.display = ''; });
+        printOnlyEls.forEach(el => { el.style.display = 'none'; });
 
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         pdf.addImage(imgData, 'JPEG', 0, 4, 297, 202, undefined, 'FAST');
@@ -2109,6 +2214,75 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
             </select>
           </div>
 
+          {/* 本日の斎主一括設定 */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.35rem', 
+            backgroundColor: '#2c2523', 
+            padding: '0.3rem 0.6rem', 
+            borderRadius: '4px',
+            border: '1.5px solid var(--color-gold)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+          }}>
+            <Award size={14} style={{ color: 'var(--color-gold)' }} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>斎主一括:</span>
+            <select
+              value={daySaishuPreset}
+              onChange={(e) => setDaySaishuPreset(e.target.value)}
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#111111',
+                border: '1px solid var(--color-gold)',
+                borderRadius: '3px',
+                padding: '0.25rem 0.4rem',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="宮司">宮司</option>
+              <option value="禰宜">禰宜</option>
+              <option value="権禰宜">権禰宜</option>
+              <option value="出仕">出仕</option>
+              <option value="">（未設定クリア）</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => handleUpdateDaySaishu(daySaishuPreset)}
+              disabled={saishuSaving}
+              style={{
+                padding: '0.25rem 0.55rem',
+                fontSize: '0.78rem',
+                backgroundColor: 'var(--color-gold)',
+                color: '#111',
+                border: 'none',
+                borderRadius: '3px',
+                fontWeight: 'bold',
+                cursor: saishuSaving ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+              title="本日のすべての時間枠の斎主を一括設定します"
+            >
+              {saishuSaving ? '保存中...' : '全枠に適用'}
+            </button>
+          </div>
+
+          {saishuSaveMsg && (
+            <span style={{
+              fontSize: '0.75rem',
+              color: '#a3e635',
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              padding: '2px 8px',
+              borderRadius: '3px',
+              fontWeight: 'bold',
+              border: '1px solid #a3e635'
+            }}>
+              {saishuSaveMsg}
+            </span>
+          )}
+
           {sortMode === 'custom' && (
             <button
               type="button"
@@ -2196,7 +2370,6 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
           const endItem = Math.min((pageIdx + 1) * effectivePageSize, totalBookings);
           const pageAttendees = pageBookings.reduce((sum, b) => sum + (b.attending_count || 1), 0);
           const pageFee = pageBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
-          const pagePaidFee = pageBookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
           const isLastPage = pageIdx === totalPages - 1;
 
           return (
@@ -2269,7 +2442,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                       <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '26%' }}>願意</th>
                       <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '6%', textAlign: 'right' }}>人数</th>
                       <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '10%', textAlign: 'right' }}>初穂料</th>
-                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '8%', textAlign: 'center' }}>支払状況</th>
+                      <th style={{ padding: metrics.rowPadding, fontWeight: 'bold', width: '8%', textAlign: 'center' }}>斎主</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2420,17 +2593,136 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                             <td style={{ padding: metrics.rowPadding, textAlign: 'right', fontWeight: 600 }}>
                               {(b.hatsuhoryo || 0).toLocaleString()} 円
                             </td>
-                            <td style={{ padding: metrics.rowPadding, textAlign: 'center' }}>
-                              <span style={{
-                                padding: '2px 5px',
-                                borderRadius: '3px',
-                                fontSize: '0.72rem',
-                                fontWeight: 'bold',
-                                backgroundColor: b.payment_status === 'paid' ? '#e6f4ea' : '#fce8e6',
-                                color: b.payment_status === 'paid' ? '#137333' : '#c5221f'
-                              }}>
-                                {b.payment_status === 'paid' ? '支払済' : '未納'}
-                              </span>
+                            <td style={{ padding: metrics.rowPadding, textAlign: 'center', verticalAlign: 'middle' }}>
+                              {/* 画面操作コントロール（時間枠連動） */}
+                              <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                                {editingCustomSlot === b.booking_time ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                    <input
+                                      type="text"
+                                      value={customInputVal}
+                                      onChange={(e) => setCustomInputVal(e.target.value)}
+                                      placeholder="神職名"
+                                      autoFocus
+                                      style={{
+                                        width: '68px',
+                                        padding: '1px 3px',
+                                        fontSize: '0.72rem',
+                                        border: '1px solid var(--color-gold)',
+                                        borderRadius: '2px',
+                                        outline: 'none',
+                                        backgroundColor: '#fff'
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleUpdateSlotSaishu(b.booking_time, customInputVal);
+                                          setEditingCustomSlot(null);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingCustomSlot(null);
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdateSlotSaishu(b.booking_time, customInputVal);
+                                        setEditingCustomSlot(null);
+                                      }}
+                                      style={{
+                                        padding: '1px 4px',
+                                        background: 'var(--color-urushi)',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '2px',
+                                        fontSize: '0.68rem',
+                                        cursor: 'pointer'
+                                      }}
+                                      title="確定"
+                                    >
+                                      ✓
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '1px' }}>
+                                    <select
+                                      value={b.saishu || ''}
+                                      onChange={(e) => {
+                                        if (e.target.value === '__custom__') {
+                                          setEditingCustomSlot(b.booking_time);
+                                          setCustomInputVal(b.saishu || '');
+                                        } else {
+                                          handleUpdateSlotSaishu(b.booking_time, e.target.value);
+                                        }
+                                      }}
+                                      title={`この時間枠（${b.booking_time}）の全件に連動します`}
+                                      style={{
+                                        padding: '1px 2px',
+                                        fontSize: '0.73rem',
+                                        fontWeight: b.saishu ? 600 : 'normal',
+                                        color: b.saishu ? '#111' : '#666',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '2px',
+                                        backgroundColor: b.saishu ? '#fffdf7' : '#ffffff',
+                                        cursor: 'pointer',
+                                        maxWidth: '82px'
+                                      }}
+                                    >
+                                      <option value="">（未設定）</option>
+                                      <option value="宮司">宮司</option>
+                                      <option value="禰宜">禰宜</option>
+                                      <option value="権禰宜">権禰宜</option>
+                                      <option value="出仕">出仕</option>
+                                      {b.saishu && !['宮司', '禰宜', '権禰宜', '出仕'].includes(b.saishu) && (
+                                        <option value={b.saishu}>{b.saishu}</option>
+                                      )}
+                                      <option value="__custom__">✏️ 直接入力...</option>
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingCustomSlot(b.booking_time);
+                                        setCustomInputVal(b.saishu || '');
+                                      }}
+                                      style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#999',
+                                        cursor: 'pointer',
+                                        padding: '1px',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                      }}
+                                      title="自由入力・直接編集"
+                                    >
+                                      <Edit3 size={10} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 印刷・PDF保存プレビュー用表示 */}
+                              <div className="print-only" style={{ textAlign: 'center', width: '100%' }}>
+                                {b.saishu ? (
+                                  <span style={{ 
+                                    fontWeight: 'bold', 
+                                    fontSize: metrics.badgeFontSize, 
+                                    fontFamily: 'var(--font-serif)',
+                                    color: '#000',
+                                    letterSpacing: '0.05em'
+                                  }}>
+                                    {b.saishu}
+                                  </span>
+                                ) : (
+                                  <span style={{ 
+                                    color: '#555', 
+                                    letterSpacing: '0.12em',
+                                    fontSize: '0.72rem',
+                                    fontFamily: 'sans-serif'
+                                  }}>
+                                    ＿＿＿＿
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -2457,12 +2749,7 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                       <span style={{ marginLeft: '1.2rem' }}>（個人：<strong>{indivCount}</strong>件 / 団体：<strong>{orgCount}</strong>件 / 参列計：<strong>{totalAttendees}</strong>名）</span>
                     </div>
                     <div>
-                      <span>初穂料合計 (受取済)： <strong style={{ fontSize: '0.9rem', color: '#137333' }}>￥{totalPaid.toLocaleString()}</strong></span>
-                      {totalUnpaid > 0 && (
-                        <span style={{ marginLeft: '1.2rem', color: '#c5221f', fontWeight: 'bold' }}>
-                          未収： ￥{totalUnpaid.toLocaleString()}
-                        </span>
-                      )}
+                      <span>初穂料合計： <strong style={{ fontSize: '0.9rem', color: 'var(--color-urushi)' }}>￥{totalFee.toLocaleString()}</strong></span>
                     </div>
                   </>
                 ) : (
@@ -2472,7 +2759,6 @@ export const ScheduleInnerPrint: React.FC<{ bookings: Booking[]; date: string; o
                     </div>
                     <div style={{ color: '#333' }}>
                       <span>【このページの小計】 参列： <strong>{pageAttendees}</strong> 名 / 初穂料： <strong>￥{pageFee.toLocaleString()}</strong></span>
-                      <span style={{ marginLeft: '1rem', color: '#137333' }}>（受取済： ￥{pagePaidFee.toLocaleString()}）</span>
                     </div>
                   </>
                 )}

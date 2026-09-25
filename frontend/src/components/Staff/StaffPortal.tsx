@@ -2116,6 +2116,7 @@ export const StaffPortal: React.FC = () => {
             bookings={bookings} 
             date={selectedSchedulePrintDate} 
             onClose={() => setSelectedSchedulePrintDate(null)} 
+            onRefreshBookings={fetchBookings}
           />
         )}
 

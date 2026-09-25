@@ -335,8 +335,8 @@ router.post('/', async (req, res) => {
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
           construction_name, construction_designer, construction_builder, construction_period, notes,
           has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
-          car_maker, car_model, car_number, child_gender, child_gender2, children_data
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66)
+          car_maker, car_model, car_number, child_gender, child_gender2, children_data, saishu
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -353,7 +353,8 @@ router.post('/', async (req, res) => {
         b.has_past_prayer || 0, b.is_twin || 0, b.child_name2 || null, b.child_kana2 || null, b.child_birthday2 || null, b.is_manual || 0,
         b.car_maker || null, b.car_model || null, b.car_number || null,
         b.child_gender || null, b.child_gender2 || null,
-        b.children_data || null
+        b.children_data || null,
+        b.saishu || null
       ]);
       b.id = result.rows[0].id;
       createdBookings.push(b);
@@ -1007,8 +1008,9 @@ router.put('/:id', async (req, res) => {
         car_maker = $58, car_model = $59, car_number = $60,
         child_gender = $61, child_gender2 = $62,
         children_data = $63,
+        saishu = $64,
         is_changed = 1
-      WHERE id = $64
+      WHERE id = $65
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
@@ -1025,6 +1027,7 @@ router.put('/:id', async (req, res) => {
       booking.car_maker || null, booking.car_model || null, booking.car_number || null,
       booking.child_gender || null, booking.child_gender2 || null,
       booking.children_data || null,
+      booking.saishu !== undefined ? booking.saishu : (existing.saishu || null),
       req.params.id
     ]);
 
@@ -1337,6 +1340,11 @@ router.post('/bulk-update', async (req, res) => {
       }
     }
 
+    if (fields.saishu !== undefined) {
+      updates.push(`saishu = $${pIdx++}`);
+      params.push(fields.saishu ? String(fields.saishu).trim() : null);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: '更新する項目がありません。' });
     }
@@ -1357,6 +1365,62 @@ router.post('/bulk-update', async (req, res) => {
   } catch (error) {
     console.error('Bulk update error:', error);
     res.status(500).json({ error: '一括更新に失敗しました。' });
+  }
+});
+
+// 9. Update Saishu for a Specific Time Slot (Auto-links all bookings in the slot)
+router.patch('/slot-saishu', async (req, res) => {
+  const { date, time, saishu } = req.body;
+  if (!date || !time) {
+    return res.status(400).json({ error: '日付と時間を指定してください。' });
+  }
+
+  try {
+    const db = getDb();
+    const saishuVal = typeof saishu === 'string' && saishu.trim() !== '' ? saishu.trim() : null;
+    
+    await db.query(
+      `UPDATE bookings SET saishu = $1 WHERE booking_date = $2 AND booking_time = $3 AND is_cancelled = 0`,
+      [saishuVal, date, time]
+    );
+
+    // スプレッドシートへ同期
+    await syncAllBookingsToSpreadsheet().catch(err => 
+      console.error('Failed to trigger spreadsheet sync on slot-saishu update:', err)
+    );
+
+    res.json({ success: true, date, time, saishu: saishuVal });
+  } catch (error) {
+    console.error('Slot saishu update error:', error);
+    res.status(500).json({ error: '斎主の更新に失敗しました。' });
+  }
+});
+
+// 10. Update Saishu for an Entire Day (All time slots)
+router.post('/day-saishu', async (req, res) => {
+  const { date, saishu } = req.body;
+  if (!date) {
+    return res.status(400).json({ error: '日付を指定してください。' });
+  }
+
+  try {
+    const db = getDb();
+    const saishuVal = typeof saishu === 'string' && saishu.trim() !== '' ? saishu.trim() : null;
+    
+    await db.query(
+      `UPDATE bookings SET saishu = $1 WHERE booking_date = $2 AND is_cancelled = 0`,
+      [saishuVal, date]
+    );
+
+    // スプレッドシートへ同期
+    await syncAllBookingsToSpreadsheet().catch(err => 
+      console.error('Failed to trigger spreadsheet sync on day-saishu update:', err)
+    );
+
+    res.json({ success: true, date, saishu: saishuVal });
+  } catch (error) {
+    console.error('Day saishu update error:', error);
+    res.status(500).json({ error: '当日の斎主一括更新に失敗しました。' });
   }
 });
 
