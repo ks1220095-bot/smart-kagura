@@ -378,7 +378,8 @@ router.post('/', async (req, res) => {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご予約内容
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-· 予約日時　: ${first.booking_date} ${first.booking_time}の回
+・受付番号　: ${first.receipt_number}
+・予約日時　: ${first.booking_date} ${first.booking_time}の回
 ・ご祈祷種類: ${isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}
 ・お申込件数: ${createdBookings.length}件
 `;
@@ -544,14 +545,17 @@ TEL: 047-351-5417 (受付時間: 9:30〜15:30)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご予約の日程変更・キャンセルについて
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の一日前まで】となっております。
-社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
+ご都合が悪くなった場合の日程変更やキャンセルは、以下の専用URLからオンラインでお手続きいただけます。
+【キャンセル料等は一切発生いたしませんのでご安心ください】
 
-ご都合が悪くなった場合の日程変更やキャンセルは、以下のURLからオンラインで行うことができます。
+※オンラインでのお手続き期限は【ご祈祷開始時間の24時間前（前日同時刻）まで】となっております。
+※ご祈祷開始まで24時間を切った直前の変更・キャンセルにつきましては、社務の都合上、清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。
+
+▼ 日程変更・キャンセル専用URL:
 `;
 
       createdBookings.forEach((b, idx) => {
-        text += `[ご祈祷 ${idx + 1}件目 (${b.prayer1})] 変更・キャンセルリンク:\n`;
+        text += `[ご祈祷 ${idx + 1}件目 (${b.prayer1}) / 受付番号: ${b.receipt_number}]\n`;
         text += `https://seiryu-gokitou.vercel.app/?changeId=${b.id}\n\n`;
       });
       text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -755,6 +759,46 @@ router.get('/export-csv', async (req, res) => {
   } catch (error) {
     console.error('CSV export error:', error);
     res.status(500).json({ error: 'CSVエクスポートに失敗しました。' });
+  }
+});
+
+// 4.9. Lookup booking by receipt number and phone (Visitor self-service)
+router.post('/lookup', async (req, res) => {
+  const { receipt_number, phone } = req.body;
+  if (!receipt_number || !phone) {
+    return res.status(400).json({ error: '受付番号とお電話番号を入力してください。' });
+  }
+
+  try {
+    const db = getDb();
+    const cleanPhone = String(phone).replace(/[-\s]/g, '');
+    const cleanReceipt = String(receipt_number).trim().toUpperCase();
+
+    const result = await db.query(`
+      SELECT id, receipt_number, booking_date, booking_time, booking_type, name, company_name, prayer1, is_cancelled
+      FROM bookings
+      WHERE UPPER(TRIM(receipt_number)) = $1
+        AND (
+          REPLACE(REPLACE(COALESCE(phone, ''), '-', ''), ' ', '') = $2
+          OR REPLACE(REPLACE(COALESCE(staff_phone, ''), '-', ''), ' ', '') = $2
+        )
+      ORDER BY id ASC
+      LIMIT 1
+    `, [cleanReceipt, cleanPhone]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '該当するご予約が見つかりませんでした。受付番号またはお電話番号をご確認ください。' });
+    }
+
+    const booking = result.rows[0];
+    if (booking.is_cancelled === 1) {
+      return res.status(400).json({ error: 'このご予約はすでにキャンセル（取消）されております。' });
+    }
+
+    res.json({ id: booking.id, booking });
+  } catch (error) {
+    console.error('Booking lookup error:', error);
+    res.status(500).json({ error: '予約情報の照会に失敗しました。' });
   }
 });
 
@@ -1051,6 +1095,7 @@ router.put('/:id', async (req, res) => {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ ご変更後の予約内容
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+・受付番号　: ${existing.receipt_number}
 ・予約日時　: ${booking.booking_date} ${booking.booking_time}の回
 ・ご祈祷種類: ${isIndiv ? '個人のご祈祷' : '団体（企業）のご祈祷'}
 ・主願意　　: ${booking.prayer1}
@@ -1072,9 +1117,15 @@ router.put('/:id', async (req, res) => {
 TEL: 047-351-5417 (受付時間: 9:30〜15:30)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-■ ご予約の日程変更・キャンセルについて
+■ 再度の日程変更・キャンセルについて
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-再度変更・キャンセルされる場合は、引き続き以下のURLからオンラインで行うことができます。
+ご都合が悪くなった場合の再度の変更やキャンセルは、以下のURLからオンラインでお手続きいただけます。
+【キャンセル料等は一切発生いたしませんのでご安心ください】
+
+※オンラインでのお手続き期限は【ご祈祷開始時間の24時間前（前日同時刻）まで】となっております。
+※ご祈祷開始まで24時間を切った直前の変更・キャンセルにつきましては、清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。
+
+▼ 日程変更・キャンセル専用URL:
 https://seiryu-gokitou.vercel.app/?changeId=${req.params.id}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;

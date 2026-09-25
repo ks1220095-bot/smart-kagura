@@ -113,6 +113,18 @@ const FAQ_ITEMS = [
   {
     q: 'Q. 記念撮影で出張カメラマン（プロカメラマン）を同行しても良いですか？撮影許可証は必要ですか？',
     a: 'A. 撮影でカメラマンの方をお願いされるご家族様には撮影許可証などは設けておりません。他のご参拝の方のご迷惑にならないよう、どうぞお撮り下さいませ。（※なお、神事の厳修のため、社殿・拝殿内へのカメラマンのお立ち入り・ご祈祷中の撮影はご遠慮いただいております）。'
+  },
+  {
+    q: 'Q. 予約の日程を変更したいのですが、どうすればよいですか？',
+    a: 'A. ご祈祷開始日時の24時間前（前日同時刻）まででしたら、予約完了メールに記載の専用URL、または当サイトの「ご予約の確認・変更・キャンセル」メニューよりオンラインでいつでも日時をご変更いただけます。開始24時間を切った直前の変更につきましては、清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。'
+  },
+  {
+    q: 'Q. 予約をキャンセルしたい場合、キャンセル料はかかりますか？',
+    a: 'A. いいえ、キャンセル料等は一切発生いたしませんのでご安心ください。オンラインでのお取り消しはご祈祷開始の24時間前まで受付可能です。以降の直前キャンセルにつきましては、準備の都合がございますため、お電話（047-351-5417）にてご連絡いただけますようお願いいたします。'
+  },
+  {
+    q: 'Q. 当日、急な体調不良や交通機関の遅延等で時間に遅れそうな場合はどうすればいいですか？',
+    a: 'A. お気兼ねなくお電話（047-351-5417）にて社務所までご一報ください。後続の回へのスライド対応や、別のお日にちへの振り替えなど、柔軟に対応させていただきます。'
   }
 ];
 
@@ -625,7 +637,11 @@ export const VisitorPortal: React.FC = () => {
   const [userBirthYear, setUserBirthYear] = useState(savedDraft?.userBirthYear ?? '');
   const [userBirthMonth, setUserBirthMonth] = useState(savedDraft?.userBirthMonth ?? '');
   const [userBirthDay, setUserBirthDay] = useState(savedDraft?.userBirthDay ?? '');
-  const [activeMainTab, setActiveMainTab] = useState<'form' | 'faq'>('form');
+  const [activeMainTab, setActiveMainTab] = useState<'form' | 'faq' | 'lookup'>('form');
+  const [lookupReceiptNumber, setLookupReceiptNumber] = useState('');
+  const [lookupPhone, setLookupPhone] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
   const [carMaker, setCarMaker] = useState(savedDraft?.carMaker ?? '');
   const [carModel, setCarModel] = useState(savedDraft?.carModel ?? '');
   const [carNumber, setCarNumber] = useState(savedDraft?.carNumber ?? '');
@@ -1304,6 +1320,38 @@ export const VisitorPortal: React.FC = () => {
       setChangeError(err.message || '通信エラーが発生しました。');
     } finally {
       setChangeLoading(false);
+    }
+  };
+
+  const handleLookupBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupReceiptNumber.trim() || !lookupPhone.trim()) {
+      setLookupError('受付番号とお電話番号を入力してください。');
+      return;
+    }
+    setLookupLoading(true);
+    setLookupError('');
+    try {
+      const apiUrl = getApiUrl();
+      const res = await fetch(`${apiUrl}/api/bookings/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receipt_number: lookupReceiptNumber.trim(),
+          phone: lookupPhone.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '該当する予約が見つかりませんでした。');
+      }
+      setChangeId(String(data.id));
+      fetchTargetBooking(String(data.id));
+      window.history.replaceState({}, '', `${window.location.pathname}?changeId=${data.id}`);
+    } catch (err: any) {
+      setLookupError(err.message || '照会に失敗しました。');
+    } finally {
+      setLookupLoading(false);
     }
   };
 
@@ -2206,80 +2254,165 @@ export const VisitorPortal: React.FC = () => {
                 </button>
               </div>
             ) : (
-              targetBooking && (
-                <div>
-                  <div style={{
-                    fontSize: '0.85rem',
-                    color: '#d3381c',
-                    backgroundColor: '#fff1f0',
-                    border: '1px solid #ffa39e',
-                    borderRadius: '4px',
-                    padding: '0.75rem 1rem',
-                    marginBottom: '1.5rem',
-                    lineHeight: '1.4'
-                  }}>
-                    <strong>⚠️ オンライン手続き期限について</strong><br />
-                    オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の一日前まで】となっております。社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
-                  </div>
+              targetBooking && (() => {
+                const now = new Date();
+                const bookingDateTime = new Date(`${targetBooking.booking_date}T${targetBooking.booking_time}:00+09:00`);
+                const isLessThan24Hours = (bookingDateTime.getTime() - now.getTime()) < 24 * 60 * 60 * 1000;
 
-                  <div style={{ backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', padding: '1rem', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
-                    <p style={{ margin: '0 0 0.5rem 0' }}><strong>お名前:</strong> {targetBooking.booking_type === 'individual' ? targetBooking.name : targetBooking.company_name} 様</p>
-                    <p style={{ margin: '0 0 0.5rem 0' }}><strong>ご祈祷:</strong> {targetBooking.prayer1}</p>
-                    <p style={{ margin: 0 }}><strong>現在のご希望日時:</strong> {targetBooking.booking_date} {targetBooking.booking_time}の回</p>
-                  </div>
-
-                  {/* Related Bookings Box for Same Applicant */}
-                  {relatedBookings.length > 0 && (
-                    <div style={{
-                      backgroundColor: '#fffdf7',
-                      border: '1px solid var(--color-gold)',
-                      borderRadius: '4px',
-                      padding: '0.9rem 1rem',
-                      marginBottom: '1.5rem'
-                    }}>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span>💡</span> 同時に申し込まれた関連するご予約が他に {relatedBookings.length} 件 あります：
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
-                        {relatedBookings.map((rel, idx) => (
-                          <div key={rel.id || idx} style={{ fontSize: '0.82rem', color: '#555', backgroundColor: '#ffffff', padding: '0.35rem 0.6rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                            ・<strong>{rel.booking_time}</strong> {rel.name || rel.company_name} 様 【{rel.prayer1}】 {rel.hatsuhoryo.toLocaleString()}円
-                          </div>
-                        ))}
-                      </div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={batchCancelRelated && batchRescheduleRelated}
-                          onChange={(e) => {
-                            setBatchCancelRelated(e.target.checked);
-                            setBatchRescheduleRelated(e.target.checked);
+                return (
+                  <div>
+                    {isLessThan24Hours ? (
+                      <div style={{
+                        backgroundColor: '#fff1f0',
+                        border: '2px solid #ffa39e',
+                        borderRadius: '6px',
+                        padding: '1.5rem',
+                        textAlign: 'center',
+                        marginBottom: '1.5rem'
+                      }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#d3381c', marginBottom: '0.5rem' }}>
+                          ⚠️ オンライン受付期限終了（開始24時間以内）
+                        </div>
+                        <p style={{ fontSize: '0.88rem', color: '#555', lineHeight: '1.6', margin: '0 0 1.25rem 0' }}>
+                          オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の24時間前まで】となっております。<br />
+                          直前・当日のご変更やキャンセルにつきましては、神事準備の都合上、恐れ入りますが社務所まで直接お電話をお願いいたします。<br />
+                          <span style={{ color: '#274916', fontWeight: 'bold', backgroundColor: '#f6ffed', padding: '0.2rem 0.5rem', borderRadius: '2px', display: 'inline-block', marginTop: '0.3rem' }}>
+                            ※直前の変更・キャンセルでも、キャンセル料等は一切発生いたしません。
+                          </span>
+                        </p>
+                        <a
+                          href="tel:0473515417"
+                          className="btn btn-primary"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1.75rem',
+                            fontSize: '1.05rem',
+                            textDecoration: 'none',
+                            backgroundColor: '#d3381c',
+                            borderColor: '#d3381c'
                           }}
-                          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                        />
-                        日程変更・キャンセル時は、これらの関連予約（合計 {relatedBookings.length + 1} 件）も一緒にまとめて変更・キャンセルする
-                      </label>
-                    </div>
-                  )}
+                        >
+                          📞 047-351-5417（社務所）に電話する
+                        </a>
+                        <p style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.5rem', marginBottom: 0 }}>
+                          （受付時間: 9:30 〜 15:30）
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{
+                        backgroundColor: '#f6ffed',
+                        border: '1px solid #b7eb8f',
+                        borderRadius: '4px',
+                        padding: '0.85rem 1.1rem',
+                        marginBottom: '1.25rem',
+                        fontSize: '0.85rem',
+                        color: '#274916',
+                        lineHeight: '1.5'
+                      }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span>✅</span> オンライン変更・キャンセル受付中（キャンセル料は一切かかりません）
+                        </div>
+                        ご祈祷開始日時の24時間前（前日同時刻）まででしたら、日時の変更やキャンセルがオンラインでいつでも行えます。
+                      </div>
+                    )}
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
-                    <button 
-                      onClick={() => loadBookingIntoForm(targetBooking)} 
-                      className="btn btn-primary"
-                      style={{ padding: '0.75rem' }}
-                    >
-                      ご予約内容（日時・お名前等）を変更する
-                    </button>
-                    <button 
-                      onClick={handleCancelBooking} 
-                      className="btn btn-secondary"
-                      style={{ padding: '0.75rem', color: '#d3381c', borderColor: '#ffa39e', backgroundColor: '#fdf3f2' }}
-                    >
-                      ご予約をキャンセルする
-                    </button>
+                    <div style={{ backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', padding: '1.2rem', marginBottom: '1.25rem', fontSize: '0.9rem', borderRadius: '4px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                            <th style={{ padding: '0.4rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', width: '35%' }}>受付番号</th>
+                            <td style={{ padding: '0.4rem 0', fontWeight: 'bold', fontFamily: 'monospace' }}>{targetBooking.receipt_number}</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                            <th style={{ padding: '0.4rem 0', textAlign: 'left', color: 'var(--color-accent-gray)' }}>お名前</th>
+                            <td style={{ padding: '0.4rem 0', fontWeight: 'bold' }}>{targetBooking.booking_type === 'individual' ? targetBooking.name : targetBooking.company_name} 様</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                            <th style={{ padding: '0.4rem 0', textAlign: 'left', color: 'var(--color-accent-gray)' }}>ご祈祷の願意</th>
+                            <td style={{ padding: '0.4rem 0', fontWeight: 'bold' }}>{targetBooking.prayer1}{targetBooking.prayer2 ? ` / ${targetBooking.prayer2}` : ''}</td>
+                          </tr>
+                          <tr>
+                            <th style={{ padding: '0.4rem 0', textAlign: 'left', color: 'var(--color-accent-gray)' }}>現在のご予約日時</th>
+                            <td style={{ padding: '0.4rem 0', fontWeight: 'bold', color: 'var(--color-mizuiro)' }}>{targetBooking.booking_date} {targetBooking.booking_time}の回</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Related Bookings Box for Same Applicant */}
+                    {relatedBookings.length > 0 && (
+                      <div style={{
+                        backgroundColor: '#fffdf7',
+                        border: '1px solid var(--color-gold)',
+                        borderRadius: '4px',
+                        padding: '0.9rem 1rem',
+                        marginBottom: '1.5rem'
+                      }}>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span>💡</span> 同時に申し込まれた関連するご予約が他に {relatedBookings.length} 件 あります：
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                          {relatedBookings.map((rel, idx) => (
+                            <div key={rel.id || idx} style={{ fontSize: '0.82rem', color: '#555', backgroundColor: '#ffffff', padding: '0.35rem 0.6rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                              ・<strong>{rel.booking_time}</strong> {rel.name || rel.company_name} 様 【{rel.prayer1}】 {rel.hatsuhoryo.toLocaleString()}円
+                            </div>
+                          ))}
+                        </div>
+                        {!isLessThan24Hours && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-urushi)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={batchCancelRelated && batchRescheduleRelated}
+                              onChange={(e) => {
+                                setBatchCancelRelated(e.target.checked);
+                                setBatchRescheduleRelated(e.target.checked);
+                              }}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                            日程変更・キャンセル時は、これらの関連予約（合計 {relatedBookings.length + 1} 件）も一緒にまとめて変更・キャンセルする
+                          </label>
+                        )}
+                      </div>
+                    )}
+
+                    {!isLessThan24Hours && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                        <button 
+                          onClick={() => loadBookingIntoForm(targetBooking)} 
+                          className="btn btn-primary"
+                          style={{ padding: '0.75rem' }}
+                        >
+                          ご予約内容（日時・お名前等）を変更する
+                        </button>
+                        <button 
+                          onClick={handleCancelBooking} 
+                          className="btn btn-secondary"
+                          style={{ padding: '0.75rem', color: '#d3381c', borderColor: '#ffa39e', backgroundColor: '#fdf3f2' }}
+                        >
+                          ご予約をキャンセルする
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setChangeId(null);
+                          setTargetBooking(null);
+                          window.history.replaceState({}, '', window.location.pathname);
+                        }} 
+                        className="btn btn-secondary"
+                        style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }}
+                      >
+                        トップページへ戻る
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
+                );
+              })()
             )}
           </div>
         </div>
@@ -2364,9 +2497,26 @@ export const VisitorPortal: React.FC = () => {
           >
             ❓ よくあるご質問
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('lookup')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeMainTab === 'lookup' ? '2px solid var(--color-urushi)' : 'none',
+              color: activeMainTab === 'lookup' ? 'var(--color-urushi)' : 'var(--color-accent-gray)',
+              fontWeight: activeMainTab === 'lookup' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontFamily: 'var(--font-serif)'
+            }}
+          >
+            🔍 ご予約の確認・変更・キャンセル
+          </button>
         </div>
 
-        {activeMainTab === 'form' ? (
+        {activeMainTab === 'form' && (
           <>
             {/* Step Indicator */}
             <div className="no-print" style={{ 
@@ -4838,6 +4988,27 @@ export const VisitorPortal: React.FC = () => {
               </div>
             )}
 
+            {/* Booking Change & Cancellation Policy Guidance */}
+            <div style={{
+              backgroundColor: '#f6ffed',
+              border: '1px solid #b7eb8f',
+              borderRadius: '4px',
+              padding: '1rem 1.25rem',
+              marginBottom: '1.75rem',
+              fontSize: '0.88rem',
+              lineHeight: '1.6',
+              color: '#274916'
+            }}>
+              <div style={{ fontWeight: 'bold', fontSize: '0.92rem', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#389e0d' }}>
+                <span>ℹ️</span> ご予約の日程変更・キャンセルについて
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <li>万一ご都合が悪くなった場合、<strong>ご祈祷開始日時の24時間前（前日同時刻）まで</strong>でしたら、予約完了メールのURLよりオンラインで日時変更・キャンセルが可能です。</li>
+                <li><strong>キャンセル料等は一切発生いたしません</strong>ので、安心してご予約ください。</li>
+                <li>開始24時間以内の直前の変更・キャンセルにつきましては、清瀧神社社務所（<a href="tel:0473515417" style={{ color: '#274916', fontWeight: 'bold', textDecoration: 'underline' }}>047-351-5417</a>）までお電話にて直接ご連絡をお願いいたします。</li>
+              </ul>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '3rem' }}>
               <button
                 type="button"
@@ -5100,8 +5271,10 @@ export const VisitorPortal: React.FC = () => {
         )}
 
           </>
-        ) : (
-          /* FAQ Tab Display */
+        )}
+
+        {/* FAQ Tab Display */}
+        {activeMainTab === 'faq' && (
           <div className="card kamidana-border" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
             <h3 style={{ fontSize: '1.4rem', textAlign: 'center', marginBottom: '2rem', fontFamily: 'var(--font-serif)' }}>
               ご予約にあたってのよくあるご質問 (FAQ)
@@ -5149,6 +5322,113 @@ export const VisitorPortal: React.FC = () => {
                 </details>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Lookup Tab Display */}
+        {activeMainTab === 'lookup' && (
+          <div className="card kamidana-border" style={{ padding: '2.5rem 1.75rem', maxWidth: '620px', margin: '0 auto' }}>
+            <h3 style={{ fontSize: '1.4rem', textAlign: 'center', marginBottom: '0.75rem', fontFamily: 'var(--font-serif)', color: 'var(--color-urushi)' }}>
+              ご予約の確認・日程変更・キャンセル
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--color-accent-gray)', textAlign: 'center', marginBottom: '1.75rem', lineHeight: '1.6' }}>
+              予約完了メールまたは予約完了画面に表示された「受付番号」と、お申し込み時の「お電話番号」を入力して照会してください。
+            </p>
+
+            {lookupError && (
+              <div style={{
+                backgroundColor: '#fff1f0',
+                border: '1px solid #ffa39e',
+                color: '#d3381c',
+                padding: '0.85rem 1rem',
+                borderRadius: '4px',
+                fontSize: '0.88rem',
+                marginBottom: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <AlertCircle size={18} />
+                <span>{lookupError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLookupBooking} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--color-urushi)' }}>
+                  受付番号 <span style={{ color: '#d3381c' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="例: SRY-260925-ABCD"
+                  value={lookupReceiptNumber}
+                  onChange={(e) => setLookupReceiptNumber(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1.05rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-border)',
+                    fontFamily: 'monospace'
+                  }}
+                  required
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.35rem', display: 'block' }}>
+                  ※予約完了時にお控えいただいた「SRY-」から始まる受付番号です。
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--color-urushi)' }}>
+                  お電話番号 <span style={{ color: '#d3381c' }}>*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="例: 09012345678 （ハイフン有無どちらでも可）"
+                  value={lookupPhone}
+                  onChange={(e) => setLookupPhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-border)'
+                  }}
+                  required
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.35rem', display: 'block' }}>
+                  ※ご予約時に入力されたお電話番号（ハイフンの有無は問いません）を入力してください。
+                </span>
+              </div>
+
+              <div style={{
+                backgroundColor: '#f6ffed',
+                border: '1px solid #b7eb8f',
+                borderRadius: '4px',
+                padding: '0.9rem 1.1rem',
+                fontSize: '0.84rem',
+                color: '#274916',
+                lineHeight: '1.6'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: '#389e0d' }}>
+                  ℹ️ ご変更・キャンセルについてのご案内
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <li>オンラインでの変更・キャンセルは、<strong>ご祈祷開始日時の24時間前（前日同時刻）まで</strong>受付可能です。</li>
+                  <li><strong>キャンセル料等は一切発生いたしません</strong>のでご安心ください。</li>
+                  <li>24時間以内の直前変更・キャンセルにつきましては、清瀧神社社務所（<a href="tel:0473515417" style={{ color: '#274916', fontWeight: 'bold', textDecoration: 'underline' }}>047-351-5417</a>）までお電話にて直接ご連絡ください。</li>
+                </ul>
+              </div>
+
+              <button
+                type="submit"
+                disabled={lookupLoading}
+                className="btn btn-primary"
+                style={{ padding: '0.85rem', fontSize: '1rem', marginTop: '0.5rem' }}
+              >
+                {lookupLoading ? '照会中...' : '🔍 ご予約を照会する'}
+              </button>
+            </form>
           </div>
         )}
       </div>

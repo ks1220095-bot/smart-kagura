@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Copy } from 'lucide-react';
 import type { Booking } from '../../types';
 
 interface BookingSuccessProps {
@@ -8,9 +8,18 @@ interface BookingSuccessProps {
 }
 
 export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onReset }) => {
+  const [copied, setCopied] = useState(false);
+
   if (!bookings || bookings.length === 0) return null;
   const firstBooking = bookings[0];
   const isIndiv = firstBooking.booking_type === 'individual';
+
+  const handleCopyReceipt = () => {
+    if (!firstBooking.receipt_number) return;
+    navigator.clipboard.writeText(firstBooking.receipt_number);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="card kamidana-border" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
@@ -53,6 +62,66 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
         ⚠️ この画面をスクリーンショット等で保存していただきますようお願いします。
       </div>
 
+      {/* Receipt Number Badge */}
+      {firstBooking.receipt_number && (
+        <div style={{
+          backgroundColor: '#fffdf7',
+          border: '2px solid var(--color-gold)',
+          borderRadius: '4px',
+          padding: '1.1rem 1.25rem',
+          maxWidth: '520px',
+          margin: '0 auto 1.5rem auto',
+          textAlign: 'center',
+          boxShadow: '0 3px 8px rgba(197, 160, 89, 0.15)'
+        }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--color-urushi)', fontWeight: 600, marginBottom: '0.4rem' }}>
+            ご予約受付番号（お控え）
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: '1.45rem',
+              fontWeight: 'bold',
+              letterSpacing: '0.08em',
+              color: 'var(--color-urushi)',
+              backgroundColor: '#ffffff',
+              padding: '0.2rem 0.75rem',
+              borderRadius: '3px',
+              border: '1px dashed var(--color-gold)'
+            }}>
+              {firstBooking.receipt_number}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyReceipt}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.35rem 0.85rem',
+                fontSize: '0.82rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                backgroundColor: copied ? '#f6ffed' : '#ffffff',
+                borderColor: copied ? '#52c41a' : 'var(--color-gold)',
+                color: copied ? '#52c41a' : 'var(--color-urushi)'
+              }}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'コピーしました' : '番号をコピー'}
+            </button>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', margin: '0.5rem 0 0 0' }}>
+            ※当日の社務所受付や、オンラインでのご予約照会・変更・キャンセルの際に必要となります。
+          </p>
+        </div>
+      )}
+
       {/* Confirmation Card UI */}
       <div style={{
         backgroundColor: 'var(--color-washi-dark)',
@@ -60,17 +129,19 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
         borderRadius: '2px',
         padding: '1.5rem',
         maxWidth: '520px',
-        margin: '0 auto 2rem auto',
+        margin: '0 auto 1.5rem auto',
         textAlign: 'left',
         boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
         position: 'relative'
       }}>
-
-
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <tbody>
             <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.15)' }}>
-              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500, width: '35%' }}>予約日時</th>
+              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500, width: '35%' }}>受付番号</th>
+              <td style={{ padding: '0.5rem 0', fontWeight: 'bold', fontFamily: 'monospace' }}>{firstBooking.receipt_number || '発番中'}</td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.15)' }}>
+              <th style={{ padding: '0.5rem 0', textAlign: 'left', color: 'var(--color-accent-gray)', fontWeight: 500 }}>予約日時</th>
               <td style={{ padding: '0.5rem 0', fontWeight: 'bold' }}>{firstBooking.booking_date}　{firstBooking.booking_time}の回</td>
             </tr>
             <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.15)' }}>
@@ -99,6 +170,66 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
         </table>
       </div>
 
+      {/* Dedicated Change / Cancellation Guidance Card */}
+      <div style={{
+        backgroundColor: '#f6ffed',
+        border: '1.5px solid #b7eb8f',
+        borderRadius: '4px',
+        padding: '1.25rem 1.5rem',
+        maxWidth: '520px',
+        margin: '0 auto 2rem auto',
+        textAlign: 'left',
+        boxShadow: '0 2px 8px rgba(82, 196, 26, 0.08)'
+      }}>
+        <h4 style={{
+          fontSize: '1rem',
+          fontWeight: 'bold',
+          color: '#274916',
+          marginBottom: '0.6rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem'
+        }}>
+          <span>📅</span> ご予約の確認・日程変更・キャンセルについて
+        </h4>
+        <ul style={{
+          fontSize: '0.85rem',
+          lineHeight: '1.6',
+          color: '#274916',
+          paddingLeft: '1.2rem',
+          margin: '0 0 1rem 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.35rem'
+        }}>
+          <li>万一ご都合が悪くなった場合、<strong>ご祈祷開始日時の24時間前（前日同時刻）まで</strong>でしたら、オンラインでいつでも日程変更・キャンセルが可能です。</li>
+          <li style={{ color: '#389e0d', fontWeight: 'bold' }}>
+            ・キャンセル料等は一切発生いたしませんのでご安心ください。
+          </li>
+          <li>開始24時間以内の直前の変更・キャンセルにつきましては、清瀧神社社務所（<a href="tel:0473515417" style={{ color: '#274916', fontWeight: 'bold', textDecoration: 'underline' }}>047-351-5417</a>）までお電話にて直接ご連絡をお願いいたします。</li>
+        </ul>
+
+        {firstBooking.id && (
+          <div style={{ textAlign: 'center' }}>
+            <a
+              href={`/?changeId=${firstBooking.id}`}
+              className="btn btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.6rem 1.5rem',
+                fontSize: '0.9rem',
+                textDecoration: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              <span>✏️</span> この予約の変更・キャンセル画面を開く
+            </a>
+          </div>
+        )}
+      </div>
+
       {/* Warnings Board */}
       <div style={{ maxWidth: '680px', margin: '0 auto 2rem auto', textAlign: 'left' }}>
         <div className="alert-warning">
@@ -113,7 +244,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
             <li>・ご祈祷の所要時間は、約20〜30分ほどかかります。</li>
             <li>・ご一緒に参拝（昇殿）いただくご家族等の**人数制限は設けておりません**。</li>
             <li style={{ color: '#d3381c', fontWeight: 'bold' }}>
-              ・オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の一日前まで】となっております。社務の都合上、それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（047-351-5417）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
+              ・オンラインでの日程変更・キャンセル手続きは【ご祈祷開始時間の24時間前まで】となっております（キャンセル料は一切かかりません）。それ以降の直前の変更・キャンセルにつきましては、恐れ入りますが清瀧神社社務所（<a href="tel:0473515417" style={{ color: '#d3381c', textDecoration: 'underline' }}>047-351-5417</a>）までお電話にて直接ご連絡をお願いいたします。ご理解・ご協力のほどお願い申し上げます。
             </li>
             
             {/* Dynamic context warnings */}
@@ -136,7 +267,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
         </div>
         
         <p style={{ fontSize: '0.8rem', color: 'var(--color-accent-gray)', textAlign: 'center', marginTop: '1rem' }}>
-          ご不明な点などがございましたら、清瀧神社TEL 047-351-5417 まで気兼ねなくご連絡くださいませ。
+          ご不明な点などがございましたら、清瀧神社TEL <a href="tel:0473515417" style={{ color: 'inherit', fontWeight: 'bold', textDecoration: 'underline' }}>047-351-5417</a> まで気兼ねなくご連絡くださいませ。
         </p>
       </div>
 
