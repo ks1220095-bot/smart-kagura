@@ -284,7 +284,7 @@ export const SettingsView: React.FC = () => {
               </label>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block', marginTop: '0.5rem', lineHeight: '1.5' }}>
-              ※有効にすると、新年のご祈祷の受付は<strong>12月1日（休日の場合は、平日の始め）09:00~</strong>より開始となります。日本時間の期日・時間到来と同時にシステムが自動解放します（1月1日・2日は終日社務都合によりWeb予約不可）。
+              ※有効にすると、新年のご祈祷の受付は<strong>12月1日（休日の場合は、平日の始め）09:00~</strong>より開始となります。日本時間の期日・時間到来と同時にシステムが自動解放します（お正月の三が日（1月1日・2日）は社務の都合によりWeb予約不可）。
             </span>
           </div>
 

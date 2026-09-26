@@ -265,7 +265,7 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
                   onTimeChange('');
                   return;
                 } else if (targetMonth === 1 && targetDay <= 2) {
-                  alert('新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。');
+                  alert('お正月の三が日（1月1日・2日）は社務の都合により、Web予約は1月3日以降の回より承っております。');
                   onDateChange('');
                   onTimeChange('');
                   return;
@@ -364,6 +364,9 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
                   ※本年は <strong>{getNewYearOpenDateLabel(currentJstYear)}</strong> に自動で受付が開始されます（画面の再読み込みは不要です）。
                 </span>
               )}
+              <span style={{ display: 'block', fontSize: '0.75rem', color: '#8c7757', marginTop: '0.2rem' }}>
+                ※お正月の三が日（1月1日・2日）は社務の都合により事前予約枠はございません（1月3日以降のご祈祷をお選びいただけます）。
+              </span>
             </div>
           </div>
         )}

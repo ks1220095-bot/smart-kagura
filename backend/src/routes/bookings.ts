@@ -86,7 +86,7 @@ async function validateNewYearBookingLimit(bookingDate: string, db: any): Promis
       }
       // 受付開始後でも、1月1日・1月2日はオンライン予約不可
       if (targetMonth === 1 && targetDay <= 2) {
-        return '新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。';
+        return 'お正月の三が日（1月1日・2日）は社務の都合により、Web予約は1月3日以降の回より承っております。';
       }
     }
   } catch (err) {
