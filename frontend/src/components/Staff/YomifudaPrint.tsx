@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { type Booking, getBookingChildren } from '../../types';
+import { type Booking, getBookingChildren, getBookingWoodTalismans } from '../../types';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -497,33 +497,48 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                       )}
                     </div>
                     {(() => {
-                      let parsed: { standard?: string[]; large?: string[] } | null = null;
-                      if (booking.wood_talisman_items_data) {
-                        try { parsed = JSON.parse(booking.wood_talisman_items_data); } catch(e) {}
-                      }
-                      const hasParsedItems = parsed && ((parsed.standard && parsed.standard.length > 0) || (parsed.large && parsed.large.length > 0));
+                      const woodTalismans = getBookingWoodTalismans(booking);
+                      const hasWoodTalismans = woodTalismans.standard.length > 0 || woodTalismans.large.length > 0;
 
-                      if (hasParsedItems && parsed) {
+                      if (hasWoodTalismans) {
                         return (
-                          <div style={{ marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.8rem' }}>
-                            {parsed.standard && parsed.standard.length > 0 && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold' }}>【約36cm 墨書名】</span>
-                                {parsed.standard.map((name, i) => (
-                                  <div key={`std-${i}`} style={{ paddingLeft: '0.4rem', color: '#d80100', fontWeight: 'bold' }}>
-                                    {parsed.standard!.length > 1 ? `${i + 1}体目: ` : ''}{name || booking.company_name || '（未入力）'}
-                                  </div>
-                                ))}
+                          <div style={{ marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem' }}>
+                            {woodTalismans.standard.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold' }}>【約36cm】</span>
+                                {woodTalismans.standard.map((item, i) => {
+                                  const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                  const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                  const prayerText = p2 ? `[主: ${p1} / 副: ${p2}]` : `[主: ${p1}]`;
+                                  return (
+                                    <div key={`std-${i}`} style={{ paddingLeft: '0.4rem', color: '#d80100', fontWeight: 'bold' }}>
+                                      {woodTalismans.standard.length > 1 ? `${i + 1}体目: ` : ''}
+                                      {item.name || booking.company_name || '（未入力）'}
+                                      <span style={{ marginLeft: '0.4rem', color: '#333', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                                        {prayerText}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
-                            {parsed.large && parsed.large.length > 0 && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginTop: '0.1rem' }}>
-                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold' }}>【大・約45cm 墨書名】</span>
-                                {parsed.large.map((name, i) => (
-                                  <div key={`lrg-${i}`} style={{ paddingLeft: '0.4rem', color: '#d80100', fontWeight: 'bold' }}>
-                                    {parsed.large!.length > 1 ? `${i + 1}体目: ` : ''}{name || booking.company_name || '（未入力）'}
-                                  </div>
-                                ))}
+                            {woodTalismans.large.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '0.1rem' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold' }}>【大・約45cm】</span>
+                                {woodTalismans.large.map((item, i) => {
+                                  const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                  const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                  const prayerText = p2 ? `[主: ${p1} / 副: ${p2}]` : `[主: ${p1}]`;
+                                  return (
+                                    <div key={`lrg-${i}`} style={{ paddingLeft: '0.4rem', color: '#d80100', fontWeight: 'bold' }}>
+                                      {woodTalismans.large.length > 1 ? `${i + 1}体目: ` : ''}
+                                      {item.name || booking.company_name || '（未入力）'}
+                                      <span style={{ marginLeft: '0.4rem', color: '#333', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                                        {prayerText}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>

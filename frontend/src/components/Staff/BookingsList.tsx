@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Booking, ChildItem } from '../../types';
-import { getBookingReceipts, getBookingChildren } from '../../types';
+import type { Booking, ChildItem, WoodTalismanItem } from '../../types';
+import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans } from '../../types';
 import { getApiUrl } from '../../config/api';
+
+const ORGANIZATION_PRAYERS = [
+  '社運隆昌',
+  '商売繁盛',
+  '交通安全',
+  '職場安全',
+  '社内安全',
+  '安全祈願',
+  '工事安全',
+  '作業安全',
+  '営業繫栄',
+  '必勝祈願',
+  'その他（自由入力）'
+];
 
 interface BookingsListProps {
   bookings: Booking[];
@@ -72,8 +86,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [editTargetBooking, setEditTargetBooking] = useState<Booking | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Booking>>({});
   const [editReceipts, setEditReceipts] = useState<Array<{ name: string; amount: number }>>([]);
-  const [editWoodTalismanNames, setEditWoodTalismanNames] = useState<string[]>([]);
-  const [editWoodTalismanLargeNames, setEditWoodTalismanLargeNames] = useState<string[]>([]);
+  const [editWoodTalismanItems, setEditWoodTalismanItems] = useState<WoodTalismanItem[]>([]);
+  const [editWoodTalismanLargeItems, setEditWoodTalismanLargeItems] = useState<WoodTalismanItem[]>([]);
   const [editChildren, setEditChildren] = useState<ChildItem[]>([]);
   const [savingDetail, setSavingDetail] = useState(false);
 
@@ -96,24 +110,9 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       setEditChildren([{ name: '', kana: '', birthday: '', gender: undefined }]);
     }
 
-    const stdCount = booking.wood_talisman_count ?? 0;
-    const lrgCount = booking.wood_talisman_large_count ?? 0;
-    let stdNames: string[] = [];
-    let lrgNames: string[] = [];
-    if (booking.wood_talisman_items_data) {
-      try {
-        const parsed = JSON.parse(booking.wood_talisman_items_data);
-        if (Array.isArray(parsed.standard)) stdNames = parsed.standard;
-        if (Array.isArray(parsed.large)) lrgNames = parsed.large;
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    const defaultName = booking.talisman_name || booking.company_name || '';
-    const finalStd = Array.from({ length: stdCount }, (_, i) => (stdNames[i] !== undefined ? stdNames[i] : (booking.wood_talisman_name || defaultName)));
-    const finalLrg = Array.from({ length: lrgCount }, (_, i) => (lrgNames[i] !== undefined ? lrgNames[i] : (booking.wood_talisman_name || defaultName)));
-    setEditWoodTalismanNames(finalStd);
-    setEditWoodTalismanLargeNames(finalLrg);
+    const woodTalismans = getBookingWoodTalismans(booking);
+    setEditWoodTalismanItems(woodTalismans.standard);
+    setEditWoodTalismanLargeItems(woodTalismans.large);
   };
 
   const handleUpdateEditChild = (index: number, field: keyof ChildItem, value: any) => {
@@ -136,32 +135,44 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     });
   };
 
-  const handleUpdateEditWoodTalismanName = (index: number, val: string) => {
-    setEditWoodTalismanNames(prev => {
+  const handleUpdateEditWoodTalismanItem = (index: number, field: keyof WoodTalismanItem, val: string) => {
+    setEditWoodTalismanItems(prev => {
       const next = [...prev];
-      next[index] = val;
+      next[index] = { ...next[index], [field]: val };
       return next;
     });
   };
 
-  const handleUpdateEditWoodTalismanLargeName = (index: number, val: string) => {
-    setEditWoodTalismanLargeNames(prev => {
+  const handleUpdateEditWoodTalismanLargeItem = (index: number, field: keyof WoodTalismanItem, val: string) => {
+    setEditWoodTalismanLargeItems(prev => {
       const next = [...prev];
-      next[index] = val;
+      next[index] = { ...next[index], [field]: val };
       return next;
     });
   };
 
-  const handleApplyDefaultNameToEditWoodTalismans = () => {
+  const handleApplyDefaultsToEditWoodTalismans = () => {
     const defaultName = editFormData.talisman_name || editFormData.company_name || '';
-    if (!defaultName) {
-      alert('「お札墨書名」または「団体・会社名」が入力されていません。');
-      return;
-    }
+    const defaultPrayer1 = editFormData.prayer1 || '社運隆昌';
+    const defaultPrayer2 = editFormData.prayer2 || '';
     const stdCount = Number(editFormData.wood_talisman_count) || 0;
     const lrgCount = Number(editFormData.wood_talisman_large_count) || 0;
-    setEditWoodTalismanNames(Array(stdCount).fill(defaultName));
-    setEditWoodTalismanLargeNames(Array(lrgCount).fill(defaultName));
+
+    setEditWoodTalismanItems(prev => Array.from({ length: stdCount }, (_, i) => ({
+      name: prev[i]?.name?.trim() || defaultName,
+      prayer1: defaultPrayer1,
+      custom_prayer1: defaultPrayer1 === 'その他（自由入力）' ? (prev[i]?.custom_prayer1 || '') : '',
+      prayer2: defaultPrayer2,
+      custom_prayer2: defaultPrayer2 === 'その他（自由入力）' ? (prev[i]?.custom_prayer2 || '') : ''
+    })));
+
+    setEditWoodTalismanLargeItems(prev => Array.from({ length: lrgCount }, (_, i) => ({
+      name: prev[i]?.name?.trim() || defaultName,
+      prayer1: defaultPrayer1,
+      custom_prayer1: defaultPrayer1 === 'その他（自由入力）' ? (prev[i]?.custom_prayer1 || '') : '',
+      prayer2: defaultPrayer2,
+      custom_prayer2: defaultPrayer2 === 'その他（自由入力）' ? (prev[i]?.custom_prayer2 || '') : ''
+    })));
   };
 
   const handleAddEditReceipt = () => {
@@ -207,16 +218,23 @@ export const BookingsList: React.FC<BookingsListProps> = ({
 
       if (stdCount > 0 || lrgCount > 0) {
         const items = {
-          standard: editWoodTalismanNames.slice(0, stdCount),
-          large: editWoodTalismanLargeNames.slice(0, lrgCount)
+          standard: editWoodTalismanItems.slice(0, stdCount),
+          large: editWoodTalismanLargeItems.slice(0, lrgCount)
         };
         woodTalismanItemsDataStr = JSON.stringify(items);
+        const formatItem = (item: WoodTalismanItem, i: number) => {
+          const name = item.name?.trim() || '同上';
+          const p1 = item.prayer1 === 'その他（自由入力）' ? item.custom_prayer1 : item.prayer1;
+          const p2 = item.prayer2 === 'その他（自由入力）' ? item.custom_prayer2 : item.prayer2;
+          const prayerText = p1 ? (p2 ? `[${p1}/${p2}]` : `[${p1}]`) : '';
+          return `${i + 1}:${name}${prayerText ? ` ${prayerText}` : ''}`;
+        };
         const parts: string[] = [];
         if (items.standard.length > 0) {
-          parts.push(`【36cm】${items.standard.map((n, i) => `${i + 1}:${n || '同上'}`).join(' ')}`);
+          parts.push(`【36cm】${items.standard.map((item, i) => formatItem(item, i)).join(' ')}`);
         }
         if (items.large.length > 0) {
-          parts.push(`【大45cm】${items.large.map((n, i) => `${i + 1}:${n || '同上'}`).join(' ')}`);
+          parts.push(`【大45cm】${items.large.map((item, i) => formatItem(item, i)).join(' ')}`);
         }
         combinedWoodTalismanName = parts.join(' / ');
       }
@@ -1440,14 +1458,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                       )}
                                       {/* 追加祈願符（木札） */}
                                       {((b.wood_talisman_count ?? 0) > 0 || (b.wood_talisman_large_count ?? 0) > 0) && (() => {
-                                        let parsedItems: { standard?: string[], large?: string[] } | null = null;
-                                        if (b.wood_talisman_items_data) {
-                                          try {
-                                            parsedItems = JSON.parse(b.wood_talisman_items_data);
-                                          } catch (e) {
-                                            console.error(e);
-                                          }
-                                        }
+                                        const woodTalismans = getBookingWoodTalismans(b);
                                         return (
                                           <div style={{ backgroundColor: '#fffbe6', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #ffd591', gridColumn: 'span 2' }}>
                                             <div style={{ fontSize: '0.7rem', color: '#b22222', fontWeight: 'bold' }}>🎋 追加祈願符（木札）</div>
@@ -1455,28 +1466,42 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                               {(b.wood_talisman_count ?? 0) > 0 && <span style={{ marginRight: '0.75rem' }}>祈願符（約36cm）: <strong>{b.wood_talisman_count}</strong>体</span>}
                                               {(b.wood_talisman_large_count ?? 0) > 0 && <span>祈願符・大（約45cm）: <strong>{b.wood_talisman_large_count}</strong>体</span>}
                                             </div>
-                                            {parsedItems ? (
+                                            {(woodTalismans.standard.length > 0 || woodTalismans.large.length > 0) ? (
                                               <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                                {parsedItems.standard && parsedItems.standard.length > 0 && (
+                                                {woodTalismans.standard.length > 0 && (
                                                   <div style={{ backgroundColor: '#fff', padding: '0.3rem 0.5rem', borderRadius: '3px', border: '1px solid #ffe58f' }}>
-                                                    <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#b22222' }}>【36cm】お名前:</div>
-                                                    {parsedItems.standard.map((name, i) => (
-                                                      <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.4rem', marginTop: '0.1rem' }}>
-                                                        <span style={{ color: '#666' }}>{i + 1}体目: </span>
-                                                        <strong style={{ color: 'var(--color-shu)' }}>{name || '（未入力・お札墨書名適用）'}</strong>
-                                                      </div>
-                                                    ))}
+                                                    <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#b22222' }}>【36cm】</div>
+                                                    {woodTalismans.standard.map((item, i) => {
+                                                      const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                                      const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                                      return (
+                                                        <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.4rem', marginTop: '0.15rem' }}>
+                                                          <span style={{ color: '#666' }}>{i + 1}体目: </span>
+                                                          <strong style={{ color: 'var(--color-shu)' }}>{item.name || '（未入力・お札墨書名適用）'}</strong>
+                                                          <span style={{ marginLeft: '0.5rem', color: '#555', fontSize: '0.75rem' }}>
+                                                            [主: {p1}{p2 ? ` / 副: ${p2}` : ''}]
+                                                          </span>
+                                                        </div>
+                                                      );
+                                                    })}
                                                   </div>
                                                 )}
-                                                {parsedItems.large && parsedItems.large.length > 0 && (
+                                                {woodTalismans.large.length > 0 && (
                                                   <div style={{ backgroundColor: '#fff', padding: '0.3rem 0.5rem', borderRadius: '3px', border: '1px solid #ffe58f' }}>
-                                                    <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#b22222' }}>【大45cm】お名前:</div>
-                                                    {parsedItems.large.map((name, i) => (
-                                                      <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.4rem', marginTop: '0.1rem' }}>
-                                                        <span style={{ color: '#666' }}>{i + 1}体目: </span>
-                                                        <strong style={{ color: 'var(--color-shu)' }}>{name || '（未入力・お札墨書名適用）'}</strong>
-                                                      </div>
-                                                    ))}
+                                                    <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#b22222' }}>【大45cm】</div>
+                                                    {woodTalismans.large.map((item, i) => {
+                                                      const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                                      const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                                      return (
+                                                        <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.4rem', marginTop: '0.15rem' }}>
+                                                          <span style={{ color: '#666' }}>{i + 1}体目: </span>
+                                                          <strong style={{ color: 'var(--color-shu)' }}>{item.name || '（未入力・お札墨書名適用）'}</strong>
+                                                          <span style={{ marginLeft: '0.5rem', color: '#555', fontSize: '0.75rem' }}>
+                                                            [主: {p1}{p2 ? ` / 副: ${p2}` : ''}]
+                                                          </span>
+                                                        </div>
+                                                      );
+                                                    })}
                                                   </div>
                                                 )}
                                               </div>
@@ -2581,7 +2606,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         <button
                           type="button"
                           className="btn btn-outline"
-                          onClick={handleApplyDefaultNameToEditWoodTalismans}
+                          onClick={handleApplyDefaultsToEditWoodTalismans}
                           style={{
                             fontSize: '0.7rem',
                             padding: '0.2rem 0.6rem',
@@ -2591,7 +2616,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                             cursor: 'pointer'
                           }}
                         >
-                          📋 お札墨書名をすべてに一括反映
+                          📋 願意・墨書名をすべてに一括反映
                         </button>
                       )}
                     </div>
@@ -2607,12 +2632,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           onChange={(e) => {
                             const newCount = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                             setEditFormData(prev => ({ ...prev, wood_talisman_count: newCount }));
-                            setEditWoodTalismanNames(prev => {
+                            setEditWoodTalismanItems(prev => {
                               const defName = editFormData.talisman_name || editFormData.company_name || '';
-                              if (newCount > prev.length) {
-                                return [...prev, ...Array(newCount - prev.length).fill(defName)];
+                              const defP1 = editFormData.prayer1 || '社運隆昌';
+                              const defP2 = editFormData.prayer2 || '';
+                              const next: WoodTalismanItem[] = [];
+                              for (let i = 0; i < newCount; i++) {
+                                next.push(prev[i] || { name: i === 0 ? defName : '', prayer1: defP1, prayer2: defP2 });
                               }
-                              return prev.slice(0, newCount);
+                              return next;
                             });
                           }}
                         />
@@ -2627,74 +2655,209 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           onChange={(e) => {
                             const newCount = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                             setEditFormData(prev => ({ ...prev, wood_talisman_large_count: newCount }));
-                            setEditWoodTalismanLargeNames(prev => {
+                            setEditWoodTalismanLargeItems(prev => {
                               const defName = editFormData.talisman_name || editFormData.company_name || '';
-                              if (newCount > prev.length) {
-                                return [...prev, ...Array(newCount - prev.length).fill(defName)];
+                              const defP1 = editFormData.prayer1 || '社運隆昌';
+                              const defP2 = editFormData.prayer2 || '';
+                              const next: WoodTalismanItem[] = [];
+                              for (let i = 0; i < newCount; i++) {
+                                next.push(prev[i] || { name: i === 0 ? defName : '', prayer1: defP1, prayer2: defP2 });
                               }
-                              return prev.slice(0, newCount);
+                              return next;
                             });
                           }}
                         />
                       </div>
                     </div>
 
-                    {/* 体数別の個別名前入力欄（潰れ防止縦積みレイアウト） */}
+                    {/* 体数別の個別名前・願意入力欄 */}
                     {((Number(editFormData.wood_talisman_count) || 0) > 0 || (Number(editFormData.wood_talisman_large_count) || 0) > 0) && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
-                        {/* 36cm 木札の各お名前 */}
-                        {(Number(editFormData.wood_talisman_count) || 0) > 0 && Array.from({ length: Number(editFormData.wood_talisman_count) }).map((_, idx) => (
-                          <div
-                            key={'edit-std-' + idx}
-                            style={{
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #ffd591',
-                              borderRadius: '4px',
-                              padding: '0.5rem 0.75rem',
-                              width: '100%',
-                              boxSizing: 'border-box'
-                            }}
-                          >
-                            <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b22222', display: 'block', marginBottom: '0.25rem' }}>
-                              {'【36cm・' + (idx + 1) + '体目】お名前（墨書名）'}
-                            </label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              style={{ width: '100%', minHeight: '36px', boxSizing: 'border-box', fontSize: '0.85rem' }}
-                              placeholder="例: 株式会社山田商事 代表取締役 山田太郎"
-                              value={editWoodTalismanNames[idx] || ''}
-                              onChange={(e) => handleUpdateEditWoodTalismanName(idx, e.target.value)}
-                            />
-                          </div>
-                        ))}
+                        {/* 36cm 木札の各情報 */}
+                        {(Number(editFormData.wood_talisman_count) || 0) > 0 && Array.from({ length: Number(editFormData.wood_talisman_count) }).map((_, idx) => {
+                          const item = editWoodTalismanItems[idx] || { name: '', prayer1: '社運隆昌', prayer2: '' };
+                          return (
+                            <div
+                              key={'edit-std-' + idx}
+                              style={{
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #ffd591',
+                                borderRadius: '4px',
+                                padding: '0.6rem 0.75rem',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.4rem'
+                              }}
+                            >
+                              <label style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#b22222', margin: 0 }}>
+                                {'【36cm・' + (idx + 1) + '体目】'}
+                              </label>
 
-                        {/* 45cm 大木札の各お名前 */}
-                        {(Number(editFormData.wood_talisman_large_count) || 0) > 0 && Array.from({ length: Number(editFormData.wood_talisman_large_count) }).map((_, idx) => (
-                          <div
-                            key={'edit-lrg-' + idx}
-                            style={{
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #ffd591',
-                              borderRadius: '4px',
-                              padding: '0.5rem 0.75rem',
-                              width: '100%',
-                              boxSizing: 'border-box'
-                            }}
-                          >
-                            <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b22222', display: 'block', marginBottom: '0.25rem' }}>
-                              {'【大45cm・' + (idx + 1) + '体目】お名前（墨書名）'}
-                            </label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              style={{ width: '100%', minHeight: '36px', boxSizing: 'border-box', fontSize: '0.85rem' }}
-                              placeholder="例: 株式会社山田商事 代表取締役 山田太郎"
-                              value={editWoodTalismanLargeNames[idx] || ''}
-                              onChange={(e) => handleUpdateEditWoodTalismanLargeName(idx, e.target.value)}
-                            />
-                          </div>
-                        ))}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                <div>
+                                  <label style={{ fontSize: '0.72rem', color: '#555', display: 'block', marginBottom: '0.15rem' }}>
+                                    主願意
+                                  </label>
+                                  <select
+                                    className="form-control"
+                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    value={item.prayer1 || '社運隆昌'}
+                                    onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'prayer1', e.target.value)}
+                                  >
+                                    {ORGANIZATION_PRAYERS.map(p => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                  {item.prayer1 === 'その他（自由入力）' && (
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      placeholder="主願意"
+                                      value={item.custom_prayer1 || ''}
+                                      onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'custom_prayer1', e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.72rem', color: '#555', display: 'block', marginBottom: '0.15rem' }}>
+                                    副願意（任意）
+                                  </label>
+                                  <select
+                                    className="form-control"
+                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    value={item.prayer2 || ''}
+                                    onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'prayer2', e.target.value)}
+                                  >
+                                    <option value="">なし</option>
+                                    {ORGANIZATION_PRAYERS.map(p => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                  {item.prayer2 === 'その他（自由入力）' && (
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      placeholder="副願意"
+                                      value={item.custom_prayer2 || ''}
+                                      onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'custom_prayer2', e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label style={{ fontSize: '0.72rem', color: '#555', display: 'block', marginBottom: '0.15rem' }}>
+                                  お名前（墨書名）
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{ width: '100%', minHeight: '34px', boxSizing: 'border-box', fontSize: '0.85rem' }}
+                                  placeholder="例: 株式会社山田商事 代表取締役 山田太郎"
+                                  value={item.name || ''}
+                                  onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'name', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* 45cm 大木札の各情報 */}
+                        {(Number(editFormData.wood_talisman_large_count) || 0) > 0 && Array.from({ length: Number(editFormData.wood_talisman_large_count) }).map((_, idx) => {
+                          const item = editWoodTalismanLargeItems[idx] || { name: '', prayer1: '社運隆昌', prayer2: '' };
+                          return (
+                            <div
+                              key={'edit-lrg-' + idx}
+                              style={{
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #ffd591',
+                                borderRadius: '4px',
+                                padding: '0.6rem 0.75rem',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.4rem'
+                              }}
+                            >
+                              <label style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#b22222', margin: 0 }}>
+                                {'【大45cm・' + (idx + 1) + '体目】'}
+                              </label>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                <div>
+                                  <label style={{ fontSize: '0.72rem', color: '#555', display: 'block', marginBottom: '0.15rem' }}>
+                                    主願意
+                                  </label>
+                                  <select
+                                    className="form-control"
+                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    value={item.prayer1 || '社運隆昌'}
+                                    onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'prayer1', e.target.value)}
+                                  >
+                                    {ORGANIZATION_PRAYERS.map(p => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                  {item.prayer1 === 'その他（自由入力）' && (
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      placeholder="主願意"
+                                      value={item.custom_prayer1 || ''}
+                                      onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'custom_prayer1', e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.72rem', color: '#555', display: 'block', marginBottom: '0.15rem' }}>
+                                    副願意（任意）
+                                  </label>
+                                  <select
+                                    className="form-control"
+                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    value={item.prayer2 || ''}
+                                    onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'prayer2', e.target.value)}
+                                  >
+                                    <option value="">なし</option>
+                                    {ORGANIZATION_PRAYERS.map(p => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                  {item.prayer2 === 'その他（自由入力）' && (
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      placeholder="副願意"
+                                      value={item.custom_prayer2 || ''}
+                                      onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'custom_prayer2', e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label style={{ fontSize: '0.72rem', color: '#555', display: 'block', marginBottom: '0.15rem' }}>
+                                  お名前（墨書名）
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{ width: '100%', minHeight: '34px', boxSizing: 'border-box', fontSize: '0.85rem' }}
+                                  placeholder="例: 株式会社山田商事 代表取締役 山田太郎"
+                                  value={item.name || ''}
+                                  onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'name', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

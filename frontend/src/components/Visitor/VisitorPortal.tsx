@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Users, AlertCircle } from 'lucide-react';
-import { getBookingReceipts, getBookingChildren, type Booking, type OrgPrayerItem, type ChildItem } from '../../types';
+import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans, type Booking, type OrgPrayerItem, type ChildItem, type WoodTalismanItem } from '../../types';
 import { getApiUrl } from '../../config/api';
 import SlotSelector from './SlotSelector';
 import BookingSuccess from './BookingSuccess';
@@ -408,28 +408,48 @@ export const VisitorPortal: React.FC = () => {
   const [woodTalismanCount, setWoodTalismanCount] = useState<number | ''>(savedDraft?.woodTalismanCount ?? '');
   const [woodTalismanLargeCount, setWoodTalismanLargeCount] = useState<number | ''>(savedDraft?.woodTalismanLargeCount ?? '');
   const [woodTalismanName, setWoodTalismanName] = useState<string>(savedDraft?.woodTalismanName ?? '');
-  const [woodTalismanNames, setWoodTalismanNames] = useState<string[]>(() => {
+  const [woodTalismanItems, setWoodTalismanItems] = useState<WoodTalismanItem[]>(() => {
+    if (savedDraft?.woodTalismanItems && Array.isArray(savedDraft.woodTalismanItems)) {
+      return savedDraft.woodTalismanItems;
+    }
     if (savedDraft?.woodTalismanNames && Array.isArray(savedDraft.woodTalismanNames)) {
-      return savedDraft.woodTalismanNames;
+      return savedDraft.woodTalismanNames.map((n: string) => ({ name: n, prayer1: savedDraft?.prayer1 || '社運隆昌', prayer2: savedDraft?.prayer2 || '' }));
     }
     const count = Number(savedDraft?.woodTalismanCount) || 0;
-    return count > 0 ? Array(count).fill('') : [];
+    return count > 0 ? Array.from({ length: count }, () => ({ name: '', prayer1: '社運隆昌', prayer2: '' })) : [];
   });
-  const [woodTalismanLargeNames, setWoodTalismanLargeNames] = useState<string[]>(() => {
+
+  const [woodTalismanLargeItems, setWoodTalismanLargeItems] = useState<WoodTalismanItem[]>(() => {
+    if (savedDraft?.woodTalismanLargeItems && Array.isArray(savedDraft.woodTalismanLargeItems)) {
+      return savedDraft.woodTalismanLargeItems;
+    }
     if (savedDraft?.woodTalismanLargeNames && Array.isArray(savedDraft.woodTalismanLargeNames)) {
-      return savedDraft.woodTalismanLargeNames;
+      return savedDraft.woodTalismanLargeNames.map((n: string) => ({ name: n, prayer1: savedDraft?.prayer1 || '社運隆昌', prayer2: savedDraft?.prayer2 || '' }));
     }
     const count = Number(savedDraft?.woodTalismanLargeCount) || 0;
-    return count > 0 ? Array(count).fill('') : [];
+    return count > 0 ? Array.from({ length: count }, () => ({ name: '', prayer1: '社運隆昌', prayer2: '' })) : [];
   });
 
   const handleWoodTalismanCountChange = (val: number | '') => {
     setWoodTalismanCount(val);
     const count = val === '' ? 0 : Math.max(0, val);
-    setWoodTalismanNames(prev => {
+    const defaultPrayer1 = (prayer1 && prayer1 !== 'その他（自由入力）') ? prayer1 : (orgPrayerItems[0]?.prayer1 && orgPrayerItems[0].prayer1 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer1 : '社運隆昌');
+    const defaultCustomPrayer1 = prayer1 === 'その他（自由入力）' ? orgCustomPrayer1 : (orgPrayerItems[0]?.prayer1 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer1 : '');
+    const defaultPrayer2 = (prayer2 && prayer2 !== 'その他（自由入力）') ? prayer2 : (orgPrayerItems[0]?.prayer2 && orgPrayerItems[0].prayer2 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer2 : '');
+    const defaultCustomPrayer2 = prayer2 === 'その他（自由入力）' ? orgCustomPrayer2 : (orgPrayerItems[0]?.prayer2 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer2 : '');
+
+    setWoodTalismanItems(prev => {
       const next = [...prev];
       if (next.length < count) {
-        while (next.length < count) next.push('');
+        while (next.length < count) {
+          next.push({
+            name: '',
+            prayer1: defaultPrayer1,
+            custom_prayer1: defaultCustomPrayer1,
+            prayer2: defaultPrayer2,
+            custom_prayer2: defaultCustomPrayer2
+          });
+        }
       } else if (next.length > count) {
         return next.slice(0, count);
       }
@@ -440,10 +460,23 @@ export const VisitorPortal: React.FC = () => {
   const handleWoodTalismanLargeCountChange = (val: number | '') => {
     setWoodTalismanLargeCount(val);
     const count = val === '' ? 0 : Math.max(0, val);
-    setWoodTalismanLargeNames(prev => {
+    const defaultPrayer1 = (prayer1 && prayer1 !== 'その他（自由入力）') ? prayer1 : (orgPrayerItems[0]?.prayer1 && orgPrayerItems[0].prayer1 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer1 : '社運隆昌');
+    const defaultCustomPrayer1 = prayer1 === 'その他（自由入力）' ? orgCustomPrayer1 : (orgPrayerItems[0]?.prayer1 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer1 : '');
+    const defaultPrayer2 = (prayer2 && prayer2 !== 'その他（自由入力）') ? prayer2 : (orgPrayerItems[0]?.prayer2 && orgPrayerItems[0].prayer2 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer2 : '');
+    const defaultCustomPrayer2 = prayer2 === 'その他（自由入力）' ? orgCustomPrayer2 : (orgPrayerItems[0]?.prayer2 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer2 : '');
+
+    setWoodTalismanLargeItems(prev => {
       const next = [...prev];
       if (next.length < count) {
-        while (next.length < count) next.push('');
+        while (next.length < count) {
+          next.push({
+            name: '',
+            prayer1: defaultPrayer1,
+            custom_prayer1: defaultCustomPrayer1,
+            prayer2: defaultPrayer2,
+            custom_prayer2: defaultCustomPrayer2
+          });
+        }
       } else if (next.length > count) {
         return next.slice(0, count);
       }
@@ -451,65 +484,100 @@ export const VisitorPortal: React.FC = () => {
     });
   };
 
-  const handleUpdateWoodTalismanName = (index: number, val: string) => {
-    setWoodTalismanNames(prev => {
+  const handleUpdateWoodTalismanItem = (index: number, field: keyof WoodTalismanItem, val: string) => {
+    setWoodTalismanItems(prev => {
       const next = [...prev];
-      next[index] = val;
+      next[index] = { ...next[index], [field]: val };
       return next;
     });
   };
 
-  const handleUpdateWoodTalismanLargeName = (index: number, val: string) => {
-    setWoodTalismanLargeNames(prev => {
+  const handleUpdateWoodTalismanLargeItem = (index: number, field: keyof WoodTalismanItem, val: string) => {
+    setWoodTalismanLargeItems(prev => {
       const next = [...prev];
-      next[index] = val;
+      next[index] = { ...next[index], [field]: val };
       return next;
     });
   };
 
-  const handleApplyDefaultNameToAllWoodTalismans = () => {
+  const handleApplyDefaultsToAllWoodTalismans = () => {
     const defaultBaseName = talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '');
-    if (!defaultBaseName) {
-      alert('会社名または代表者名を入力してから実行してください。');
-      return;
-    }
+    const defaultP1 = (prayer1 && prayer1 !== 'その他（自由入力）') ? prayer1 : (orgPrayerItems[0]?.prayer1 && orgPrayerItems[0].prayer1 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer1 : '社運隆昌');
+    const defaultCustomP1 = prayer1 === 'その他（自由入力）' ? orgCustomPrayer1 : (orgPrayerItems[0]?.prayer1 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer1 : '');
+    const defaultP2 = (prayer2 && prayer2 !== 'その他（自由入力）') ? prayer2 : (orgPrayerItems[0]?.prayer2 && orgPrayerItems[0].prayer2 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer2 : '');
+    const defaultCustomP2 = prayer2 === 'その他（自由入力）' ? orgCustomPrayer2 : (orgPrayerItems[0]?.prayer2 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer2 : '');
+
     const stdCount = Number(woodTalismanCount) || 0;
     const lrgCount = Number(woodTalismanLargeCount) || 0;
-    setWoodTalismanNames(Array(stdCount).fill(defaultBaseName));
-    setWoodTalismanLargeNames(Array(lrgCount).fill(defaultBaseName));
+
+    setWoodTalismanItems(prev => Array.from({ length: stdCount }, (_, i) => ({
+      name: prev[i]?.name?.trim() || defaultBaseName,
+      prayer1: defaultP1,
+      custom_prayer1: defaultCustomP1,
+      prayer2: defaultP2,
+      custom_prayer2: defaultCustomP2
+    })));
+
+    setWoodTalismanLargeItems(prev => Array.from({ length: lrgCount }, (_, i) => ({
+      name: prev[i]?.name?.trim() || defaultBaseName,
+      prayer1: defaultP1,
+      custom_prayer1: defaultCustomP1,
+      prayer2: defaultP2,
+      custom_prayer2: defaultCustomP2
+    })));
   };
 
   const getCombinedWoodTalismanName = () => {
     const defaultBaseName = talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '');
     const stdCount = Number(woodTalismanCount) || 0;
     const lrgCount = Number(woodTalismanLargeCount) || 0;
-    const stdItems = stdCount > 0 ? woodTalismanNames.slice(0, stdCount) : [];
-    const lrgItems = lrgCount > 0 ? woodTalismanLargeNames.slice(0, lrgCount) : [];
+    const stdItems = stdCount > 0 ? woodTalismanItems.slice(0, stdCount) : [];
+    const lrgItems = lrgCount > 0 ? woodTalismanLargeItems.slice(0, lrgCount) : [];
     const totalCount = stdItems.length + lrgItems.length;
     if (totalCount === 0) return '';
-    if (totalCount === 1) {
-      if (stdItems.length === 1) return stdItems[0].trim() || defaultBaseName;
-      return lrgItems[0].trim() || defaultBaseName;
-    }
+
+    const formatItem = (item: WoodTalismanItem, i: number) => {
+      const name = item.name?.trim() || defaultBaseName;
+      const p1 = item.prayer1 === 'その他（自由入力）' ? item.custom_prayer1 : item.prayer1;
+      const p2 = item.prayer2 === 'その他（自由入力）' ? item.custom_prayer2 : item.prayer2;
+      const prayerText = p1 ? (p2 ? `[${p1}/${p2}]` : `[${p1}]`) : '';
+      return `${i + 1}:${name}${prayerText ? ` ${prayerText}` : ''}`;
+    };
+
     const parts: string[] = [];
     if (stdItems.length > 0) {
-      const list = stdItems.map((n, i) => `${i + 1}:${n.trim() || defaultBaseName}`).join(' ');
-      parts.push(`【36cm】${list}`);
+      parts.push(`【36cm】${stdItems.map((item, i) => formatItem(item, i)).join(' ')}`);
     }
     if (lrgItems.length > 0) {
-      const list = lrgItems.map((n, i) => `${i + 1}:${n.trim() || defaultBaseName}`).join(' ');
-      parts.push(`【大45cm】${list}`);
+      parts.push(`【大45cm】${lrgItems.map((item, i) => formatItem(item, i)).join(' ')}`);
     }
     return parts.join(' / ');
   };
 
   const getWoodTalismanItemsDataStr = () => {
     const defaultBaseName = talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '');
+    const defaultP1 = (prayer1 && prayer1 !== 'その他（自由入力）') ? prayer1 : (orgPrayerItems[0]?.prayer1 && orgPrayerItems[0].prayer1 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer1 : '社運隆昌');
+    const defaultCustomP1 = prayer1 === 'その他（自由入力）' ? orgCustomPrayer1 : (orgPrayerItems[0]?.prayer1 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer1 : '');
+    const defaultP2 = (prayer2 && prayer2 !== 'その他（自由入力）') ? prayer2 : (orgPrayerItems[0]?.prayer2 && orgPrayerItems[0].prayer2 !== 'その他（自由入力）' ? orgPrayerItems[0].prayer2 : '');
+    const defaultCustomP2 = prayer2 === 'その他（自由入力）' ? orgCustomPrayer2 : (orgPrayerItems[0]?.prayer2 === 'その他（自由入力）' ? orgPrayerItems[0].org_custom_prayer2 : '');
+
     const stdCount = Number(woodTalismanCount) || 0;
     const lrgCount = Number(woodTalismanLargeCount) || 0;
     return JSON.stringify({
-      standard: stdCount > 0 ? woodTalismanNames.slice(0, stdCount).map(n => n.trim() || defaultBaseName) : [],
-      large: lrgCount > 0 ? woodTalismanLargeNames.slice(0, lrgCount).map(n => n.trim() || defaultBaseName) : []
+      standard: stdCount > 0 ? woodTalismanItems.slice(0, stdCount).map(item => ({
+        name: item.name?.trim() || defaultBaseName,
+        prayer1: item.prayer1 || defaultP1,
+        custom_prayer1: item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || defaultCustomP1) : undefined,
+        prayer2: item.prayer2 || (item.prayer2 === '' ? undefined : defaultP2),
+        custom_prayer2: item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || defaultCustomP2) : undefined
+      })) : [],
+      large: lrgCount > 0 ? woodTalismanLargeItems.slice(0, lrgCount).map(item => ({
+        name: item.name?.trim() || defaultBaseName,
+        prayer1: item.prayer1 || defaultP1,
+        custom_prayer1: item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || defaultCustomP1) : undefined,
+        prayer2: item.prayer2 || (item.prayer2 === '' ? undefined : defaultP2),
+        custom_prayer2: item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || defaultCustomP2) : undefined
+      })) : []
     });
   };
 
@@ -743,8 +811,8 @@ export const VisitorPortal: React.FC = () => {
       woodTalismanCount,
       woodTalismanLargeCount,
       woodTalismanName,
-      woodTalismanNames,
-      woodTalismanLargeNames,
+      woodTalismanItems,
+      woodTalismanLargeItems,
       orgCustomPrayer1,
       orgCustomPrayer2,
       tournamentName,
@@ -832,8 +900,8 @@ export const VisitorPortal: React.FC = () => {
     woodTalismanCount,
     woodTalismanLargeCount,
     woodTalismanName,
-    woodTalismanNames,
-    woodTalismanLargeNames,
+    woodTalismanItems,
+    woodTalismanLargeItems,
     orgCustomPrayer1,
     orgCustomPrayer2,
     tournamentName,
@@ -934,19 +1002,9 @@ export const VisitorPortal: React.FC = () => {
       setWoodTalismanCount(b.wood_talisman_count || '');
       setWoodTalismanLargeCount(b.wood_talisman_large_count || '');
       setWoodTalismanName(b.wood_talisman_name || '');
-      let parsedWoodItems: { standard?: string[]; large?: string[] } | null = null;
-      if (b.wood_talisman_items_data) {
-        try { parsedWoodItems = JSON.parse(b.wood_talisman_items_data); } catch(e) {}
-      }
-      if (parsedWoodItems) {
-        setWoodTalismanNames(parsedWoodItems.standard || []);
-        setWoodTalismanLargeNames(parsedWoodItems.large || []);
-      } else {
-        const stdCount = b.wood_talisman_count || 0;
-        const lrgCount = b.wood_talisman_large_count || 0;
-        setWoodTalismanNames(stdCount > 0 ? Array(stdCount).fill(b.wood_talisman_name || '') : []);
-        setWoodTalismanLargeNames(lrgCount > 0 ? Array(lrgCount).fill(b.wood_talisman_name || '') : []);
-      }
+      const woodTalismans = getBookingWoodTalismans(b);
+      setWoodTalismanItems(woodTalismans.standard);
+      setWoodTalismanLargeItems(woodTalismans.large);
 
       // Org dynamic fields
       if (b.prayer1 !== '社運隆盛' && b.prayer1 !== '商売繁昌' && b.prayer1 !== '安全祈願' && b.prayer1 !== '必勝祈願' && b.prayer1 !== '工事安全') {
@@ -4094,8 +4152,8 @@ export const VisitorPortal: React.FC = () => {
                             setWoodTalismanCount('');
                             setWoodTalismanLargeCount('');
                             setWoodTalismanName('');
-                            setWoodTalismanNames([]);
-                            setWoodTalismanLargeNames([]);
+                            setWoodTalismanItems([]);
+                            setWoodTalismanLargeItems([]);
                           } else {
                             if (!woodTalismanCount && !woodTalismanLargeCount) {
                               handleWoodTalismanCountChange(1);
@@ -4201,13 +4259,13 @@ export const VisitorPortal: React.FC = () => {
                             marginBottom: '0.65rem'
                           }}>
                             <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-urushi)', margin: 0 }}>
-                              🎋 各木札に書かれるお名前（墨書名）の入力
+                              🎋 各木札の願意・お名前（墨書名）の設定
                             </label>
                             {((Number(woodTalismanCount) || 0) > 0 || (Number(woodTalismanLargeCount) || 0) > 0) && (
                               <button
                                 type="button"
                                 className="btn btn-secondary"
-                                onClick={handleApplyDefaultNameToAllWoodTalismans}
+                                onClick={handleApplyDefaultsToAllWoodTalismans}
                                 style={{
                                   fontSize: '0.78rem',
                                   padding: '0.25rem 0.65rem',
@@ -4220,102 +4278,236 @@ export const VisitorPortal: React.FC = () => {
                                   cursor: 'pointer',
                                   fontWeight: 600
                                 }}
-                                title="入力中の会社名・代表者名をすべての木札のお名前に一括反映します"
+                                title="現在の主願意・副願意および会社名・代表者名をすべての追加木札に一括反映します"
                               >
                                 <span>📋</span>
-                                <span>会社名・代表者名をすべてに反映</span>
+                                <span>願意・会社名をすべてに一括反映</span>
                               </button>
                             )}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#d3381c', margin: '0.2rem 0 0.75rem 0', lineHeight: '1.4' }}>
-                            ※木札にお名前を墨書いたしますのでお間違えの無いようお気を付けください（未入力の場合は会社名・代表者名が適用されます）
+                            ※各木札ごとに主願意・副願意（任意）およびお名前（墨書名）をお選びいただけます（未入力・未指定の場合はご予約代表の願意および会社名が適用されます）
                           </div>
 
-                          {/* 36cm Individual Names */}
+                          {/* 36cm Individual Talismans */}
                           {Number(woodTalismanCount) > 0 && (
                             <div style={{ marginBottom: '1rem', width: '100%' }}>
                               <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#873800', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                 <span>🏷️</span>
-                                <span>祈願符（木札・約36cm）のお名前（全 {woodTalismanCount} 体）</span>
+                                <span>祈願符（木札・約36cm）の設定（全 {woodTalismanCount} 体）</span>
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                {Array.from({ length: Number(woodTalismanCount) }).map((_, idx) => (
-                                  <div
-                                    key={`36cm-${idx}`}
-                                    style={{
-                                      backgroundColor: '#ffffff',
-                                      border: '1px solid #ffd591',
-                                      borderRadius: '4px',
-                                      padding: '0.65rem 0.85rem',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      width: '100%',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  >
-                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', marginBottom: '0.3rem' }}>
-                                      【36cm・{idx + 1}体目】お名前（墨書名）
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      style={{ width: '100%', minHeight: '40px', boxSizing: 'border-box', fontSize: '0.92rem' }}
-                                      placeholder={idx === 0 
-                                        ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
-                                        : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
-                                      value={woodTalismanNames[idx] || ''}
-                                      onChange={(e) => handleUpdateWoodTalismanName(idx, e.target.value)}
-                                    />
-                                  </div>
-                                ))}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%' }}>
+                                {Array.from({ length: Number(woodTalismanCount) }).map((_, idx) => {
+                                  const item = woodTalismanItems[idx] || { name: '', prayer1: '社運隆昌', prayer2: '' };
+                                  return (
+                                    <div
+                                      key={`36cm-${idx}`}
+                                      style={{
+                                        backgroundColor: '#ffffff',
+                                        border: '1px solid #ffd591',
+                                        borderRadius: '4px',
+                                        padding: '0.75rem 0.85rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.5rem',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontSize: '0.84rem', fontWeight: 'bold', color: '#873800', margin: 0 }}>
+                                          【36cm・{idx + 1}体目】
+                                        </label>
+                                      </div>
+
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem' }}>
+                                        <div>
+                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                            主願意 <span className="badge badge-required" style={{ fontSize: '0.7rem' }}>必須</span>
+                                          </label>
+                                          <select
+                                            className="form-control"
+                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            value={item.prayer1 || '社運隆昌'}
+                                            onChange={(e) => handleUpdateWoodTalismanItem(idx, 'prayer1', e.target.value)}
+                                          >
+                                            {ORGANIZATION_PRAYERS.map(p => (
+                                              <option key={p} value={p}>{p}</option>
+                                            ))}
+                                          </select>
+                                          {item.prayer1 === 'その他（自由入力）' && (
+                                            <input
+                                              type="text"
+                                              className="form-control"
+                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              placeholder="主願意をご入力ください"
+                                              value={item.custom_prayer1 || ''}
+                                              onChange={(e) => handleUpdateWoodTalismanItem(idx, 'custom_prayer1', e.target.value)}
+                                            />
+                                          )}
+                                        </div>
+
+                                        <div>
+                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                            副願意 <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'normal' }}>（任意）</span>
+                                          </label>
+                                          <select
+                                            className="form-control"
+                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            value={item.prayer2 || ''}
+                                            onChange={(e) => handleUpdateWoodTalismanItem(idx, 'prayer2', e.target.value)}
+                                          >
+                                            <option value="">なし（副願意なし）</option>
+                                            {ORGANIZATION_PRAYERS.map(p => (
+                                              <option key={p} value={p}>{p}</option>
+                                            ))}
+                                          </select>
+                                          {item.prayer2 === 'その他（自由入力）' && (
+                                            <input
+                                              type="text"
+                                              className="form-control"
+                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              placeholder="副願意をご入力ください"
+                                              value={item.custom_prayer2 || ''}
+                                              onChange={(e) => handleUpdateWoodTalismanItem(idx, 'custom_prayer2', e.target.value)}
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                          お名前（墨書名）
+                                        </label>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          style={{ width: '100%', minHeight: '38px', boxSizing: 'border-box', fontSize: '0.88rem' }}
+                                          placeholder={idx === 0 
+                                            ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
+                                            : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
+                                          value={item.name || ''}
+                                          onChange={(e) => handleUpdateWoodTalismanItem(idx, 'name', e.target.value)}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
 
-                          {/* 45cm Large Individual Names */}
+                          {/* 45cm Large Individual Talismans */}
                           {Number(woodTalismanLargeCount) > 0 && (
                             <div style={{ marginBottom: '1rem', width: '100%' }}>
                               <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#873800', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                 <span>🏷️</span>
-                                <span>祈願符（木札・大・約45cm）のお名前（全 {woodTalismanLargeCount} 体）</span>
+                                <span>祈願符（木札・大・約45cm）の設定（全 {woodTalismanLargeCount} 体）</span>
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                {Array.from({ length: Number(woodTalismanLargeCount) }).map((_, idx) => (
-                                  <div
-                                    key={`45cm-${idx}`}
-                                    style={{
-                                      backgroundColor: '#ffffff',
-                                      border: '1px solid #ffd591',
-                                      borderRadius: '4px',
-                                      padding: '0.65rem 0.85rem',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      width: '100%',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  >
-                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', marginBottom: '0.3rem' }}>
-                                      【大45cm・{idx + 1}体目】お名前（墨書名）
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      style={{ width: '100%', minHeight: '40px', boxSizing: 'border-box', fontSize: '0.92rem' }}
-                                      placeholder={idx === 0 
-                                        ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
-                                        : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
-                                      value={woodTalismanLargeNames[idx] || ''}
-                                      onChange={(e) => handleUpdateWoodTalismanLargeName(idx, e.target.value)}
-                                    />
-                                  </div>
-                                ))}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%' }}>
+                                {Array.from({ length: Number(woodTalismanLargeCount) }).map((_, idx) => {
+                                  const item = woodTalismanLargeItems[idx] || { name: '', prayer1: '社運隆昌', prayer2: '' };
+                                  return (
+                                    <div
+                                      key={`45cm-${idx}`}
+                                      style={{
+                                        backgroundColor: '#ffffff',
+                                        border: '1px solid #ffd591',
+                                        borderRadius: '4px',
+                                        padding: '0.75rem 0.85rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.5rem',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontSize: '0.84rem', fontWeight: 'bold', color: '#873800', margin: 0 }}>
+                                          【大45cm・{idx + 1}体目】
+                                        </label>
+                                      </div>
+
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem' }}>
+                                        <div>
+                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                            主願意 <span className="badge badge-required" style={{ fontSize: '0.7rem' }}>必須</span>
+                                          </label>
+                                          <select
+                                            className="form-control"
+                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            value={item.prayer1 || '社運隆昌'}
+                                            onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'prayer1', e.target.value)}
+                                          >
+                                            {ORGANIZATION_PRAYERS.map(p => (
+                                              <option key={p} value={p}>{p}</option>
+                                            ))}
+                                          </select>
+                                          {item.prayer1 === 'その他（自由入力）' && (
+                                            <input
+                                              type="text"
+                                              className="form-control"
+                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              placeholder="主願意をご入力ください"
+                                              value={item.custom_prayer1 || ''}
+                                              onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'custom_prayer1', e.target.value)}
+                                            />
+                                          )}
+                                        </div>
+
+                                        <div>
+                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                            副願意 <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'normal' }}>（任意）</span>
+                                          </label>
+                                          <select
+                                            className="form-control"
+                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            value={item.prayer2 || ''}
+                                            onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'prayer2', e.target.value)}
+                                          >
+                                            <option value="">なし（副願意なし）</option>
+                                            {ORGANIZATION_PRAYERS.map(p => (
+                                              <option key={p} value={p}>{p}</option>
+                                            ))}
+                                          </select>
+                                          {item.prayer2 === 'その他（自由入力）' && (
+                                            <input
+                                              type="text"
+                                              className="form-control"
+                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              placeholder="副願意をご入力ください"
+                                              value={item.custom_prayer2 || ''}
+                                              onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'custom_prayer2', e.target.value)}
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                          お名前（墨書名）
+                                        </label>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          style={{ width: '100%', minHeight: '38px', boxSizing: 'border-box', fontSize: '0.88rem' }}
+                                          placeholder={idx === 0 
+                                            ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
+                                            : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
+                                          value={item.name || ''}
+                                          onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'name', e.target.value)}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
 
                           {Number(woodTalismanCount) === 0 && Number(woodTalismanLargeCount) === 0 && (
                             <div style={{ fontSize: '0.82rem', color: '#777', fontStyle: 'italic', padding: '0.5rem 0' }}>
-                              ※上記で体数を入力すると、各体数分のお名前（墨書名）入力欄が表示されます。
+                              ※上記で体数を入力すると、各体数分の願意・お名前（墨書名）設定欄が表示されます。
                             </div>
                           )}
                         </div>
@@ -4926,27 +5118,43 @@ export const VisitorPortal: React.FC = () => {
                             <span>・祈願符・大（約45cm）: <strong>{woodTalismanLargeCount}</strong> 体 ({((Number(woodTalismanLargeCount) || 0) * 5000).toLocaleString()}円)</span>
                           )}
                         </div>
-                        {Number(woodTalismanCount) > 0 && woodTalismanNames.length > 0 && (
+                        {Number(woodTalismanCount) > 0 && woodTalismanItems.length > 0 && (
                           <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
-                            <span style={{ fontWeight: 600, color: '#873800' }}>【祈願符（約36cm）墨書名】</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem', paddingLeft: '0.5rem' }}>
-                              {woodTalismanNames.slice(0, Number(woodTalismanCount)).map((name, i) => (
-                                <div key={i}>
-                                  {i + 1}体目: <strong>{name.trim() || (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '（未入力・会社名代表者名適用）'))}</strong>
-                                </div>
-                              ))}
+                            <span style={{ fontWeight: 600, color: '#873800' }}>【祈願符（約36cm）】</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.2rem', paddingLeft: '0.5rem' }}>
+                              {woodTalismanItems.slice(0, Number(woodTalismanCount)).map((item, i) => {
+                                const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                const displayName = item.name?.trim() || (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '（未入力・会社名代表者名適用）'));
+                                return (
+                                  <div key={i} style={{ borderLeft: '2px solid #ffd591', paddingLeft: '0.4rem' }}>
+                                    <div><strong>{i + 1}体目: {displayName}</strong></div>
+                                    <div style={{ color: '#555', fontSize: '0.78rem' }}>
+                                      願意: 主願意「{p1}」{p2 ? ` / 副願意「${p2}」` : ''}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
-                        {Number(woodTalismanLargeCount) > 0 && woodTalismanLargeNames.length > 0 && (
+                        {Number(woodTalismanLargeCount) > 0 && woodTalismanLargeItems.length > 0 && (
                           <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
-                            <span style={{ fontWeight: 600, color: '#873800' }}>【祈願符・大（約45cm）墨書名】</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem', paddingLeft: '0.5rem' }}>
-                              {woodTalismanLargeNames.slice(0, Number(woodTalismanLargeCount)).map((name, i) => (
-                                <div key={i}>
-                                  {i + 1}体目: <strong>{name.trim() || (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '（未入力・会社名代表者名適用）'))}</strong>
-                                </div>
-                              ))}
+                            <span style={{ fontWeight: 600, color: '#873800' }}>【祈願符・大（約45cm）】</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.2rem', paddingLeft: '0.5rem' }}>
+                              {woodTalismanLargeItems.slice(0, Number(woodTalismanLargeCount)).map((item, i) => {
+                                const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                const displayName = item.name?.trim() || (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '（未入力・会社名代表者名適用）'));
+                                return (
+                                  <div key={i} style={{ borderLeft: '2px solid #ffd591', paddingLeft: '0.4rem' }}>
+                                    <div><strong>{i + 1}体目: {displayName}</strong></div>
+                                    <div style={{ color: '#555', fontSize: '0.78rem' }}>
+                                      願意: 主願意「{p1}」{p2 ? ` / 副願意「${p2}」` : ''}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}

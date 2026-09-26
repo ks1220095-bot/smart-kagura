@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { getBookingReceipts, getBookingChildren } from '../types';
+import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans } from '../types';
 
 dotenv.config();
 
@@ -162,19 +162,22 @@ ${(booking.wood_talisman_count || booking.wood_talisman_large_count) ? (() => {
     booking.wood_talisman_count ? `祈願符(約36cm) ${booking.wood_talisman_count}体` : '',
     booking.wood_talisman_large_count ? `祈願符・大(約45cm) ${booking.wood_talisman_large_count}体` : ''
   ].filter(Boolean).join('、')}\n`;
-  let parsed: { standard?: string[]; large?: string[] } | null = null;
-  if (booking.wood_talisman_items_data) {
-    try { parsed = JSON.parse(booking.wood_talisman_items_data); } catch(e) {}
+  const woodTalismans = getBookingWoodTalismans(booking);
+  if (woodTalismans.standard.length > 0) {
+    text += `　- 祈願符（約36cm）:\n` + woodTalismans.standard.map((item, i) => {
+      const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+      const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+      const prayerText = p2 ? ` [主願意: ${p1} / 副願意: ${p2}]` : ` [主願意: ${p1}]`;
+      return `　  ${i + 1}体目: ${item.name || '（未入力・会社名代表者名適用）'}${prayerText}`;
+    }).join('\n') + '\n';
   }
-  if (parsed && ((parsed.standard && parsed.standard.length > 0) || (parsed.large && parsed.large.length > 0))) {
-    if (parsed.standard && parsed.standard.length > 0) {
-      text += `　- 祈願符（約36cm）墨書名:\n` + parsed.standard.map((name, i) => `　  ${i + 1}体目: ${name || '（未入力・会社名代表者名適用）'}`).join('\n') + '\n';
-    }
-    if (parsed.large && parsed.large.length > 0) {
-      text += `　- 祈願符・大（約45cm）墨書名:\n` + parsed.large.map((name, i) => `　  ${i + 1}体目: ${name || '（未入力・会社名代表者名適用）'}`).join('\n') + '\n';
-    }
-  } else if (booking.wood_talisman_name) {
-    text += `・木札墨書名: ${booking.wood_talisman_name}\n`;
+  if (woodTalismans.large.length > 0) {
+    text += `　- 祈願符・大（約45cm）:\n` + woodTalismans.large.map((item, i) => {
+      const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+      const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+      const prayerText = p2 ? ` [主願意: ${p1} / 副願意: ${p2}]` : ` [主願意: ${p1}]`;
+      return `　  ${i + 1}体目: ${item.name || '（未入力・会社名代表者名適用）'}${prayerText}`;
+    }).join('\n') + '\n';
   }
   return text;
 })() : ''}・領収証の発行希望: ${(() => {

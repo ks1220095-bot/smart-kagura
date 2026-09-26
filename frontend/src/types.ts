@@ -218,3 +218,79 @@ export const getBookingChildren = (b: {
   return list;
 };
 
+export interface WoodTalismanItem {
+  name: string;             // 墨書名
+  prayer1?: string;         // 主願意
+  custom_prayer1?: string;  // 主願意（自由入力）
+  prayer2?: string;         // 副願意
+  custom_prayer2?: string;  // 副願意（自由入力）
+}
+
+export const normalizeWoodTalismanItem = (
+  item: any,
+  defaultName: string = '',
+  defaultPrayer1: string = '社運隆昌',
+  defaultPrayer2: string = ''
+): WoodTalismanItem => {
+  if (!item) {
+    return { name: defaultName, prayer1: defaultPrayer1, prayer2: defaultPrayer2 };
+  }
+  if (typeof item === 'string') {
+    return { name: item || defaultName, prayer1: defaultPrayer1, prayer2: defaultPrayer2 };
+  }
+  return {
+    name: item.name !== undefined ? item.name : defaultName,
+    prayer1: item.prayer1 || defaultPrayer1,
+    custom_prayer1: item.custom_prayer1 || '',
+    prayer2: item.prayer2 || defaultPrayer2,
+    custom_prayer2: item.custom_prayer2 || ''
+  };
+};
+
+export const getBookingWoodTalismans = (b: {
+  wood_talisman_items_data?: string;
+  wood_talisman_count?: number;
+  wood_talisman_large_count?: number;
+  wood_talisman_name?: string;
+  talisman_name?: string;
+  company_name?: string;
+  name?: string;
+  prayer1?: string;
+  prayer2?: string;
+  [key: string]: any;
+}): { standard: WoodTalismanItem[]; large: WoodTalismanItem[] } => {
+  const defaultName = b.talisman_name || b.company_name || b.name || b.wood_talisman_name || '';
+  const defaultPrayer1 = b.prayer1 || '社運隆昌';
+  const defaultPrayer2 = b.prayer2 || '';
+  const stdCount = Number(b.wood_talisman_count) || 0;
+  const lrgCount = Number(b.wood_talisman_large_count) || 0;
+
+  let parsed: any = null;
+  if (b.wood_talisman_items_data) {
+    try {
+      parsed = JSON.parse(b.wood_talisman_items_data);
+    } catch (e) {
+      console.error('Failed to parse wood_talisman_items_data', e);
+    }
+  }
+
+  const standard: WoodTalismanItem[] = [];
+  if (stdCount > 0) {
+    for (let i = 0; i < stdCount; i++) {
+      const raw = parsed?.standard && parsed.standard[i];
+      standard.push(normalizeWoodTalismanItem(raw, defaultName, defaultPrayer1, defaultPrayer2));
+    }
+  }
+
+  const large: WoodTalismanItem[] = [];
+  if (lrgCount > 0) {
+    for (let i = 0; i < lrgCount; i++) {
+      const raw = parsed?.large && parsed.large[i];
+      large.push(normalizeWoodTalismanItem(raw, defaultName, defaultPrayer1, defaultPrayer2));
+    }
+  }
+
+  return { standard, large };
+};
+
+

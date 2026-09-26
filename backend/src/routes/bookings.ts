@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db';
-import { Booking, getBookingReceipts, getBookingChildren } from '../types';
+import { Booking, getBookingReceipts, getBookingChildren, getBookingWoodTalismans } from '../types';
 import { sendMail, sendAdminNotification } from '../services/email';
 import { sendWebPushNotification } from '../services/webpush';
 import { syncAllBookingsToSpreadsheet } from '../services/sheetSync';
@@ -458,25 +458,24 @@ router.post('/', async (req, res) => {
         if (first.wood_talisman_large_count) {
           text += `・祈願符（木札・大・約45cm）: ${first.wood_talisman_large_count}体 (￥${(first.wood_talisman_large_count * 5000).toLocaleString()})\n`;
         }
-        let parsedItems: { standard?: string[]; large?: string[] } | null = null;
-        if (first.wood_talisman_items_data) {
-          try { parsedItems = JSON.parse(first.wood_talisman_items_data); } catch(e) {}
+        const woodTalismans = getBookingWoodTalismans(first);
+        if (woodTalismans.standard.length > 0) {
+          text += `  【祈願符（約36cm）】\n`;
+          woodTalismans.standard.forEach((item, i) => {
+            const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+            const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+            const prayerInfo = p2 ? `[主願意: ${p1} / 副願意: ${p2}]` : `[主願意: ${p1}]`;
+            text += `   ${i + 1}体目: ${item.name || '（未入力・会社名代表者名適用）'} ${prayerInfo}\n`;
+          });
         }
-        if (parsedItems && ((parsedItems.standard && parsedItems.standard.length > 0) || (parsedItems.large && parsedItems.large.length > 0))) {
-          if (parsedItems.standard && parsedItems.standard.length > 0) {
-            text += `  【祈願符（約36cm）墨書名】\n`;
-            parsedItems.standard.forEach((name, i) => {
-              text += `   ${i + 1}体目: ${name || '（未入力・会社名代表者名適用）'}\n`;
-            });
-          }
-          if (parsedItems.large && parsedItems.large.length > 0) {
-            text += `  【祈願符・大（約45cm）墨書名】\n`;
-            parsedItems.large.forEach((name, i) => {
-              text += `   ${i + 1}体目: ${name || '（未入力・会社名代表者名適用）'}\n`;
-            });
-          }
-        } else if (first.wood_talisman_name) {
-          text += `・木札の墨書名: ${first.wood_talisman_name}\n`;
+        if (woodTalismans.large.length > 0) {
+          text += `  【祈願符・大（約45cm）】\n`;
+          woodTalismans.large.forEach((item, i) => {
+            const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+            const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+            const prayerInfo = p2 ? `[主願意: ${p1} / 副願意: ${p2}]` : `[主願意: ${p1}]`;
+            text += `   ${i + 1}体目: ${item.name || '（未入力・会社名代表者名適用）'} ${prayerInfo}\n`;
+          });
         }
       }
 
@@ -1108,6 +1107,35 @@ router.put('/:id', async (req, res) => {
       text += `・お初穂料　: ${booking.hatsuhoryo.toLocaleString()}円以上（当日現金納め、お気持ち）
 ・参列予定者: ${booking.attending_count}名
 `;
+
+      if (booking.wood_talisman_count || booking.wood_talisman_large_count) {
+        text += `\n■ 追加の木の御札（祈願符）\n`;
+        if (booking.wood_talisman_count) {
+          text += `・祈願符（木札・約36cm）: ${booking.wood_talisman_count}体 (￥${(booking.wood_talisman_count * 2000).toLocaleString()})\n`;
+        }
+        if (booking.wood_talisman_large_count) {
+          text += `・祈願符（木札・大・約45cm）: ${booking.wood_talisman_large_count}体 (￥${(booking.wood_talisman_large_count * 5000).toLocaleString()})\n`;
+        }
+        const woodTalismans = getBookingWoodTalismans(booking);
+        if (woodTalismans.standard.length > 0) {
+          text += `  【祈願符（約36cm）】\n`;
+          woodTalismans.standard.forEach((item, i) => {
+            const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+            const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+            const prayerInfo = p2 ? `[主願意: ${p1} / 副願意: ${p2}]` : `[主願意: ${p1}]`;
+            text += `   ${i + 1}体目: ${item.name || '（未入力・会社名代表者名適用）'} ${prayerInfo}\n`;
+          });
+        }
+        if (woodTalismans.large.length > 0) {
+          text += `  【祈願符・大（約45cm）】\n`;
+          woodTalismans.large.forEach((item, i) => {
+            const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+            const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+            const prayerInfo = p2 ? `[主願意: ${p1} / 副願意: ${p2}]` : `[主願意: ${p1}]`;
+            text += `   ${i + 1}体目: ${item.name || '（未入力・会社名代表者名適用）'} ${prayerInfo}\n`;
+          });
+        }
+      }
       
       text += `
 ご不明な点などがございましたら、以下までお気軽にご連絡くださいませ。
