@@ -1,7 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import type { SlotAvailability } from '../../types';
 import { getApiUrl } from '../../config/api';
+
+/**
+ * Calculates the exact epoch ms for the New Year booking open timestamp (in JST).
+ * Dec 1 at 09:00:00 JST, or if Dec 1 is Sunday -> Dec 2 (Mon), if Saturday -> Dec 3 (Mon).
+ * 09:00:00 JST is 00:00:00 UTC.
+ */
+export function getNewYearOpenTimestamp(currentYear: number): number {
+  const dec1 = new Date(Date.UTC(currentYear, 11, 1));
+  const dayOfWeek = dec1.getUTCDay(); // 0 is Sunday, 6 is Saturday
+  let openDay = 1;
+  if (dayOfWeek === 0) {
+    openDay = 2; // Sunday -> Monday Dec 2
+  } else if (dayOfWeek === 6) {
+    openDay = 3; // Saturday -> Monday Dec 3
+  }
+  // 09:00:00 JST is 00:00:00 UTC
+  return Date.UTC(currentYear, 11, openDay, 0, 0, 0);
+}
+
+export function getNewYearOpenDateLabel(currentYear: number): string {
+  const dec1 = new Date(Date.UTC(currentYear, 11, 1));
+  const dayOfWeek = dec1.getUTCDay();
+  let dayText = '12月1日';
+  if (dayOfWeek === 0) {
+    dayText = '12月2日（月）';
+  } else if (dayOfWeek === 6) {
+    dayText = '12月3日（月）';
+  }
+  return `${dayText} 09:00`;
+}
+
+export function getNewYearCountdown(openTimestamp: number, nowMs: number): string {
+  const diffMs = openTimestamp - nowMs;
+  if (diffMs <= 0) return '受付中';
+  const totalSec = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+
+  if (days > 0) {
+    return `開始まであと ${days}日 ${hours}時間`;
+  }
+  if (hours > 0) {
+    return `開始まであと ${hours}時間 ${minutes}分 ${seconds}秒`;
+  }
+  return `開始まであと ${minutes}分 ${seconds}秒`;
+}
 
 // 2025-2027 Exact National Astronomical Observatory of Japan New Moon (lunar month start) dates
 const NEW_MOONS = [
@@ -96,6 +144,8 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
   const [error, setError] = useState('');
   const [periodMonths, setPeriodMonths] = useState<number>(2);
   const [limitNewYear, setLimitNewYear] = useState<boolean>(true);
+  const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState<number>(0);
+  const [nowTimeMs, setNowTimeMs] = useState<number>(() => Date.now());
 
   useEffect(() => {
     const fetchPeriod = async () => {
@@ -108,6 +158,11 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
             setPeriodMonths(parseInt(data.booking_period_months) || 2);
           }
           setLimitNewYear(data.limit_new_year_booking !== 'false');
+          if (data.server_time) {
+            const serverMs = new Date(data.server_time).getTime();
+            setServerTimeOffsetMs(serverMs - Date.now());
+            setNowTimeMs(serverMs);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch booking period:', err);
@@ -116,6 +171,20 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
     fetchPeriod();
   }, []);
 
+  // Update clock every second synced to JST server time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTimeMs(Date.now() + serverTimeOffsetMs);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [serverTimeOffsetMs]);
+
+  // JST time calculation: epoch ms + 9 hours
+  const currentJstDate = new Date(nowTimeMs + 9 * 3600 * 1000);
+  const currentJstYear = currentJstDate.getUTCFullYear();
+  const openTimestamp = getNewYearOpenTimestamp(currentJstYear);
+  const isNewYearOpen = !limitNewYear || nowTimeMs >= openTimestamp;
+
   const getMaxDateString = () => {
     const today = new Date();
     const maxDate = new Date(today.getFullYear(), today.getMonth() + periodMonths, today.getDate());
@@ -123,27 +192,40 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
     return local.toISOString().split('T')[0];
   };
 
-  useEffect(() => {
+  const fetchAvailability = async () => {
     if (!selectedDate) return;
-    
-    const fetchAvailability = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const apiUrl = getApiUrl();
-        const res = await fetch(`${apiUrl}/api/bookings/slots-availability?date=${selectedDate}`);
-        if (!res.ok) throw new Error('空き状況の取得に失敗しました。');
-        const data = await res.json();
-        setSlots(data);
-      } catch (err: any) {
-        setError(err.message || '接続エラーが発生しました。');
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLoading(true);
+    setError('');
+    try {
+      const apiUrl = getApiUrl();
+      const res = await fetch(`${apiUrl}/api/bookings/slots-availability?date=${selectedDate}`);
+      if (!res.ok) throw new Error('空き状況の取得に失敗しました。');
+      const data = await res.json();
+      setSlots(data);
+    } catch (err: any) {
+      setError(err.message || '接続エラーが発生しました。');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchAvailability();
   }, [selectedDate]);
+
+  // Auto-refresh when the exact opening millisecond is reached
+  const prevOpenRef = useRef(isNewYearOpen);
+  useEffect(() => {
+    if (!prevOpenRef.current && isNewYearOpen) {
+      prevOpenRef.current = true;
+      if (selectedDate) {
+        const parts = selectedDate.split('-');
+        if (parseInt(parts[0]) > currentJstYear) {
+          fetchAvailability();
+        }
+      }
+    }
+  }, [isNewYearOpen, selectedDate, currentJstYear]);
 
   const getTomorrowString = () => {
     const today = new Date();
@@ -171,28 +253,22 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
           onChange={(e) => {
             const val = e.target.value;
             if (val && limitNewYear) {
-              const now = new Date();
-              const currentYear = now.getFullYear();
-              const currentMonth = now.getMonth() + 1; // 1-12
-              
               const parts = val.split('-');
               const targetYear = parseInt(parts[0]);
               const targetMonth = parseInt(parts[1]);
               const targetDay = parseInt(parts[2]);
 
-              if (targetYear > currentYear) {
-                if (currentMonth <= 11) {
-                  alert('来年度の新年のご祈祷予約は、12月1日より受付開始となります。');
+              if (targetYear > currentJstYear) {
+                if (nowTimeMs < openTimestamp) {
+                  alert('新年のご祈祷の受付は12月1日（休日の場合は、平日の始め）09:00~より開始いたしますのでご了承願います。');
                   onDateChange('');
                   onTimeChange('');
                   return;
-                } else if (currentMonth === 12) {
-                  if (targetMonth === 1 && targetDay <= 2) {
-                    alert('新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。');
-                    onDateChange('');
-                    onTimeChange('');
-                    return;
-                  }
+                } else if (targetMonth === 1 && targetDay <= 2) {
+                  alert('新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。');
+                  onDateChange('');
+                  onTimeChange('');
+                  return;
                 }
               }
             }
@@ -235,6 +311,62 @@ export const SlotSelector: React.FC<SlotSelectorProps> = ({
             </div>
           );
         })()}
+
+        {/* New Year Guidance and Real-time Countdown Banner */}
+        {limitNewYear && (
+          <div style={{
+            marginTop: '0.75rem',
+            padding: '0.65rem 0.85rem',
+            backgroundColor: '#fffdf5',
+            border: '1px solid #e2d7ba',
+            borderRadius: '4px',
+            fontSize: '0.83rem',
+            lineHeight: '1.5',
+            color: '#554228',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.35rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#854d0e' }}>
+                🎍 新年のご祈祷予約について
+              </span>
+              {nowTimeMs < openTimestamp ? (
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '12px',
+                  backgroundColor: '#fef3c7',
+                  color: '#92400e',
+                  border: '1px solid #fcd34d'
+                }}>
+                  {getNewYearCountdown(openTimestamp, nowTimeMs)}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '12px',
+                  backgroundColor: '#ecfdf5',
+                  color: '#065f46',
+                  border: '1px solid #a7f3d0'
+                }}>
+                  受付中（{getNewYearOpenDateLabel(currentJstYear)}より開始済）
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#665c49' }}>
+              新年のご祈祷の受付は<strong>12月1日（休日の場合は、平日の始め）09:00~</strong>より開始いたしますのでご了承願います。
+              {nowTimeMs < openTimestamp && (
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#8c7757', marginTop: '0.2rem' }}>
+                  ※本年は <strong>{getNewYearOpenDateLabel(currentJstYear)}</strong> に自動で受付が開始されます（画面の再読み込みは不要です）。
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedDate && (

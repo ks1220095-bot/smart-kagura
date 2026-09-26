@@ -12,7 +12,10 @@ router.get('/', async (req, res) => {
     result.rows.forEach(s => {
       settingsMap[s.key] = s.value;
     });
-    res.json(settingsMap);
+    res.json({
+      ...settingsMap,
+      server_time: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Settings fetch error:', error);
     res.status(500).json({ error: '設定情報の取得に失敗しました。' });

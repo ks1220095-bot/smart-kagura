@@ -46,33 +46,47 @@ function timeToMinutes(timeStr: string): number {
   return hour * 60 + minute;
 }
 
+/**
+ * 該当年の新年祈祷受付開始日時（ミリ秒タイムスタンプ）をJST基準で算出
+ * 12月1日（休日の場合は平日の始め）09:00:00 JST (= 00:00:00 UTC)
+ */
+export function getNewYearOpenTimestamp(year: number): number {
+  // 12月1日 00:00:00 UTC = 12月1日 09:00:00 JST
+  const dec1 = new Date(Date.UTC(year, 11, 1, 0, 0, 0));
+  const dayOfWeek = dec1.getUTCDay(); // 0: 日, 6: 土
+  let openDay = 1;
+  if (dayOfWeek === 0) openDay = 2; // 日曜なら翌月曜（12月2日）
+  else if (dayOfWeek === 6) openDay = 3; // 土曜なら翌々月曜（12月3日）
+  return Date.UTC(year, 11, openDay, 0, 0, 0); // 00:00:00 UTC = 09:00:00 JST
+}
+
 // Helper: Validate booking dates for New Year (January) restrictions
 async function validateNewYearBookingLimit(bookingDate: string, db: any): Promise<string | null> {
   try {
     const limitSetting = await db.query(`SELECT value FROM settings WHERE key = $1`, ['limit_new_year_booking']);
-    const isLimitEnabled = limitSetting.rows[0]?.value === 'true';
+    const isLimitEnabled = limitSetting.rows[0] ? limitSetting.rows[0].value !== 'false' : true;
     if (!isLimitEnabled) {
       return null;
     }
 
-    const now = new Date();
-    // Use JST (Japan Standard Time)
-    const jpTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-    const currentYear = jpTime.getFullYear();
-    const currentMonth = jpTime.getMonth() + 1; // 1-12
+    // Current JST Year
+    const nowMs = Date.now();
+    const jstNow = new Date(nowMs + 9 * 60 * 60 * 1000);
+    const currentYear = jstNow.getUTCFullYear();
 
-    const target = new Date(bookingDate);
-    const targetYear = target.getFullYear();
-    const targetMonth = target.getMonth() + 1;
-    const targetDay = target.getDate();
+    const parts = bookingDate.split('-');
+    const targetYear = parseInt(parts[0]);
+    const targetMonth = parseInt(parts[1]);
+    const targetDay = parseInt(parts[2]);
 
     if (targetYear > currentYear) {
-      if (currentMonth <= 11) {
-        return '来年度の新年のご祈祷予約は、12月1日より受付開始となります。';
-      } else if (currentMonth === 12) {
-        if (targetMonth === 1 && targetDay <= 2) {
-          return '新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。';
-        }
+      const openTimeMs = getNewYearOpenTimestamp(currentYear);
+      if (nowMs < openTimeMs) {
+        return '新年のご祈祷の受付は12月1日（休日の場合は、平日の始め）09:00~より開始いたしますのでご了承願います。';
+      }
+      // 受付開始後でも、1月1日・1月2日はオンライン予約不可
+      if (targetMonth === 1 && targetDay <= 2) {
+        return '新年のお正月ご祈祷予約は、1月3日の回より受付開始となります。';
       }
     }
   } catch (err) {

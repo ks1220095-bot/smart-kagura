@@ -125,6 +125,10 @@ const FAQ_ITEMS = [
   {
     q: 'Q. 当日、急な体調不良や交通機関の遅延等で時間に遅れそうな場合はどうすればいいですか？',
     a: 'A. お気兼ねなくお電話（047-351-5417）にて社務所までご一報ください。後続の回へのスライド対応や、別のお日にちへの振り替えなど、柔軟に対応させていただきます。'
+  },
+  {
+    q: 'Q. 新年（お正月・1月）のご祈祷予約はいつから始まりますか？',
+    a: 'A. 新年のご祈祷の受付は12月1日（休日の場合は、平日の始め）09:00~より開始いたしますのでご了承願います。期日を迎えた瞬間に自動でオンライン受付が開始されます（1月1日・2日は終日自由参拝・特別神事体制のため、Web予約は1月3日以降の日程となります）。'
   }
 ];
 
@@ -2718,6 +2722,31 @@ export const VisitorPortal: React.FC = () => {
             
             <div className="shimenawa-divider" />
             
+            {/* New Year Booking Announcement Card */}
+            <div style={{
+              margin: '1.25rem 0 1rem',
+              padding: '1rem 1.25rem',
+              backgroundColor: '#fffdf5',
+              border: '1px solid #d4af37',
+              borderRadius: '4px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4rem',
+              boxShadow: '0 2px 6px rgba(184, 134, 11, 0.08)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#854d0e', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                <span>⛩️</span>
+                <span>【重要】新年のご祈祷予約について</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#5a4628', lineHeight: '1.6' }}>
+                新年のご祈祷の受付は<strong>12月1日（休日の場合は、平日の始め）09:00~</strong>より開始いたしますのでご了承願います。
+              </p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#786548', lineHeight: '1.5' }}>
+                ※期日・時間（午前9時00分）を迎えた瞬間に本予約サイトにて自動的に受付が開始されます。<br />
+                ※お正月の三が日（1月1日・2日）は特別神事のため事前予約枠はございません（1月3日以降のご祈祷をお選びいただけます）。
+              </p>
+            </div>
+
             <div style={{ fontSize: '0.85rem', color: 'var(--color-accent-gray)', lineHeight: '1.6' }}>
               <p>※団体・企業ご参拝の方は、ご予約確定後に準備等について神社担当者より折り返しのご連絡を差し上げます。</p>
               <p style={{ color: '#d3381c', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem' }}>※令和8年の七五三時期（11月中）と令和9年のお正月時期（1月中）と節分（2月3日）は、臨時の駐車場を設けることが出来ません。ご不便をお掛けいたしますが、境内裏手の駐車場（約12台駐車可能）が満車の際は、お近くのコインパーキングをご利用いただくか、公共交通機関をご利用の上、ご参拝賜りますよう伏してお願い申し上げます。</p>

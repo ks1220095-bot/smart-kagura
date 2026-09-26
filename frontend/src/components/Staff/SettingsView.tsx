@@ -284,7 +284,7 @@ export const SettingsView: React.FC = () => {
               </label>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block', marginTop: '0.5rem', lineHeight: '1.5' }}>
-              ※有効にすると、毎年11月30日までは「翌年1月1日以降」のWeb予約が自動でブロックされ、**12月1日になると自動で翌年1月3日以降の予約が解放**されます（1月1日・2日は無条件でオンライン予約不可となります）。
+              ※有効にすると、新年のご祈祷の受付は<strong>12月1日（休日の場合は、平日の始め）09:00~</strong>より開始となります。日本時間の期日・時間到来と同時にシステムが自動解放します（1月1日・2日は終日社務都合によりWeb予約不可）。
             </span>
           </div>
 
