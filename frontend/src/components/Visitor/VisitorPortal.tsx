@@ -4349,14 +4349,25 @@ export const VisitorPortal: React.FC = () => {
                                         </label>
                                       </div>
 
-                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem' }}>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', width: '100%' }}>
                                         <div>
-                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                          <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
                                             主願意 <span className="badge badge-required" style={{ fontSize: '0.7rem' }}>必須</span>
                                           </label>
                                           <select
                                             className="form-control"
-                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            style={{
+                                              width: '100%',
+                                              minHeight: '44px',
+                                              height: 'auto',
+                                              padding: '0.5rem 0.75rem',
+                                              fontSize: '0.9rem',
+                                              lineHeight: '1.4',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: '2px',
+                                              backgroundColor: '#ffffff',
+                                              boxSizing: 'border-box'
+                                            }}
                                             value={item.prayer1 || '社運隆昌'}
                                             onChange={(e) => handleUpdateWoodTalismanItem(idx, 'prayer1', e.target.value)}
                                           >
@@ -4368,7 +4379,17 @@ export const VisitorPortal: React.FC = () => {
                                             <input
                                               type="text"
                                               className="form-control"
-                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              style={{
+                                                width: '100%',
+                                                minHeight: '42px',
+                                                height: 'auto',
+                                                padding: '0.5rem 0.75rem',
+                                                marginTop: '0.4rem',
+                                                fontSize: '0.9rem',
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: '2px',
+                                                boxSizing: 'border-box'
+                                              }}
                                               placeholder="主願意をご入力ください"
                                               value={item.custom_prayer1 || ''}
                                               onChange={(e) => handleUpdateWoodTalismanItem(idx, 'custom_prayer1', e.target.value)}
@@ -4377,12 +4398,23 @@ export const VisitorPortal: React.FC = () => {
                                         </div>
 
                                         <div>
-                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
-                                            副願意 <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'normal' }}>（任意）</span>
+                                          <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
+                                            副願意 <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: 'normal' }}>（任意）</span>
                                           </label>
                                           <select
                                             className="form-control"
-                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            style={{
+                                              width: '100%',
+                                              minHeight: '44px',
+                                              height: 'auto',
+                                              padding: '0.5rem 0.75rem',
+                                              fontSize: '0.9rem',
+                                              lineHeight: '1.4',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: '2px',
+                                              backgroundColor: '#ffffff',
+                                              boxSizing: 'border-box'
+                                            }}
                                             value={item.prayer2 || ''}
                                             onChange={(e) => handleUpdateWoodTalismanItem(idx, 'prayer2', e.target.value)}
                                           >
@@ -4395,7 +4427,17 @@ export const VisitorPortal: React.FC = () => {
                                             <input
                                               type="text"
                                               className="form-control"
-                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              style={{
+                                                width: '100%',
+                                                minHeight: '42px',
+                                                height: 'auto',
+                                                padding: '0.5rem 0.75rem',
+                                                marginTop: '0.4rem',
+                                                fontSize: '0.9rem',
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: '2px',
+                                                boxSizing: 'border-box'
+                                              }}
                                               placeholder="副願意をご入力ください"
                                               value={item.custom_prayer2 || ''}
                                               onChange={(e) => handleUpdateWoodTalismanItem(idx, 'custom_prayer2', e.target.value)}
@@ -4404,14 +4446,23 @@ export const VisitorPortal: React.FC = () => {
                                         </div>
                                       </div>
 
-                                      <div>
-                                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                      <div style={{ marginTop: '0.2rem' }}>
+                                        <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.3rem' }}>
                                           お名前（墨書名）
                                         </label>
                                         <input
                                           type="text"
                                           className="form-control"
-                                          style={{ width: '100%', minHeight: '38px', boxSizing: 'border-box', fontSize: '0.88rem' }}
+                                          style={{
+                                            width: '100%',
+                                            minHeight: '42px',
+                                            height: 'auto',
+                                            padding: '0.5rem 0.75rem',
+                                            fontSize: '0.9rem',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: '2px',
+                                            boxSizing: 'border-box'
+                                          }}
                                           placeholder={idx === 0 
                                             ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
                                             : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}
@@ -4457,14 +4508,25 @@ export const VisitorPortal: React.FC = () => {
                                         </label>
                                       </div>
 
-                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem' }}>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', width: '100%' }}>
                                         <div>
-                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                          <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
                                             主願意 <span className="badge badge-required" style={{ fontSize: '0.7rem' }}>必須</span>
                                           </label>
                                           <select
                                             className="form-control"
-                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            style={{
+                                              width: '100%',
+                                              minHeight: '44px',
+                                              height: 'auto',
+                                              padding: '0.5rem 0.75rem',
+                                              fontSize: '0.9rem',
+                                              lineHeight: '1.4',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: '2px',
+                                              backgroundColor: '#ffffff',
+                                              boxSizing: 'border-box'
+                                            }}
                                             value={item.prayer1 || '社運隆昌'}
                                             onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'prayer1', e.target.value)}
                                           >
@@ -4476,7 +4538,17 @@ export const VisitorPortal: React.FC = () => {
                                             <input
                                               type="text"
                                               className="form-control"
-                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              style={{
+                                                width: '100%',
+                                                minHeight: '42px',
+                                                height: 'auto',
+                                                padding: '0.5rem 0.75rem',
+                                                marginTop: '0.4rem',
+                                                fontSize: '0.9rem',
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: '2px',
+                                                boxSizing: 'border-box'
+                                              }}
                                               placeholder="主願意をご入力ください"
                                               value={item.custom_prayer1 || ''}
                                               onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'custom_prayer1', e.target.value)}
@@ -4485,12 +4557,23 @@ export const VisitorPortal: React.FC = () => {
                                         </div>
 
                                         <div>
-                                          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
-                                            副願意 <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'normal' }}>（任意）</span>
+                                          <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
+                                            副願意 <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: 'normal' }}>（任意）</span>
                                           </label>
                                           <select
                                             className="form-control"
-                                            style={{ width: '100%', height: '38px', fontSize: '0.88rem' }}
+                                            style={{
+                                              width: '100%',
+                                              minHeight: '44px',
+                                              height: 'auto',
+                                              padding: '0.5rem 0.75rem',
+                                              fontSize: '0.9rem',
+                                              lineHeight: '1.4',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: '2px',
+                                              backgroundColor: '#ffffff',
+                                              boxSizing: 'border-box'
+                                            }}
                                             value={item.prayer2 || ''}
                                             onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'prayer2', e.target.value)}
                                           >
@@ -4503,7 +4586,17 @@ export const VisitorPortal: React.FC = () => {
                                             <input
                                               type="text"
                                               className="form-control"
-                                              style={{ width: '100%', marginTop: '0.3rem', fontSize: '0.88rem' }}
+                                              style={{
+                                                width: '100%',
+                                                minHeight: '42px',
+                                                height: 'auto',
+                                                padding: '0.5rem 0.75rem',
+                                                marginTop: '0.4rem',
+                                                fontSize: '0.9rem',
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: '2px',
+                                                boxSizing: 'border-box'
+                                              }}
                                               placeholder="副願意をご入力ください"
                                               value={item.custom_prayer2 || ''}
                                               onChange={(e) => handleUpdateWoodTalismanLargeItem(idx, 'custom_prayer2', e.target.value)}
@@ -4512,14 +4605,23 @@ export const VisitorPortal: React.FC = () => {
                                         </div>
                                       </div>
 
-                                      <div>
-                                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.2rem' }}>
+                                      <div style={{ marginTop: '0.2rem' }}>
+                                        <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', display: 'block', marginBottom: '0.3rem' }}>
                                           お名前（墨書名）
                                         </label>
                                         <input
                                           type="text"
                                           className="form-control"
-                                          style={{ width: '100%', minHeight: '38px', boxSizing: 'border-box', fontSize: '0.88rem' }}
+                                          style={{
+                                            width: '100%',
+                                            minHeight: '42px',
+                                            height: 'auto',
+                                            padding: '0.5rem 0.75rem',
+                                            fontSize: '0.9rem',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: '2px',
+                                            boxSizing: 'border-box'
+                                          }}
                                           placeholder={idx === 0 
                                             ? (talismanName || (companyName ? (representativeTitleName ? `${companyName} ${representativeTitleName}` : companyName) : '例：清瀧株式会社 代表取締役 清瀧太郎'))
                                             : `例：${companyName ? `${companyName} 部署名など` : '例：関連組織名・役職氏名など'}`}

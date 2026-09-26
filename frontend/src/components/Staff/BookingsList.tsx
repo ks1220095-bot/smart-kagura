@@ -2702,7 +2702,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   </label>
                                   <select
                                     className="form-control"
-                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    style={{ width: '100%', minHeight: '38px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                     value={item.prayer1 || '社運隆昌'}
                                     onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'prayer1', e.target.value)}
                                   >
@@ -2714,7 +2714,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     <input
                                       type="text"
                                       className="form-control"
-                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      style={{ width: '100%', marginTop: '0.25rem', minHeight: '36px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                       placeholder="主願意"
                                       value={item.custom_prayer1 || ''}
                                       onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'custom_prayer1', e.target.value)}
@@ -2727,7 +2727,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   </label>
                                   <select
                                     className="form-control"
-                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    style={{ width: '100%', minHeight: '38px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                     value={item.prayer2 || ''}
                                     onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'prayer2', e.target.value)}
                                   >
@@ -2740,7 +2740,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     <input
                                       type="text"
                                       className="form-control"
-                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      style={{ width: '100%', marginTop: '0.25rem', minHeight: '36px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                       placeholder="副願意"
                                       value={item.custom_prayer2 || ''}
                                       onChange={(e) => handleUpdateEditWoodTalismanItem(idx, 'custom_prayer2', e.target.value)}
@@ -2795,7 +2795,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   </label>
                                   <select
                                     className="form-control"
-                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    style={{ width: '100%', minHeight: '38px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                     value={item.prayer1 || '社運隆昌'}
                                     onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'prayer1', e.target.value)}
                                   >
@@ -2807,7 +2807,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     <input
                                       type="text"
                                       className="form-control"
-                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      style={{ width: '100%', marginTop: '0.25rem', minHeight: '36px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                       placeholder="主願意"
                                       value={item.custom_prayer1 || ''}
                                       onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'custom_prayer1', e.target.value)}
@@ -2820,7 +2820,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   </label>
                                   <select
                                     className="form-control"
-                                    style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+                                    style={{ width: '100%', minHeight: '38px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                     value={item.prayer2 || ''}
                                     onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'prayer2', e.target.value)}
                                   >
@@ -2833,7 +2833,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     <input
                                       type="text"
                                       className="form-control"
-                                      style={{ width: '100%', marginTop: '0.25rem', height: '30px', fontSize: '0.8rem' }}
+                                      style={{ width: '100%', marginTop: '0.25rem', minHeight: '36px', height: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
                                       placeholder="副願意"
                                       value={item.custom_prayer2 || ''}
                                       onChange={(e) => handleUpdateEditWoodTalismanLargeItem(idx, 'custom_prayer2', e.target.value)}
