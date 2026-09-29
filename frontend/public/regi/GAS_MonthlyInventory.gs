@@ -467,3 +467,179 @@ function getOrCreateSheet(ss, name, headers) {
   }
   return sheet;
 }
+
+// ==========================================
+// 過去実績データ ＆ 年間発注計画 連携関数
+// ==========================================
+var SHEET_HISTORICAL = '過去実績台帳';
+var SHEET_ORDER_PLAN = '年間発注計画表';
+
+/**
+ * 過去実績データの取得 (GET action: 'getHistoricalData')
+ */
+function handleGetHistoricalData(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var targetYear = (e && e.parameter && e.parameter.year) ? String(e.parameter.year) : '2025';
+  var sheet = ss.getSheetByName(SHEET_HISTORICAL);
+  
+  var records = [];
+  if (sheet && sheet.getLastRow() > 1) {
+    var data = sheet.getDataRange().getValues();
+    for (var r = 1; r < data.length; r++) {
+      var row = data[r];
+      if (String(row[0]) === targetYear) {
+        records.push({
+          year: String(row[0]),
+          id: String(row[1]),
+          name: String(row[2]),
+          category: String(row[3]),
+          mode: String(row[4] || 'monthly'),
+          m1: Number(row[5]) || 0,
+          m2: Number(row[6]) || 0,
+          m3: Number(row[7]) || 0,
+          m4: Number(row[8]) || 0,
+          m5: Number(row[9]) || 0,
+          m6: Number(row[10]) || 0,
+          m7: Number(row[11]) || 0,
+          m8: Number(row[12]) || 0,
+          m9: Number(row[13]) || 0,
+          m10: Number(row[14]) || 0,
+          m11: Number(row[15]) || 0,
+          m12: Number(row[16]) || 0,
+          total: Number(row[17]) || 0,
+          remark: String(row[18] || '')
+        });
+      }
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({
+    status: 'success',
+    year: targetYear,
+    items: records
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 過去実績データの保存 (POST action: 'saveHistoricalData')
+ */
+function handleSaveHistoricalData(postData) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var targetYear = String(postData.year || '2025');
+  var items = postData.items || [];
+  var operator = postData.operator || '授与所職員';
+  var nowStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+
+  var sheet = getOrCreateSheet(ss, SHEET_HISTORICAL, [
+    '年度', '品目ID', '授与品名', 'カテゴリ', '入力形式',
+    '1月', '2月', '3月', '4月', '5月', '6月',
+    '7月', '8月', '9月', '10月', '11月', '12月',
+    '年間合計', '備考', '最終登録日時', '登録者'
+  ]);
+
+  // 既存の該当年レコードを削除
+  var data = sheet.getDataRange().getValues();
+  for (var r = data.length - 1; r >= 1; r--) {
+    if (String(data[r][0]) === targetYear) {
+      sheet.deleteRow(r + 1);
+    }
+  }
+
+  var newRows = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var m = it.monthly || [];
+    var total = Number(it.total) || 0;
+    if (m.length > 0) {
+      total = m.reduce(function(a, b) { return a + (Number(b) || 0); }, 0);
+    }
+
+    newRows.push([
+      targetYear,
+      it.id || ('M-' + (i + 1)),
+      it.name || '',
+      it.category || 'other',
+      it.mode || 'monthly',
+      m[0] || 0, m[1] || 0, m[2] || 0, m[3] || 0, m[4] || 0, m[5] || 0,
+      m[6] || 0, m[7] || 0, m[8] || 0, m[9] || 0, m[10] || 0, m[11] || 0,
+      total,
+      it.remark || '',
+      nowStr,
+      operator
+    ]);
+  }
+
+  if (newRows.length > 0) {
+    var startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, newRows.length, newRows[0].length).setValues(newRows);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({
+    status: 'success',
+    message: targetYear + '年の過去実績データをスプレッドシートへ保存しました。',
+    savedCount: newRows.length
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 年間発注計画表の保存 (POST action: 'saveAnnualOrderPlan')
+ */
+function handleSaveAnnualOrderPlan(postData) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var planYear = String(postData.planYear || (new Date().getFullYear() + 1));
+  var items = postData.items || [];
+  var operator = postData.operator || '授与所職員';
+  var nowStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+
+  var sheet = getOrCreateSheet(ss, SHEET_ORDER_PLAN, [
+    '発注対象年度', '品目ID', '授与品名', 'カテゴリ', '初穂料',
+    '基準過去実績', '現在庫数', '採用安全係数', '発注ロット単位',
+    '年間予想需要', '年間推奨発注数', '確定発注数',
+    '正月用手配数(12月納品)', '通常期手配数(平月補充)', '想定初穂料規模',
+    '備考・発注ステータス', '計画確定日時', '担当者'
+  ]);
+
+  // 既存の計画年度レコードを削除
+  var data = sheet.getDataRange().getValues();
+  for (var r = data.length - 1; r >= 1; r--) {
+    if (String(data[r][0]) === planYear) {
+      sheet.deleteRow(r + 1);
+    }
+  }
+
+  var newRows = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    newRows.push([
+      planYear,
+      it.id || '',
+      it.name || '',
+      it.category || 'other',
+      Number(it.price) || 0,
+      Number(it.historicalTotal) || 0,
+      Number(it.currentStock) || 0,
+      Number(it.safetyFactor) || 1.15,
+      Number(it.lotSize) || 50,
+      Number(it.predictedDemand) || 0,
+      Number(it.recommendedOrder) || 0,
+      Number(it.confirmedOrder) || 0,
+      Number(it.newYearOrder) || 0,
+      Number(it.normalOrder) || 0,
+      (Number(it.confirmedOrder) || 0) * (Number(it.price) || 0),
+      it.status || '発注検討中',
+      nowStr,
+      operator
+    ]);
+  }
+
+  if (newRows.length > 0) {
+    var startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, newRows.length, newRows[0].length).setValues(newRows);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({
+    status: 'success',
+    message: planYear + '年度の年間発注計画表をスプレッドシートへ保存しました。',
+    savedCount: newRows.length
+  })).setMimeType(ContentService.MimeType.JSON);
+}

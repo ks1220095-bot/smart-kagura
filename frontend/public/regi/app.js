@@ -276,6 +276,17 @@ const state = {
       lastUpdated: null,
       operator: '',
       adjustModalData: []
+    },
+    orderPlan: {
+      baseYear: '2025',
+      safetyFactor: 1.15,
+      globalLot: 50,
+      viewMode: 'annual', // 'annual' | 'split'
+      selectedCategory: 'all',
+      searchQuery: '',
+      customLots: {},
+      overrideOrders: {},
+      calculatedPlan: []
     }
   },
   currentTab: 'dashboard', // 初期タブをダッシュボードに変更
@@ -425,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
   syncOfflineTransactions();
   initMonthlyInventoryControls();
   checkAutoMonthlyClose();
+  initOrderPlanControls();
 });
 
 function setupDateTime() {
@@ -4359,6 +4371,9 @@ function renderDashboardCharts() {
 
   // 4. 📅 月次在庫 ＆ 授与実績管理テーブルの描画
   renderMonthlyInventorySection();
+
+  // 5. 📋 年間授与品発注計画シミュレーターの描画
+  renderOrderPlanSection();
 }
 
 // 動作確認用モックダミー売上データを生成する関数
@@ -5661,5 +5676,852 @@ async function checkAutoMonthlyClose() {
     console.warn('Auto close check error:', err);
   }
 }
+
+// ==========================================================================
+// 📋 年間授与品発注計画 ＆ 過去実績データ管理 ロジック
+// ==========================================================================
+
+function initOrderPlanControls() {
+  const baseYearSelect = document.getElementById('select-order-base-year');
+  const safetyFactorSelect = document.getElementById('select-order-safety-factor');
+  const globalLotSelect = document.getElementById('select-order-global-lot');
+  const labelBaseYear = document.getElementById('label-base-year');
+
+  if (baseYearSelect) {
+    baseYearSelect.addEventListener('change', (e) => {
+      state.dashboard.orderPlan.baseYear = e.target.value;
+      if (labelBaseYear) labelBaseYear.textContent = `${e.target.value}年実績`;
+      renderOrderPlanSection();
+    });
+  }
+
+  if (safetyFactorSelect) {
+    safetyFactorSelect.addEventListener('change', (e) => {
+      state.dashboard.orderPlan.safetyFactor = parseFloat(e.target.value) || 1.15;
+      renderOrderPlanSection();
+    });
+  }
+
+  if (globalLotSelect) {
+    globalLotSelect.addEventListener('change', (e) => {
+      state.dashboard.orderPlan.globalLot = parseInt(e.target.value, 10) || 1;
+      renderOrderPlanSection();
+    });
+  }
+
+  // 2大表示切替（年間一括 vs 正月・通常期分割）
+  const btnViewAnnual = document.getElementById('btn-order-view-annual');
+  const btnViewSplit = document.getElementById('btn-order-view-split');
+  const containerAnnual = document.getElementById('order-view-annual-container');
+  const containerSplit = document.getElementById('order-view-split-container');
+
+  if (btnViewAnnual && btnViewSplit) {
+    btnViewAnnual.addEventListener('click', () => {
+      btnViewAnnual.classList.add('active');
+      btnViewSplit.classList.remove('active');
+      if (containerAnnual) containerAnnual.style.display = 'block';
+      if (containerSplit) containerSplit.style.display = 'none';
+      state.dashboard.orderPlan.viewMode = 'annual';
+      renderOrderPlanSection();
+    });
+
+    btnViewSplit.addEventListener('click', () => {
+      btnViewSplit.classList.add('active');
+      btnViewAnnual.classList.remove('active');
+      if (containerAnnual) containerAnnual.style.display = 'none';
+      if (containerSplit) containerSplit.style.display = 'block';
+      state.dashboard.orderPlan.viewMode = 'split';
+      renderOrderPlanSection();
+    });
+  }
+
+  // カテゴリフィルター
+  const catButtons = document.querySelectorAll('#order-category-filters .category-btn');
+  catButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.dashboard.orderPlan.selectedCategory = btn.dataset.category || 'all';
+      renderOrderPlanSection();
+    });
+  });
+
+  // 検索フィルター
+  const searchInput = document.getElementById('input-order-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      state.dashboard.orderPlan.searchQuery = (e.target.value || '').trim().toLowerCase();
+      renderOrderPlanSection();
+    });
+  }
+
+  // 過去データ入力モーダル起動
+  const btnOpenHistorical = document.getElementById('btn-open-historical-modal');
+  if (btnOpenHistorical) {
+    btnOpenHistorical.addEventListener('click', openHistoricalInputModal);
+  }
+
+  // モーダルを閉じる
+  const btnCloseHistorical = document.getElementById('btn-close-historical-modal');
+  const btnCloseHistoricalX = document.getElementById('btn-close-historical-modal-x');
+  const modalHistorical = document.getElementById('modal-historical-data-input');
+  if (btnCloseHistorical && modalHistorical) {
+    btnCloseHistorical.addEventListener('click', () => { modalHistorical.style.display = 'none'; });
+  }
+  if (btnCloseHistoricalX && modalHistorical) {
+    btnCloseHistoricalX.addEventListener('click', () => { modalHistorical.style.display = 'none'; });
+  }
+
+  // モーダル内の入力モード切替（月別詳細 vs 年間合計簡易）
+  const tabMonthly = document.getElementById('tab-history-mode-monthly');
+  const tabAnnual = document.getElementById('tab-history-mode-annual');
+  const viewMonthly = document.getElementById('historical-input-monthly-view');
+  const viewAnnual = document.getElementById('historical-input-annual-view');
+
+  if (tabMonthly && tabAnnual) {
+    tabMonthly.addEventListener('click', () => {
+      tabMonthly.classList.add('active');
+      tabAnnual.classList.remove('active');
+      if (viewMonthly) viewMonthly.style.display = 'block';
+      if (viewAnnual) viewAnnual.style.display = 'none';
+    });
+
+    tabAnnual.addEventListener('click', () => {
+      tabAnnual.classList.add('active');
+      tabMonthly.classList.remove('active');
+      if (viewMonthly) viewMonthly.style.display = 'none';
+      if (viewAnnual) viewAnnual.style.display = 'block';
+    });
+  }
+
+  // 過去データモーダル内の対象年度変更
+  const selectHistYear = document.getElementById('select-history-input-year');
+  if (selectHistYear) {
+    selectHistYear.addEventListener('change', () => {
+      renderHistoricalModalTables(selectHistYear.value);
+    });
+  }
+
+  // 過去データの確定保存
+  const btnSaveHist = document.getElementById('btn-save-historical-data');
+  if (btnSaveHist) {
+    btnSaveHist.addEventListener('click', saveHistoricalData);
+  }
+
+  // CSVテンプレートダウンロード
+  const btnDownloadTemplate = document.getElementById('btn-download-history-template');
+  if (btnDownloadTemplate) {
+    btnDownloadTemplate.addEventListener('click', downloadHistoryTemplateCsv);
+  }
+
+  // CSVインポート
+  const btnImportTrigger = document.getElementById('btn-import-history-csv-trigger');
+  const fileInput = document.getElementById('input-history-csv-file');
+  if (btnImportTrigger && fileInput) {
+    btnImportTrigger.addEventListener('click', () => { fileInput.click(); });
+    fileInput.addEventListener('change', handleHistoryCsvFileSelect);
+  }
+
+  // モーダル内一括クリア
+  const btnClearInputs = document.getElementById('btn-clear-history-inputs');
+  if (btnClearInputs) {
+    btnClearInputs.addEventListener('click', () => {
+      if (confirm('入力欄の数値をすべてリセットしますか？')) {
+        document.querySelectorAll('#modal-historical-data-input input[type="number"]').forEach(input => {
+          input.value = 0;
+          input.dispatchEvent(new Event('input'));
+        });
+      }
+    });
+  }
+
+  // モーダル内検索フィルター
+  const inputHistSearch = document.getElementById('input-historical-modal-search');
+  if (inputHistSearch) {
+    inputHistSearch.addEventListener('input', (e) => {
+      const q = (e.target.value || '').trim().toLowerCase();
+      document.querySelectorAll('#historical-input-monthly-tbody tr, #historical-input-annual-tbody tr').forEach(r => {
+        const text = r.textContent.toLowerCase();
+        r.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+
+  // 発注書CSV出力
+  const btnExportOrderCsv = document.getElementById('btn-export-order-csv');
+  if (btnExportOrderCsv) {
+    btnExportOrderCsv.addEventListener('click', exportOrderPlanCsv);
+  }
+
+  // 発注計画の保存
+  const btnSavePlan = document.getElementById('btn-save-order-plan');
+  if (btnSavePlan) {
+    btnSavePlan.addEventListener('click', saveAnnualOrderPlan);
+  }
+
+  // 初回発注計画の算出と描画
+  renderOrderPlanSection();
+}
+
+/**
+ * 過去実績データの取得（localStorage または GAS または デフォルトモック）
+ */
+function getHistoricalDataForYear(year) {
+  const localKey = 'historical_data_' + year;
+  const cached = localStorage.getItem(localKey);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {}
+  }
+
+  // 未入力時の初期デフォルト参考値（神社の平均的な年間需要モデル）
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+  const defaultMap = {};
+
+  itemsSource.forEach((it, idx) => {
+    // 品目ごとに現実的な年間授与数を初期セット
+    let baseAnnual = 300;
+    if (it.name.includes('家内安全') || it.name.includes('厄除')) baseAnnual = 600;
+    else if (it.name.includes('交通安全')) baseAnnual = 450;
+    else if (it.name.includes('破魔矢') || it.name.includes('鏑矢')) baseAnnual = 350;
+    else if (it.name.includes('御朱印')) baseAnnual = 800;
+    else if (it.price >= 5000) baseAnnual = 40;
+
+    // 正月期（12〜1月）に約60%集中する月別カーブ
+    const m1 = Math.round(baseAnnual * 0.45);
+    const m12 = Math.round(baseAnnual * 0.15);
+    const mNormal = Math.round((baseAnnual - m1 - m12) / 10);
+
+    const monthlyArr = [
+      m1, mNormal, mNormal, mNormal, mNormal, mNormal,
+      mNormal, mNormal, mNormal, mNormal, mNormal, m12
+    ];
+    const total = monthlyArr.reduce((a, b) => a + b, 0);
+
+    defaultMap[it.id] = {
+      id: it.id,
+      name: it.name,
+      category: it.category || 'other',
+      mode: 'monthly',
+      monthly: monthlyArr,
+      total: total,
+      remark: '参考過去データ'
+    };
+  });
+
+  return defaultMap;
+}
+
+/**
+ * 年間推奨発注数の自動算出エンジン
+ */
+function calculateOrderPlan() {
+  const baseYear = state.dashboard.orderPlan.baseYear;
+  const safetyFactor = state.dashboard.orderPlan.safetyFactor || 1.15;
+  const globalLot = state.dashboard.orderPlan.globalLot || 50;
+
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+  const histData = getHistoricalDataForYear(baseYear);
+
+  return itemsSource.map(item => {
+    const hist = histData[item.id] || histData[item.name] || {
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      monthly: [0,0,0,0,0,0,0,0,0,0,0,0],
+      total: 0,
+      mode: 'annual',
+      remark: ''
+    };
+
+    const historicalTotal = Number(hist.total) || 0;
+    const currentStock = Number(item.stock) || 0;
+    const price = Number(item.price) || 0;
+
+    // 品目個別ロットまたは全体ロット
+    const lotSize = state.dashboard.orderPlan.customLots[item.id] !== undefined
+      ? state.dashboard.orderPlan.customLots[item.id]
+      : globalLot;
+
+    // 年間予想需要数 (過去実績 × 安全係数)
+    const predictedDemand = Math.round(historicalTotal * safetyFactor);
+
+    // 不足数 (予想需要 - 現在庫)
+    const netNeeded = Math.max(0, predictedDemand - currentStock);
+
+    // ロット単位への切り上げ計算
+    let recommendedOrder = netNeeded;
+    if (lotSize > 1) {
+      recommendedOrder = Math.ceil(netNeeded / lotSize) * lotSize;
+    }
+
+    // 職員による手動微調整値の反映
+    const confirmedOrder = state.dashboard.orderPlan.overrideOrders[item.id] !== undefined
+      ? state.dashboard.orderPlan.overrideOrders[item.id]
+      : recommendedOrder;
+
+    // 正月期（12〜1月）と通常期の分割計算
+    let newYearRatio = 0.65; // デフォルト比率 65%
+    if (hist.monthly && hist.monthly.length === 12 && historicalTotal > 0) {
+      const nyTotal = (hist.monthly[0] || 0) + (hist.monthly[11] || 0);
+      newYearRatio = Math.min(1.0, Math.max(0.2, nyTotal / historicalTotal));
+    }
+
+    const newYearOrder = Math.round(confirmedOrder * newYearRatio);
+    const normalOrder = Math.max(0, confirmedOrder - newYearOrder);
+
+    // 推奨発注ステータス
+    let timingStatus = '随時発注';
+    if (newYearRatio >= 0.7) {
+      timingStatus = '⚠️ 10月上旬手配 (正月特大ロット)';
+    } else if (confirmedOrder > 0) {
+      timingStatus = '⚠️ 10月中旬手配 (正月＋平月分)';
+    } else {
+      timingStatus = '✅ 在庫十分 (発注不要)';
+    }
+
+    return {
+      id: item.id,
+      name: item.name,
+      category: item.category || 'other',
+      price: price,
+      historicalTotal: historicalTotal,
+      currentStock: currentStock,
+      safetyFactor: safetyFactor,
+      lotSize: lotSize,
+      predictedDemand: predictedDemand,
+      recommendedOrder: recommendedOrder,
+      confirmedOrder: confirmedOrder,
+      newYearRatio: newYearRatio,
+      newYearOrder: newYearOrder,
+      normalOrder: normalOrder,
+      status: timingStatus
+    };
+  });
+}
+
+/**
+ * 発注計画セクションの再描画
+ */
+function renderOrderPlanSection() {
+  const plan = calculateOrderPlan();
+  state.dashboard.orderPlan.calculatedPlan = plan;
+
+  const viewMode = state.dashboard.orderPlan.viewMode;
+  const categoryFilter = state.dashboard.orderPlan.selectedCategory;
+  const searchQuery = state.dashboard.orderPlan.searchQuery;
+
+  const categoryNameMap = {
+    'ofuda': 'お札',
+    'omamori': 'お守り',
+    'goshuin': '御朱印',
+    'engimono': '縁起物',
+    'other': 'その他'
+  };
+
+  const filtered = plan.filter(it => {
+    if (categoryFilter !== 'all' && it.category !== categoryFilter) return false;
+    if (searchQuery) {
+      const name = (it.name || '').toLowerCase();
+      const id = (it.id || '').toLowerCase();
+      if (!name.includes(searchQuery) && !id.includes(searchQuery)) return false;
+    }
+    return true;
+  });
+
+  // KPI集計
+  let totalOrderQty = 0;
+  let totalNyQty = 0;
+  let totalNormalQty = 0;
+  let totalAmount = 0;
+
+  plan.forEach(p => {
+    totalOrderQty += p.confirmedOrder;
+    totalNyQty += p.newYearOrder;
+    totalNormalQty += p.normalOrder;
+    totalAmount += p.confirmedOrder * p.price;
+  });
+
+  const kpiTotalEl = document.getElementById('kpi-order-total-qty');
+  const kpiNyEl = document.getElementById('kpi-order-newyear-qty');
+  const kpiNormalEl = document.getElementById('kpi-order-normal-qty');
+  const kpiAmountEl = document.getElementById('kpi-order-total-amount');
+
+  if (kpiTotalEl) kpiTotalEl.textContent = `${totalOrderQty.toLocaleString()} 体`;
+  if (kpiNyEl) kpiNyEl.textContent = `${totalNyQty.toLocaleString()} 体`;
+  if (kpiNormalEl) kpiNormalEl.textContent = `${totalNormalQty.toLocaleString()} 体`;
+  if (kpiAmountEl) kpiAmountEl.textContent = `¥${totalAmount.toLocaleString()}`;
+
+  // ① 年間一括まとめテーブル描画
+  const tbodyAnnual = document.getElementById('order-plan-annual-table-body');
+  if (tbodyAnnual) {
+    if (filtered.length === 0) {
+      tbodyAnnual.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--color-text-muted);">条件に一致する授与品がありません。</td></tr>';
+    } else {
+      tbodyAnnual.innerHTML = filtered.map(item => {
+        let badgeClass = 'badge-other';
+        const catName = categoryNameMap[item.category] || 'その他';
+        if (catName === 'お札') badgeClass = 'category-badge badge-ofuda';
+        else if (catName === 'お守り') badgeClass = 'category-badge badge-omamori';
+        else if (catName === '御朱印') badgeClass = 'category-badge badge-goshuin';
+        else if (catName === '縁起物') badgeClass = 'category-badge badge-engimono';
+
+        const rowTotal = item.confirmedOrder * item.price;
+
+        return `
+          <tr style="border-bottom: 1px solid var(--color-border);">
+            <td style="padding: 0.65rem 0.8rem;">
+              <div style="font-weight: 700; color: var(--color-text);">${item.name}</div>
+              <small style="color: var(--color-text-muted); font-family: monospace;">${item.id}</small>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: center;">
+              <span class="${badgeClass}" style="font-size:0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight:700;">${catName}</span>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 600;">${item.historicalTotal.toLocaleString()} 体</td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 600; color: var(--color-text-muted);">${item.currentStock.toLocaleString()} 体</td>
+            <td style="padding: 0.65rem 0.8rem; text-align: center;">
+              <select class="order-lot-select" data-id="${item.id}">
+                <option value="1" ${item.lotSize === 1 ? 'selected' : ''}>1体</option>
+                <option value="10" ${item.lotSize === 10 ? 'selected' : ''}>10体</option>
+                <option value="20" ${item.lotSize === 20 ? 'selected' : ''}>20体</option>
+                <option value="50" ${item.lotSize === 50 ? 'selected' : ''}>50体</option>
+                <option value="100" ${item.lotSize === 100 ? 'selected' : ''}>100体</option>
+              </select>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 600; color: #5c4e33;">${item.predictedDemand.toLocaleString()} 体</td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 800; font-size: 0.95rem; color: var(--color-vermilion);">${item.recommendedOrder.toLocaleString()} 体</td>
+            <td style="padding: 0.65rem 0.8rem; text-align: center;">
+              <input type="number" min="0" step="${item.lotSize}" class="order-confirmed-input" data-id="${item.id}" value="${item.confirmedOrder}">
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 700; color: var(--color-text);">¥${rowTotal.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // 個別ロット変更リスナー
+      tbodyAnnual.querySelectorAll('.order-lot-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const id = e.target.dataset.id;
+          state.dashboard.orderPlan.customLots[id] = parseInt(e.target.value, 10);
+          renderOrderPlanSection();
+        });
+      });
+
+      // 確定発注数の直接微調整リスナー
+      tbodyAnnual.querySelectorAll('.order-confirmed-input').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+          const id = e.target.dataset.id;
+          const val = parseInt(e.target.value, 10);
+          if (!isNaN(val)) {
+            state.dashboard.orderPlan.overrideOrders[id] = Math.max(0, val);
+          }
+        });
+      });
+    }
+  }
+
+  // ② 正月用・通常期 分割表示テーブル描画
+  const tbodySplit = document.getElementById('order-plan-split-table-body');
+  if (tbodySplit) {
+    if (filtered.length === 0) {
+      tbodySplit.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--color-text-muted);">条件に一致する授与品がありません。</td></tr>';
+    } else {
+      tbodySplit.innerHTML = filtered.map(item => {
+        let badgeClass = 'badge-other';
+        const catName = categoryNameMap[item.category] || 'その他';
+        if (catName === 'お札') badgeClass = 'category-badge badge-ofuda';
+        else if (catName === 'お守り') badgeClass = 'category-badge badge-omamori';
+        else if (catName === '御朱印') badgeClass = 'category-badge badge-goshuin';
+        else if (catName === '縁起物') badgeClass = 'category-badge badge-engimono';
+
+        const nyPct = Math.round(item.newYearRatio * 100);
+
+        return `
+          <tr style="border-bottom: 1px solid var(--color-border);">
+            <td style="padding: 0.65rem 0.8rem;">
+              <div style="font-weight: 700; color: var(--color-text);">${item.name}</div>
+              <small style="color: var(--color-text-muted); font-family: monospace;">${item.id}</small>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: center;">
+              <span class="${badgeClass}" style="font-size:0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight:700;">${catName}</span>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 800; font-size: 0.95rem; color: var(--color-vermilion);">${item.confirmedOrder.toLocaleString()} 体</td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 800; font-size: 0.95rem; color: #b56c00; background-color: rgba(245, 166, 35, 0.08);">
+              <span class="season-badge-newyear">${item.newYearOrder.toLocaleString()} 体</span>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 700; color: var(--color-green); background-color: rgba(63, 81, 69, 0.06);">
+              <span class="season-badge-normal">${item.normalOrder.toLocaleString()} 体</span>
+            </td>
+            <td style="padding: 0.65rem 0.8rem; text-align: center; font-weight: 700; color: #5c4e33;">${nyPct}%</td>
+            <td style="padding: 0.65rem 0.8rem; font-size: 0.82rem; font-weight: 600; color: var(--color-text);">${item.status}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+}
+
+/**
+ * 過去データ入力モーダルを開く
+ */
+function openHistoricalInputModal() {
+  const modal = document.getElementById('modal-historical-data-input');
+  const yearSelect = document.getElementById('select-history-input-year');
+  if (!modal) return;
+
+  const targetYear = (yearSelect && yearSelect.value) ? yearSelect.value : state.dashboard.orderPlan.baseYear;
+  if (yearSelect) yearSelect.value = targetYear;
+
+  renderHistoricalModalTables(targetYear);
+  modal.style.display = 'flex';
+}
+
+/**
+ * 過去データモーダル内のテーブル描画（月別 & 年間合計）
+ */
+function renderHistoricalModalTables(year) {
+  const histData = getHistoricalDataForYear(year);
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+
+  const monthlyTbody = document.getElementById('historical-input-monthly-tbody');
+  const annualTbody = document.getElementById('historical-input-annual-tbody');
+
+  // 1. 月別詳細入力テーブル
+  if (monthlyTbody) {
+    monthlyTbody.innerHTML = itemsSource.map(it => {
+      const rec = histData[it.id] || histData[it.name] || {};
+      const m = rec.monthly || [0,0,0,0,0,0,0,0,0,0,0,0];
+      const total = rec.total || m.reduce((a, b) => a + b, 0);
+
+      const mInputs = m.map((val, idx) => `
+        <td style="padding: 0.35rem; text-align: center;">
+          <input type="number" min="0" class="history-month-input" data-id="${it.id}" data-month="${idx + 1}" value="${val}">
+        </td>
+      `).join('');
+
+      return `
+        <tr data-id="${it.id}" data-name="${it.name}">
+          <td style="padding: 0.5rem 0.75rem; position: sticky; left: 0; background: white; z-index: 2; border-right: 1px solid var(--color-border);">
+            <div style="font-weight: 600;">${it.name}</div>
+            <small style="color: var(--color-text-muted); font-family: monospace;">${it.id}</small>
+          </td>
+          ${mInputs}
+          <td style="padding: 0.5rem; text-align: right; font-weight: 800; color: var(--color-vermilion); background: rgba(63,81,69,0.06);" id="hist-total-${it.id}">
+            ${total.toLocaleString()} 体
+          </td>
+          <td style="padding: 0.35rem 0.5rem;">
+            <input type="text" class="history-remark-input" data-id="${it.id}" value="${rec.remark || ''}" placeholder="メモ..." style="width: 100%; font-size: 0.8rem; padding: 0.2rem 0.4rem; border: 1px solid var(--color-border); border-radius: 3px;">
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // 月別入力時の自動合算リスナー
+    monthlyTbody.querySelectorAll('.history-month-input').forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const id = e.target.dataset.id;
+        const row = e.target.closest('tr');
+        let sum = 0;
+        row.querySelectorAll('.history-month-input').forEach(mInp => {
+          sum += parseInt(mInp.value, 10) || 0;
+        });
+        const totalEl = document.getElementById(`hist-total-${id}`);
+        if (totalEl) totalEl.textContent = `${sum.toLocaleString()} 体`;
+      });
+    });
+  }
+
+  // 2. 年間合計 簡易入力テーブル
+  if (annualTbody) {
+    annualTbody.innerHTML = itemsSource.map(it => {
+      const rec = histData[it.id] || histData[it.name] || {};
+      const total = rec.total || 0;
+      const nyEstimate = Math.round(total * 0.65);
+      const normEstimate = Math.max(0, total - nyEstimate);
+
+      return `
+        <tr data-id="${it.id}" data-name="${it.name}">
+          <td style="padding: 0.55rem 0.8rem;">
+            <div style="font-weight: 600;">${it.name}</div>
+            <small style="color: var(--color-text-muted); font-family: monospace;">${it.id}</small>
+          </td>
+          <td style="padding: 0.55rem; text-align: center;">${it.category || 'その他'}</td>
+          <td style="padding: 0.55rem; text-align: right;">¥${(it.price || 0).toLocaleString()}</td>
+          <td style="padding: 0.55rem; text-align: right; color: var(--color-text-muted);">${(it.stock || 0).toLocaleString()} 体</td>
+          <td style="padding: 0.55rem; text-align: center; background: rgba(217,75,52,0.03);">
+            <input type="number" min="0" class="history-annual-input" data-id="${it.id}" value="${total}">
+          </td>
+          <td style="padding: 0.55rem; text-align: right; font-weight: 700; color: #b56c00;" id="hist-ny-est-${it.id}">${nyEstimate.toLocaleString()} 体</td>
+          <td style="padding: 0.55rem; text-align: right; font-weight: 700; color: var(--color-green);" id="hist-norm-est-${it.id}">${normEstimate.toLocaleString()} 体</td>
+          <td style="padding: 0.55rem;">
+            <input type="text" class="history-annual-remark" data-id="${it.id}" value="${rec.remark || ''}" placeholder="メモ..." style="width: 100%; font-size: 0.8rem; padding: 0.25rem 0.4rem; border: 1px solid var(--color-border); border-radius: 4px;">
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // 年間合計入力時の即時推定分割リスナー
+    annualTbody.querySelectorAll('.history-annual-input').forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const id = e.target.dataset.id;
+        const val = parseInt(e.target.value, 10) || 0;
+        const nyEst = Math.round(val * 0.65);
+        const normEst = Math.max(0, val - nyEst);
+        const nyEl = document.getElementById(`hist-ny-est-${id}`);
+        const normEl = document.getElementById(`hist-norm-est-${id}`);
+        if (nyEl) nyEl.textContent = `${nyEst.toLocaleString()} 体`;
+        if (normEl) normEl.textContent = `${normEst.toLocaleString()} 体`;
+      });
+    });
+  }
+}
+
+/**
+ * 過去実績データの保存処理（localStorage ＆ GAS連携）
+ */
+async function saveHistoricalData() {
+  const selectYear = document.getElementById('select-history-input-year');
+  const targetYear = (selectYear && selectYear.value) ? selectYear.value : '2025';
+
+  const tabMonthly = document.getElementById('tab-history-mode-monthly');
+  const isMonthlyMode = tabMonthly && tabMonthly.classList.contains('active');
+
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+  const resultMap = {};
+
+  if (isMonthlyMode) {
+    const rows = document.querySelectorAll('#historical-input-monthly-tbody tr');
+    rows.forEach(r => {
+      const id = r.dataset.id;
+      const original = itemsSource.find(it => it.id === id);
+      if (!original) return;
+
+      const mInputs = r.querySelectorAll('.history-month-input');
+      const monthlyArr = [];
+      mInputs.forEach(inp => {
+        monthlyArr.push(parseInt(inp.value, 10) || 0);
+      });
+      const total = monthlyArr.reduce((a, b) => a + b, 0);
+      const remarkInput = r.querySelector('.history-remark-input');
+
+      resultMap[id] = {
+        id: id,
+        name: original.name,
+        category: original.category,
+        mode: 'monthly',
+        monthly: monthlyArr,
+        total: total,
+        remark: remarkInput ? remarkInput.value.trim() : ''
+      };
+    });
+  } else {
+    const rows = document.querySelectorAll('#historical-input-annual-tbody tr');
+    rows.forEach(r => {
+      const id = r.dataset.id;
+      const original = itemsSource.find(it => it.id === id);
+      if (!original) return;
+
+      const annualInp = r.querySelector('.history-annual-input');
+      const total = annualInp ? (parseInt(annualInp.value, 10) || 0) : 0;
+      const remarkInp = r.querySelector('.history-annual-remark');
+
+      const m1 = Math.round(total * 0.45);
+      const m12 = Math.round(total * 0.15);
+      const mNorm = Math.round((total - m1 - m12) / 10);
+      const monthlyArr = [m1, mNorm, mNorm, mNorm, mNorm, mNorm, mNorm, mNorm, mNorm, mNorm, mNorm, m12];
+
+      resultMap[id] = {
+        id: id,
+        name: original.name,
+        category: original.category,
+        mode: 'annual',
+        monthly: monthlyArr,
+        total: total,
+        remark: remarkInp ? remarkInp.value.trim() : ''
+      };
+    });
+  }
+
+  showLoader(true);
+  try {
+    // 1. ローカルに永続保存
+    localStorage.setItem('historical_data_' + targetYear, JSON.stringify(resultMap));
+
+    // 2. GASへ送信
+    if (!state.isUsingMock && GAS_API_URL !== 'YOUR_GAS_API_URL') {
+      const payload = {
+        action: 'saveHistoricalData',
+        year: targetYear,
+        operator: '授与所職員',
+        items: Object.values(resultMap)
+      };
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const modal = document.getElementById('modal-historical-data-input');
+    if (modal) modal.style.display = 'none';
+
+    // 基準年度を保存した年度に同期
+    const baseYearSelect = document.getElementById('select-order-base-year');
+    if (baseYearSelect) baseYearSelect.value = targetYear;
+    state.dashboard.orderPlan.baseYear = targetYear;
+    const labelBaseYear = document.getElementById('label-base-year');
+    if (labelBaseYear) labelBaseYear.textContent = `${targetYear}年実績`;
+
+    renderOrderPlanSection();
+    showToast(`【${targetYear}年】の過去実績データをスプレッドシートへ確定保存しました！年間発注数を再計算しました。`, 'success');
+
+  } catch (err) {
+    console.error('Save historical data error:', err);
+    showToast(`過去実績データを端末内に保存しました。(通信通知: ${err.message})`, 'info');
+    renderOrderPlanSection();
+  } finally {
+    showLoader(false);
+  }
+}
+
+/**
+ * 過去実績入力用CSVテンプレートのダウンロード
+ */
+function downloadHistoryTemplateCsv() {
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+  let csv = '\uFEFF'; // BOM
+  csv += '品目ID,授与品名,カテゴリ,1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月,年間合計,備考\r\n';
+
+  itemsSource.forEach(it => {
+    csv += `"${it.id}","${it.name}","${it.category}",0,0,0,0,0,0,0,0,0,0,0,0,0,""\r\n`;
+  });
+
+  downloadCsvBlob(csv, `過去授与実績取込テンプレート.csv`);
+  showToast('テンプレートCSVをダウンロードしました。数値を記入してCSV取込を行ってください。', 'info');
+}
+
+/**
+ * CSVインポート処理
+ */
+function handleHistoryCsvFileSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const text = evt.target.result;
+      const lines = text.split(/\r\n|\n/);
+      if (lines.length < 2) throw new Error('CSVデータが空です');
+
+      let importedCount = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = line.split(',').map(s => s.replace(/^["']|["']$/g, '').trim());
+        const id = cols[0];
+        const name = cols[1];
+
+        // 月別詳細テーブルの行を探索
+        const mRow = document.querySelector(`#historical-input-monthly-tbody tr[data-id="${id}"]`) ||
+                     document.querySelector(`#historical-input-monthly-tbody tr[data-name="${name}"]`);
+        if (mRow && cols.length >= 16) {
+          const mInputs = mRow.querySelectorAll('.history-month-input');
+          let sum = 0;
+          for (let m = 0; m < 12; m++) {
+            const val = parseInt(cols[3 + m], 10) || 0;
+            if (mInputs[m]) mInputs[m].value = val;
+            sum += val;
+          }
+          const totalEl = document.getElementById(`hist-total-${id}`);
+          if (totalEl) totalEl.textContent = `${sum.toLocaleString()} 体`;
+          importedCount++;
+        }
+
+        // 年間合計テーブルの行も探索
+        const aRow = document.querySelector(`#historical-input-annual-tbody tr[data-id="${id}"]`) ||
+                     document.querySelector(`#historical-input-annual-tbody tr[data-name="${name}"]`);
+        if (aRow) {
+          const aInp = aRow.querySelector('.history-annual-input');
+          const totalVal = parseInt(cols[15], 10) || 0;
+          if (aInp) {
+            aInp.value = totalVal;
+            aInp.dispatchEvent(new Event('input'));
+          }
+        }
+      }
+
+      showToast(`CSVから ${importedCount} 品目の実績データを読み込みました！`, 'success');
+    } catch (err) {
+      console.error('CSV import error:', err);
+      showToast('CSVファイルの読み込みに失敗しました。書式をご確認ください。', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/**
+ * 年間発注計画の確定保存（スプレッドシート ＆ ローカル保存）
+ */
+async function saveAnnualOrderPlan() {
+  const plan = state.dashboard.orderPlan.calculatedPlan;
+  if (!plan || plan.length === 0) return;
+
+  const planYear = new Date().getFullYear() + 1; // 翌年度用計画
+  const payload = {
+    action: 'saveAnnualOrderPlan',
+    planYear: `${planYear}年度用`,
+    operator: '授与所職員',
+    items: plan
+  };
+
+  showLoader(true);
+  try {
+    localStorage.setItem('annual_order_plan_' + planYear, JSON.stringify(payload));
+
+    if (!state.isUsingMock && GAS_API_URL !== 'YOUR_GAS_API_URL') {
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    }
+
+    showToast(`【${planYear}年度用】の年間発注計画表をスプレッドシートへ保存しました！`, 'success');
+  } catch (err) {
+    console.error('Save order plan error:', err);
+    showToast(`発注計画を端末内に保存しました。(${err.message})`, 'info');
+  } finally {
+    showLoader(false);
+  }
+}
+
+/**
+ * 奉製所・問屋向け発注書CSVの出力
+ */
+function exportOrderPlanCsv() {
+  const plan = state.dashboard.orderPlan.calculatedPlan;
+  if (!plan || plan.length === 0) {
+    showToast('出力対象の発注計画データがありません。', 'warning');
+    return;
+  }
+
+  const baseYear = state.dashboard.orderPlan.baseYear;
+  const safetyFactor = state.dashboard.orderPlan.safetyFactor;
+  const planYear = new Date().getFullYear() + 1;
+
+  let csv = '\uFEFF'; // Excel BOM
+  csv += `【${planYear}年度用】神社授与品 年間奉製発注書（参照基準: ${baseYear}年実績 / 安全係数: ${safetyFactor}倍）\r\n`;
+  csv += '品目ID,授与品名,カテゴリ,初穂料,過去年間実績,現在庫数,採用ロット,年間予想需要,年間確定発注数,正月用手配数(12月納品),通常期手配数(平月補充),想定初穂料規模,発注推奨ステータス\r\n';
+
+  plan.forEach(p => {
+    const amount = p.confirmedOrder * p.price;
+    csv += `"${p.id}","${p.name}","${p.category}",${p.price},${p.historicalTotal},${p.currentStock},${p.lotSize},${p.predictedDemand},${p.confirmedOrder},${p.newYearOrder},${p.normalOrder},${amount},"${p.status}"\r\n`;
+  });
+
+  downloadCsvBlob(csv, `授与品年間発注計画書_${planYear}年度用.csv`);
+  showToast('奉製所・問屋向け発注書CSVをダウンロードしました。', 'success');
+}
+
 
 

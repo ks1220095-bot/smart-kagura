@@ -3180,3 +3180,91 @@ body.loading-state {
   color: var(--color-text);
 }
 
+/* ==========================================================================
+   📋 年間授与品発注計画 ＆ 過去実績データ入力 専用スタイル
+   ========================================================================== */
+.order-confirmed-input {
+  width: 80px;
+  text-align: center;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--color-green);
+  border: 1.5px solid var(--color-green);
+  border-radius: 4px;
+  background: #F8FAF8;
+  transition: all 0.2s ease;
+}
+
+.order-confirmed-input:focus {
+  border-color: var(--color-vermilion);
+  color: var(--color-vermilion);
+  background: #FFF;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(217, 75, 52, 0.2);
+}
+
+.order-lot-select {
+  padding: 0.2rem 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: white;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.history-month-input {
+  width: 52px;
+  text-align: center;
+  padding: 0.2rem 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: white;
+}
+
+.history-month-input:focus {
+  border-color: var(--color-green);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(63, 81, 69, 0.15);
+}
+
+.history-annual-input {
+  width: 90px;
+  text-align: center;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-vermilion);
+  border: 1.5px solid var(--color-vermilion);
+  border-radius: 4px;
+  background: #FFFDFD;
+}
+
+.history-annual-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(217, 75, 52, 0.2);
+}
+
+.season-badge-newyear {
+  background-color: rgba(245, 166, 35, 0.15);
+  color: #b56c00;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.season-badge-normal {
+  background-color: rgba(63, 81, 69, 0.1);
+  color: var(--color-green);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+
