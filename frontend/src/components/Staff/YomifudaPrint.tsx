@@ -259,10 +259,10 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                       </span>
                       {ent.company_address && (
                         <div style={{ fontSize: isDense ? '0.68rem' : '0.76rem', color: '#333', lineHeight: '1.2' }}>
-                          {ent.company_address_kana && (
-                            <span style={{ fontSize: '0.58rem', color: '#777', marginRight: '0.25rem' }}>({ent.company_address_kana})</span>
-                          )}
                           <span>{ent.company_address}</span>
+                          {ent.company_address_kana && (
+                            <span style={{ fontSize: '0.58rem', color: '#777', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>
+                          )}
                         </div>
                       )}
                     </div>

@@ -1663,7 +1663,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                                     </div>
                                                     <div style={{ color: '#555', fontSize: '0.7rem', marginBottom: '0.15rem' }}>
                                                       📍 <strong>所在地:</strong> {ent.company_address || '（未登録）'}
-                                                      {ent.company_address_kana && <div style={{ fontSize: '0.65rem', color: '#888' }}>({ent.company_address_kana})</div>}
+                                                      {ent.company_address_kana && <span style={{ fontSize: '0.65rem', color: '#888', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>}
                                                     </div>
                                                     <div style={{ color: '#333', fontSize: '0.72rem' }}>
                                                       👤 <strong>役職・氏名:</strong> {ent.representative_title ? `［${ent.representative_title}］` : ''}<strong>{ent.representative_name}</strong>
