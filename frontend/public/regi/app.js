@@ -4867,6 +4867,49 @@ function initMonthlyInventoryControls() {
 
 /**
  * 月次在庫データの取得（GAS または 動的集計）
+/**
+ * 指定期間の取引履歴をGASから取得してキャッシュにマージ
+ */
+async function fetchTransactionsForDateRange(startDate, endDate) {
+  if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
+    const mockTxs = getMockRangeTransactions(startDate, endDate);
+    mockTxs.forEach(tx => {
+      const key = `${tx.transactionId}_${tx.itemId || ''}_${tx.date || ''}`;
+      state.dashboard.cachedTransactionsMap[key] = tx;
+    });
+    state.dashboard.rangeTransactions = Object.values(state.dashboard.cachedTransactionsMap);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${startDate}&endDate=${endDate}`);
+    const data = await res.json();
+    if (data.status === 'success' && Array.isArray(data.transactions)) {
+      data.transactions.forEach(tx => {
+        if (!tx) return;
+        const key = `${tx.transactionId}_${tx.itemId || ''}_${tx.date || ''}`;
+        state.dashboard.cachedTransactionsMap[key] = {
+          ...tx,
+          subtotal: Number(tx.subtotal) || 0,
+          quantity: Number(tx.quantity) || 0,
+          price: Number(tx.price) || 0
+        };
+      });
+      state.dashboard.rangeTransactions = Object.values(state.dashboard.cachedTransactionsMap);
+      if (!state.dashboard.earliestFetchedDate || startDate < state.dashboard.earliestFetchedDate) {
+        state.dashboard.earliestFetchedDate = startDate;
+      }
+      if (!state.dashboard.latestFetchedDate || endDate > state.dashboard.latestFetchedDate) {
+        state.dashboard.latestFetchedDate = endDate;
+      }
+    }
+  } catch (err) {
+    console.warn('fetchTransactionsForDateRange error:', err);
+  }
+}
+
+/**
+ * 月次在庫データの取得（GAS または 動的集計）
  */
 async function fetchMonthlyInventoryData(yearMonth, forceRefresh = false) {
   const parts = yearMonth.split('-');
@@ -4879,13 +4922,20 @@ async function fetchMonthlyInventoryData(yearMonth, forceRefresh = false) {
     badgeEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 集計中...';
   }
 
-  // 前年同月比較のため、取引履歴の取得範囲を広げてバックグラウンド取得
-  const prevYear = year - 1;
-  const startFetchDate = `${prevYear}-01-01`;
-  const endFetchDate = `${year}-12-31`;
-  if (!state.dashboard.earliestFetchedDate || state.dashboard.earliestFetchedDate > startFetchDate) {
-    fetchRangeTransactions(startFetchDate, endFetchDate, false, true);
+  // 該当月（例: 8月 2026-08-01〜2026-08-31）の取引履歴がキャッシュになければGASから取得
+  const lastDay = new Date(year, month, 0).getDate();
+  const startMonthStr = `${yearMonth}-01`;
+  const endMonthStr = `${yearMonth}-${String(lastDay).padStart(2, '0')}`;
+  
+  if (!state.dashboard.earliestFetchedDate || state.dashboard.earliestFetchedDate > startMonthStr) {
+    await fetchTransactionsForDateRange(startMonthStr, endMonthStr);
   }
+
+  // 前年同月比較用データもバックグラウンドで取得
+  const prevYearMonth = `${year - 1}-${String(month).padStart(2, '0')}`;
+  const prevStartStr = `${prevYearMonth}-01`;
+  const prevEndStr = `${prevYearMonth}-${String(new Date(year - 1, month, 0).getDate()).padStart(2, '0')}`;
+  fetchTransactionsForDateRange(prevStartStr, prevEndStr);
 
   let loadedData = null;
   let isLocked = false;
@@ -5173,6 +5223,16 @@ function renderAnnualMatrixTable() {
   if (filteredItems.length === 0) {
     tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; padding: 3rem; color: var(--color-text-muted);">条件に一致する授与品がありません。</td></tr>';
     return;
+  }
+
+  // 年間全期間（1月〜12月）の取引履歴が未取得の場合は取得して再描画
+  const startYearStr = `${targetYear}-01-01`;
+  const endYearStr = `${targetYear}-12-31`;
+  if (!state.dashboard.annualFetchDone && (!state.dashboard.earliestFetchedDate || state.dashboard.earliestFetchedDate > startYearStr)) {
+    state.dashboard.annualFetchDone = true;
+    fetchTransactionsForDateRange(startYearStr, endYearStr).then(() => {
+      renderAnnualMatrixTable();
+    });
   }
 
   // 取引履歴から当年の月別授与数を集計
