@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { type Booking, getBookingChildren, getBookingWoodTalismans } from '../../types';
+import { type Booking, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities } from '../../types';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -122,6 +122,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     const displayKana = (isIndiv ? booking.kana : booking.company_kana) || '';
     const displayAddress = (isIndiv ? booking.address : booking.company_address) || '';
     const displayAddressKana = (isIndiv ? booking.address_kana : booking.company_address_kana) || '';
+    const isMultiEntity = !isIndiv && (Number(booking.has_multi_entities) === 1 || getBookingMultiEntities(booking).length > 1);
+    const multiEntities = isMultiEntity ? getBookingMultiEntities(booking) : [];
+    const kanjiNums = ['壱', '弐', '参', '四', '五', '六', '七', '八'];
 
     // 動的フォントサイズ & 行間調整ロジック (情報量過多への自動縮退対応)
     const nameFontSize = displayName.length > 25 ? '1.05rem' : displayName.length > 15 ? '1.25rem' : '1.45rem';
@@ -219,32 +222,128 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             )}
           </div>
 
-          {/* Address Section */}
-          <div style={{ borderBottom: '1px dashed #eee', paddingBottom: '0.25rem' }}>
-            <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 郵便番号・住所</span>
-            <span style={{ fontSize: '0.62rem', color: '#888', display: 'block' }}>フリガナ: {displayAddressKana}</span>
-            <span style={{ fontSize: addressFontSize, display: 'block', marginTop: '0.05rem', lineHeight: addressLineHeight }}>
-              {displayAddress}
-            </span>
-          </div>
-
-          {/* Names Section (Main highlighted for Priest chanting) */}
-          <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お申込名</span>
-            <span style={{ fontSize: '0.62rem', color: '#888' }}>フリガナ: {displayKana}</span>
-            <strong style={{ fontSize: nameFontSize, color: '#111', display: 'block', margin: '0.05rem 0', lineHeight: nameLineHeight }}>
-              {displayName}
-            </strong>
-            {/* 団体用参拝代表者役職・氏名をお申込名の下に配置 */}
-            {!isIndiv && booking.representative_title_name && (
-              <div style={{ marginTop: '0.2rem', paddingBottom: '0.25rem', borderBottom: '1px dashed #eee' }}>
-                <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>参拝代表者役職・氏名</span>
-                {booking.representative_kana && (
-                  <span style={{ fontSize: '0.62rem', color: '#888', display: 'block', fontWeight: 'bold' }}>フリガナ: {booking.representative_kana}</span>
-                )}
-                <strong style={{ fontSize: '1.05rem', color: '#111', display: 'block', marginTop: '0.05rem' }}>{booking.representative_title_name}</strong>
+          {isMultiEntity ? (
+            /* 複数社・連名レイアウト（神職奏上最適化レイアウト） */
+            <div style={{ borderBottom: '1px dashed #eee', paddingBottom: '0.35rem', display: 'flex', flexDirection: 'column', gap: multiEntities.length > 2 ? '0.25rem' : '0.4rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.68rem', color: '#777', fontWeight: 'bold' }}>■ 奏上対象・所在地（連名・全{multiEntities.length}社）</span>
+                <span style={{ fontSize: '0.6rem', backgroundColor: '#e6f4ea', color: '#137333', border: '1px solid #ceead6', padding: '0.05rem 0.35rem', borderRadius: '3px', fontWeight: 'bold' }}>連名奏上レイアウト</span>
               </div>
-            )}
+              {multiEntities.map((ent, eIdx) => {
+                const isDense = multiEntities.length >= 3;
+                return (
+                  <div
+                    key={eIdx}
+                    style={{
+                      border: '1.5px solid #d80100',
+                      borderRadius: '4px',
+                      padding: isDense ? '0.2rem 0.4rem' : '0.3rem 0.5rem',
+                      backgroundColor: eIdx % 2 === 0 ? 'rgba(216, 1, 0, 0.02)' : '#ffffff',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.1rem'
+                    }}
+                  >
+                    {/* 奏上番号 & 所在地 */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        backgroundColor: '#d80100',
+                        color: '#fff',
+                        fontSize: isDense ? '0.62rem' : '0.68rem',
+                        fontWeight: 'bold',
+                        padding: '0.04rem 0.28rem',
+                        borderRadius: '2px',
+                        lineHeight: '1.2'
+                      }}>
+                        {kanjiNums[eIdx] || String(eIdx + 1)}
+                      </span>
+                      {ent.company_address && (
+                        <div style={{ fontSize: isDense ? '0.68rem' : '0.76rem', color: '#333', lineHeight: '1.2' }}>
+                          {ent.company_address_kana && (
+                            <span style={{ fontSize: '0.58rem', color: '#777', marginRight: '0.25rem' }}>({ent.company_address_kana})</span>
+                          )}
+                          <span>{ent.company_address}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 会社・団体名 */}
+                    <div style={{ marginTop: '0.08rem' }}>
+                      {ent.company_kana && (
+                        <span style={{ fontSize: '0.58rem', color: '#777', display: 'block', lineHeight: '1.1' }}>
+                          フリガナ: {ent.company_kana}
+                        </span>
+                      )}
+                      <strong style={{ fontSize: isDense ? '1.05rem' : '1.22rem', color: '#111', display: 'block', lineHeight: '1.2' }}>
+                        {ent.company_name}
+                      </strong>
+                    </div>
+
+                    {/* 役職・氏名 */}
+                    {(ent.representative_title || ent.representative_name) && (
+                      <div style={{ marginTop: '0.08rem', display: 'flex', alignItems: 'baseline', gap: '0.3rem', flexWrap: 'wrap' }}>
+                        {ent.representative_title && (
+                          <span style={{
+                            fontSize: isDense ? '0.64rem' : '0.72rem',
+                            fontWeight: 'bold',
+                            color: '#555',
+                            backgroundColor: '#f3f4f6',
+                            border: '1px solid #e5e7eb',
+                            padding: '0.04rem 0.25rem',
+                            borderRadius: '2px'
+                          }}>
+                            {ent.representative_title}
+                          </span>
+                        )}
+                        <strong style={{ fontSize: isDense ? '0.95rem' : '1.08rem', color: '#111' }}>
+                          {ent.representative_name}
+                        </strong>
+                        {ent.representative_kana && (
+                          <span style={{ fontSize: '0.6rem', color: '#666' }}>
+                            （{ent.representative_kana}）
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* 通常の単一レイアウト */
+            <>
+              {/* Address Section */}
+              <div style={{ borderBottom: '1px dashed #eee', paddingBottom: '0.25rem' }}>
+                <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 郵便番号・住所</span>
+                <span style={{ fontSize: '0.62rem', color: '#888', display: 'block' }}>フリガナ: {displayAddressKana}</span>
+                <span style={{ fontSize: addressFontSize, display: 'block', marginTop: '0.05rem', lineHeight: addressLineHeight }}>
+                  {displayAddress}
+                </span>
+              </div>
+
+              {/* Names Section (Main highlighted for Priest chanting) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お申込名</span>
+                <span style={{ fontSize: '0.62rem', color: '#888' }}>フリガナ: {displayKana}</span>
+                <strong style={{ fontSize: nameFontSize, color: '#111', display: 'block', margin: '0.05rem 0', lineHeight: nameLineHeight }}>
+                  {displayName}
+                </strong>
+                {/* 団体用参拝代表者役職・氏名をお申込名の下に配置 */}
+                {!isIndiv && booking.representative_title_name && (
+                  <div style={{ marginTop: '0.2rem', paddingBottom: '0.25rem', borderBottom: '1px dashed #eee' }}>
+                    <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>参拝代表者役職・氏名</span>
+                    {booking.representative_kana && (
+                      <span style={{ fontSize: '0.62rem', color: '#888', display: 'block', fontWeight: 'bold' }}>フリガナ: {booking.representative_kana}</span>
+                    )}
+                    <strong style={{ fontSize: '1.05rem', color: '#111', display: 'block', marginTop: '0.05rem' }}>{booking.representative_title_name}</strong>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Names Section 追加コンテナ（個人メタデータ、連絡先、木札等） */}
+          <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
 
             {/* Individual child metadata (Highlight child & parents info with Ruby) */}
             {isIndiv && (() => {

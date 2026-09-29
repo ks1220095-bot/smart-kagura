@@ -349,8 +349,9 @@ router.post('/', async (req, res) => {
           kotobuki_type, kotobuki_other_text, tournament_name, tournament_schedule,
           construction_name, construction_designer, construction_builder, construction_period, notes,
           has_past_prayer, is_twin, child_name2, child_kana2, child_birthday2, is_manual,
-          car_maker, car_model, car_number, child_gender, child_gender2, children_data, saishu
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67)
+          car_maker, car_model, car_number, child_gender, child_gender2, children_data, saishu,
+          has_multi_entities, multi_entities_data
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69)
         RETURNING id
       `, [
         b.receipt_number, b.booking_type, b.booking_date, b.booking_time, b.prayer1, b.prayer2 || null, b.hatsuhoryo, b.payment_status, b.attending_count,
@@ -368,7 +369,9 @@ router.post('/', async (req, res) => {
         b.car_maker || null, b.car_model || null, b.car_number || null,
         b.child_gender || null, b.child_gender2 || null,
         b.children_data || null,
-        b.saishu || null
+        b.saishu || null,
+        b.has_multi_entities || 0,
+        b.multi_entities_data || null
       ]);
       b.id = result.rows[0].id;
       createdBookings.push(b);
@@ -1066,8 +1069,10 @@ router.put('/:id', async (req, res) => {
         child_gender = $61, child_gender2 = $62,
         children_data = $63,
         saishu = $64,
+        has_multi_entities = $65,
+        multi_entities_data = $66,
         is_changed = 1
-      WHERE id = $65
+      WHERE id = $67
     `, [
       booking.booking_type, booking.booking_date, booking.booking_time, booking.prayer1, booking.prayer2 || null, booking.hatsuhoryo, booking.attending_count,
       booking.name || null, booking.kana || null, booking.address || null, booking.address_kana || null, booking.phone || null, booking.email || null,
@@ -1085,6 +1090,8 @@ router.put('/:id', async (req, res) => {
       booking.child_gender || null, booking.child_gender2 || null,
       booking.children_data || null,
       booking.saishu !== undefined ? booking.saishu : (existing.saishu || null),
+      booking.has_multi_entities !== undefined ? booking.has_multi_entities : (existing.has_multi_entities || 0),
+      booking.multi_entities_data !== undefined ? booking.multi_entities_data : (existing.multi_entities_data || null),
       req.params.id
     ]);
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Booking, ChildItem, WoodTalismanItem } from '../../types';
-import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans } from '../../types';
+import type { Booking, ChildItem, WoodTalismanItem, MultiEntityItem } from '../../types';
+import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities } from '../../types';
 import { getApiUrl } from '../../config/api';
 
 const ORGANIZATION_PRAYERS = [
@@ -89,6 +89,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   const [editWoodTalismanItems, setEditWoodTalismanItems] = useState<WoodTalismanItem[]>([]);
   const [editWoodTalismanLargeItems, setEditWoodTalismanLargeItems] = useState<WoodTalismanItem[]>([]);
   const [editChildren, setEditChildren] = useState<ChildItem[]>([]);
+  const [editHasMultiEntities, setEditHasMultiEntities] = useState<boolean>(false);
+  const [editMultiEntities, setEditMultiEntities] = useState<MultiEntityItem[]>([]);
   const [savingDetail, setSavingDetail] = useState(false);
 
   const handleOpenEditModal = (booking: Booking) => {
@@ -113,6 +115,86 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     const woodTalismans = getBookingWoodTalismans(booking);
     setEditWoodTalismanItems(woodTalismans.standard);
     setEditWoodTalismanLargeItems(woodTalismans.large);
+
+    const bMulti = getBookingMultiEntities(booking);
+    setEditMultiEntities(bMulti.length > 0 ? bMulti : [{
+      company_address: booking.company_address || '',
+      company_address_kana: booking.company_address_kana || '',
+      company_name: booking.company_name || '',
+      company_kana: booking.company_kana || '',
+      representative_title: '',
+      representative_name: booking.representative_title_name || '',
+      representative_kana: booking.representative_kana || '',
+    }]);
+    setEditHasMultiEntities(Number(booking.has_multi_entities) === 1 || bMulti.length > 1);
+  };
+
+  const handleUpdateEditMultiEntity = (index: number, field: keyof MultiEntityItem, value: string) => {
+    setEditMultiEntities(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleAddEditMultiEntity = () => {
+    setEditMultiEntities(prev => [
+      ...prev,
+      {
+        company_address: '',
+        company_address_kana: '',
+        company_name: '',
+        company_kana: '',
+        representative_title: '',
+        representative_name: '',
+        representative_kana: '',
+      }
+    ]);
+  };
+
+  const handleRemoveEditMultiEntity = (index: number) => {
+    setEditMultiEntities(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleAutoSplitMultiEntities = () => {
+    // 既存の入力欄（改行や / 区切りなど）から複数社を推測して分割するアシスト
+    const splitText = (t?: string) => (t || '').split(/[\n/／]/).map(s => s.trim()).filter(Boolean);
+    const names = splitText(editFormData.company_name);
+    const kanas = splitText(editFormData.company_kana);
+    const addrs = splitText(editFormData.company_address);
+    const addrKanas = splitText(editFormData.company_address_kana);
+    const reps = splitText(editFormData.representative_title_name);
+    const repKanas = splitText(editFormData.representative_kana);
+
+    const maxLen = Math.max(names.length, addrs.length, reps.length, 1);
+    const items: MultiEntityItem[] = [];
+
+    for (let i = 0; i < maxLen; i++) {
+      const repFull = reps[i] || reps[0] || '';
+      let title = '';
+      let repName = repFull;
+      const spaceIdx = repFull.indexOf(' ');
+      if (spaceIdx > 0) {
+        title = repFull.slice(0, spaceIdx).trim();
+        repName = repFull.slice(spaceIdx + 1).trim();
+      }
+
+      items.push({
+        company_name: names[i] || (i === 0 ? (editFormData.company_name || '') : ''),
+        company_kana: kanas[i] || '',
+        company_address: addrs[i] || (i === 0 ? (editFormData.company_address || '') : (addrs[0] || '')),
+        company_address_kana: addrKanas[i] || '',
+        representative_title: title,
+        representative_name: repName,
+        representative_kana: repKanas[i] || '',
+      });
+    }
+
+    setEditMultiEntities(items);
+    setEditHasMultiEntities(true);
   };
 
   const handleUpdateEditChild = (index: number, field: keyof ChildItem, value: any) => {
@@ -239,9 +321,44 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         combinedWoodTalismanName = parts.join(' / ');
       }
 
+      let multiEntitiesDataStr: string | undefined = undefined;
+      let newCompanyName = editFormData.company_name;
+      let newCompanyAddress = editFormData.company_address;
+      let newCompanyKana = editFormData.company_kana;
+      let newCompanyAddressKana = editFormData.company_address_kana;
+      let newRepresentativeTitleName = editFormData.representative_title_name;
+      let newRepresentativeKana = editFormData.representative_kana;
+
+      if (editHasMultiEntities) {
+        const validEntities = editMultiEntities.filter(
+          e => e.company_name.trim() !== '' || e.representative_name.trim() !== '' || e.company_address.trim() !== ''
+        );
+        if (validEntities.length > 0) {
+          multiEntitiesDataStr = JSON.stringify(validEntities);
+          newCompanyName = validEntities.map(e => e.company_name.trim()).filter(Boolean).join(' / ');
+          newCompanyKana = validEntities.map(e => e.company_kana?.trim() || '').filter(Boolean).join(' / ');
+          newCompanyAddress = validEntities.map(e => e.company_address.trim()).filter(Boolean).join(' / ');
+          newCompanyAddressKana = validEntities.map(e => e.company_address_kana?.trim() || '').filter(Boolean).join(' / ');
+          newRepresentativeTitleName = validEntities.map(e => {
+            const t = e.representative_title.trim();
+            const n = e.representative_name.trim();
+            return t ? `${t} ${n}` : n;
+          }).filter(Boolean).join(' / ');
+          newRepresentativeKana = validEntities.map(e => e.representative_kana?.trim() || '').filter(Boolean).join(' / ');
+        }
+      }
+
       const validChildren = editChildren.filter(c => c.name.trim() !== '');
       const payload: any = {
         ...editFormData,
+        has_multi_entities: editHasMultiEntities ? 1 : 0,
+        multi_entities_data: editHasMultiEntities ? multiEntitiesDataStr : null,
+        company_name: editHasMultiEntities ? newCompanyName : editFormData.company_name,
+        company_kana: editHasMultiEntities ? newCompanyKana : editFormData.company_kana,
+        company_address: editHasMultiEntities ? newCompanyAddress : editFormData.company_address,
+        company_address_kana: editHasMultiEntities ? newCompanyAddressKana : editFormData.company_address_kana,
+        representative_title_name: editHasMultiEntities ? newRepresentativeTitleName : editFormData.representative_title_name,
+        representative_kana: editHasMultiEntities ? newRepresentativeKana : editFormData.representative_kana,
         children_data: validChildren.length > 0 ? JSON.stringify(validChildren) : undefined,
         child_name: validChildren[0]?.name || editFormData.child_name || undefined,
         child_kana: validChildren[0]?.kana || editFormData.child_kana || undefined,
@@ -1233,6 +1350,20 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600 }}>{nameDisplay}</span>
+                        {!isIndiv && (b.has_multi_entities === 1 || getBookingMultiEntities(b).length > 1) && (
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 'bold',
+                            color: '#0f766e',
+                            backgroundColor: '#ccfbf1',
+                            border: '1px solid #5eead4',
+                            padding: '0.12rem 0.4rem',
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            🏢 連名・複数社 ({getBookingMultiEntities(b).length}社)
+                          </span>
+                        )}
                         {b.has_past_prayer === 1 && (
                           <span style={{
                             fontSize: '0.65rem',
@@ -1513,22 +1644,56 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                           </div>
                                         );
                                       })()}
-                                      {/* 参拝代表者 */}
-                                      {b.representative_title_name && (
-                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>参拝代表者役職・氏名</div>
-                                          <strong style={{ fontSize: '0.85rem' }}>{b.representative_title_name}</strong>
-                                          {b.representative_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.representative_kana})</div>}
-                                        </div>
-                                      )}
-                                      {/* 団体所在地 */}
-                                      {b.company_address && (
-                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>団体所在地</div>
-                                          <div style={{ fontSize: '0.8rem' }}>{b.company_address}</div>
-                                          {b.company_address_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.company_address_kana})</div>}
-                                        </div>
-                                      )}
+                                      {/* 参拝代表者・団体所在地（複数社・単一で分岐） */}
+                                      {(() => {
+                                        const multiEntities = getBookingMultiEntities(b);
+                                        if (b.has_multi_entities === 1 || multiEntities.length > 1) {
+                                          return (
+                                            <div style={{ backgroundColor: '#f0fdf4', padding: '0.5rem 0.6rem', borderRadius: '4px', border: '1px solid #86efac', gridColumn: 'span 2' }}>
+                                              <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 'bold', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span>🏢 連名・複数社 奏上対象一覧（全{multiEntities.length}社）</span>
+                                                <span style={{ fontSize: '0.65rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '0.1rem 0.35rem', borderRadius: '3px', border: '1px solid #bbf7d0' }}>個別レイアウト適用</span>
+                                              </div>
+                                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.4rem' }}>
+                                                {multiEntities.map((ent, eIdx) => (
+                                                  <div key={eIdx} style={{ backgroundColor: '#fff', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.4rem 0.5rem', fontSize: '0.75rem' }}>
+                                                    <div style={{ fontWeight: 'bold', color: '#15803d', borderBottom: '1px dashed #bbf7d0', paddingBottom: '0.2rem', marginBottom: '0.25rem' }}>
+                                                      【{eIdx + 1}社目】{ent.company_name}
+                                                      {ent.company_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.3rem', fontWeight: 'normal' }}>({ent.company_kana})</span>}
+                                                    </div>
+                                                    <div style={{ color: '#555', fontSize: '0.7rem', marginBottom: '0.15rem' }}>
+                                                      📍 <strong>所在地:</strong> {ent.company_address || '（未登録）'}
+                                                      {ent.company_address_kana && <div style={{ fontSize: '0.65rem', color: '#888' }}>({ent.company_address_kana})</div>}
+                                                    </div>
+                                                    <div style={{ color: '#333', fontSize: '0.72rem' }}>
+                                                      👤 <strong>役職・氏名:</strong> {ent.representative_title ? `［${ent.representative_title}］` : ''}<strong>{ent.representative_name}</strong>
+                                                      {ent.representative_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.25rem' }}>({ent.representative_kana})</span>}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        return (
+                                          <>
+                                            {b.representative_title_name && (
+                                              <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                                <div style={{ fontSize: '0.65rem', color: '#777' }}>参拝代表者役職・氏名</div>
+                                                <strong style={{ fontSize: '0.85rem' }}>{b.representative_title_name}</strong>
+                                                {b.representative_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.representative_kana})</div>}
+                                              </div>
+                                            )}
+                                            {b.company_address && (
+                                              <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                                <div style={{ fontSize: '0.65rem', color: '#777' }}>団体所在地</div>
+                                                <div style={{ fontSize: '0.8rem' }}>{b.company_address}</div>
+                                                {b.company_address_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.company_address_kana})</div>}
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
                                       {/* 領収証情報 */}
                                       {b.wants_receipt === 1 && (() => {
                                         const bReceipts = getBookingReceipts(b);
@@ -2524,8 +2689,190 @@ export const BookingsList: React.FC<BookingsListProps> = ({
             ) : (
               // 3. 団体祈祷用情報
               <div style={{ marginBottom: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '1rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>■ 企業・団体情報</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>■ 企業・団体情報</span>
+                </div>
+
+                {/* 連名・複数社モード切替チェックボックス */}
+                <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px', padding: '0.6rem 0.8rem', marginBottom: '0.8rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontWeight: 'bold', color: '#166534', fontSize: '0.85rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={editHasMultiEntities}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setEditHasMultiEntities(checked);
+                        if (checked && (!editMultiEntities || editMultiEntities.length === 0 || (editMultiEntities.length === 1 && !editMultiEntities[0].company_name && !editMultiEntities[0].representative_name))) {
+                          setEditMultiEntities([{
+                            company_address: editFormData.company_address || '',
+                            company_address_kana: editFormData.company_address_kana || '',
+                            company_name: editFormData.company_name || '',
+                            company_kana: editFormData.company_kana || '',
+                            representative_title: '',
+                            representative_name: editFormData.representative_title_name || '',
+                            representative_kana: editFormData.representative_kana || '',
+                          }]);
+                        }
+                      }}
+                      style={{ width: '17px', height: '17px', cursor: 'pointer' }}
+                    />
+                    <span>☑ 連名・複数社（所在地・団体名・役職名・氏名）の個別登録・レイアウトに切り替える</span>
+                  </label>
+                  <div style={{ fontSize: '0.72rem', color: '#15803d', marginTop: '0.25rem', lineHeight: '1.4', paddingLeft: '1.6rem' }}>
+                    ※チェックを入れると、1つのお申込みで複数の奏上対象（会社・所在地・役職・氏名）を個別に登録でき、読み札（読神札）のレイアウトも自動的に奏上対象別（壱、弐、参…）に切り替わります。
+                  </div>
+                </div>
+                {editHasMultiEntities ? (
+                  /* 複数社・連名編集カード一覧 */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#166534' }}>
+                        🏢 連名・複数社 奏上対象一覧（{editMultiEntities.length}社登録中）
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAutoSplitMultiEntities}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.72rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderColor: '#bae6fd' }}
+                        title="既存の会社名や所在地に複数社分まとめて書かれている場合に自動分解します"
+                      >
+                        📋 既存テキストから自動分解して反映
+                      </button>
+                    </div>
+
+                    {editMultiEntities.map((ent, idx) => (
+                      <div key={idx} style={{
+                        backgroundColor: '#fafaf9',
+                        border: '1px solid #d6d3d1',
+                        borderRadius: '6px',
+                        padding: '0.65rem 0.8rem',
+                        position: 'relative'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', borderBottom: '1px solid #e7e5e4', paddingBottom: '0.25rem' }}>
+                          <strong style={{ fontSize: '0.8rem', color: 'var(--color-urushi)' }}>
+                            【第{idx + 1}奏上対象】
+                          </strong>
+                          {editMultiEntities.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditMultiEntity(idx)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '3px'
+                              }}
+                              title="この奏上対象を削除"
+                            >
+                              🗑️ 削除
+                            </button>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+                          <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.7rem' }}>所在地 <span className="required">*</span></label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: 東京都港区六本木1-2-3"
+                              value={ent.company_address}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'company_address', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.7rem' }}>所在地フリガナ</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: トウキョウトミナトクロッポンギ"
+                              value={ent.company_address_kana || ''}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'company_address_kana', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem' }}>会社・団体名 <span className="required">*</span></label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: 株式会社〇〇"
+                              value={ent.company_name}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'company_name', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem' }}>会社・団体名（フリガナ）</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: カブシキガイシャマルマル"
+                              value={ent.company_kana || ''}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'company_kana', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem' }}>役職名（例: 代表取締役, 支社長）</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: 代表取締役"
+                              value={ent.representative_title}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'representative_title', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem' }}>代表者氏名 <span className="required">*</span></label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: 山田 太郎"
+                              value={ent.representative_name}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'representative_name', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.7rem' }}>代表者氏名（フリガナ）</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="例: ヤマダ タロウ"
+                              value={ent.representative_kana || ''}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'representative_kana', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={handleAddEditMultiEntity}
+                      className="btn btn-secondary"
+                      style={{
+                        padding: '0.45rem',
+                        fontSize: '0.78rem',
+                        borderStyle: 'dashed',
+                        borderColor: '#10b981',
+                        color: '#047857',
+                        backgroundColor: '#ecfdf5'
+                      }}
+                    >
+                      ➕ 奏上対象（会社・役職・氏名）を追加する
+                    </button>
+                  </div>
+                ) : (
+                  /* 単一・通常モード */
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.75rem' }}>会社・団体名 <span className="required">*</span></label>
                     <input
@@ -2580,6 +2927,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       onChange={(e) => setEditFormData(prev => ({ ...prev, representative_kana: e.target.value }))}
                     />
                   </div>
+                </div>
+              )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.75rem' }}>お札墨書名 <span className="required">*</span></label>
                     <input

@@ -254,6 +254,8 @@ async function initSqlite() {
       try { await db.run(`ALTER TABLE bookings ADD COLUMN wood_talisman_items_data TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN children_data TEXT`); } catch(e) {}
       try { await db.run(`ALTER TABLE bookings ADD COLUMN saishu TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN has_multi_entities INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE bookings ADD COLUMN multi_entities_data TEXT`); } catch(e) {}
 
       // 3. Events Table
       await client.query(`
@@ -493,6 +495,12 @@ async function verifyPostgresSchema() {
     `);
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS saishu VARCHAR(100)
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS has_multi_entities INTEGER DEFAULT 0
+    `);
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS multi_entities_data TEXT
     `);
 
     await client.query(`

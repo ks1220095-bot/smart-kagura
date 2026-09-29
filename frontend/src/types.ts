@@ -1,3 +1,13 @@
+export interface MultiEntityItem {
+  company_address: string;
+  company_address_kana?: string;
+  company_name: string;
+  company_kana?: string;
+  representative_title: string;
+  representative_name: string;
+  representative_kana?: string;
+}
+
 export interface Booking {
   id?: number;
   receipt_number?: string;
@@ -28,6 +38,11 @@ export interface Booking {
   staff_dept_title_name?: string;
   staff_phone?: string;
   staff_email?: string;
+
+  // 複数社・連名奏上フィールド
+  has_multi_entities?: number; // 0 or 1
+  multi_entities_data?: string; // JSON string of MultiEntityItem[]
+  multi_entities?: MultiEntityItem[];
   
   // 団体お札・授与品
   talisman_name?: string;
@@ -292,5 +307,50 @@ export const getBookingWoodTalismans = (b: {
 
   return { standard, large };
 };
+
+export const getBookingMultiEntities = (b: Booking | any): MultiEntityItem[] => {
+  if (!b) return [];
+  if (b.multi_entities_data) {
+    try {
+      const parsed = typeof b.multi_entities_data === 'string' 
+        ? JSON.parse(b.multi_entities_data) 
+        : b.multi_entities_data;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((item: any) => ({
+          company_address: item.company_address || '',
+          company_address_kana: item.company_address_kana || '',
+          company_name: item.company_name || '',
+          company_kana: item.company_kana || '',
+          representative_title: item.representative_title || '',
+          representative_name: item.representative_name || '',
+          representative_kana: item.representative_kana || '',
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to parse multi_entities_data', e);
+    }
+  }
+
+  // フォールバック: 単一レコードから1社目を生成
+  const fullRep = (b.representative_title_name || '').trim();
+  let repTitle = '';
+  let repName = fullRep;
+  const spaceIdx = fullRep.indexOf(' ');
+  if (spaceIdx > 0) {
+    repTitle = fullRep.slice(0, spaceIdx).trim();
+    repName = fullRep.slice(spaceIdx + 1).trim();
+  }
+
+  return [{
+    company_address: b.company_address || b.address || '',
+    company_address_kana: b.company_address_kana || b.address_kana || '',
+    company_name: b.company_name || b.name || '',
+    company_kana: b.company_kana || b.kana || '',
+    representative_title: repTitle,
+    representative_name: repName,
+    representative_kana: b.representative_kana || '',
+  }];
+};
+
 
 

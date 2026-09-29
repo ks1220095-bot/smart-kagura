@@ -1,3 +1,13 @@
+export interface MultiEntityItem {
+  company_address: string;
+  company_address_kana?: string;
+  company_name: string;
+  company_kana?: string;
+  representative_title: string;
+  representative_name: string;
+  representative_kana?: string;
+}
+
 export interface Booking {
   id?: number;
   receipt_number?: string;
@@ -28,6 +38,11 @@ export interface Booking {
   staff_dept_title_name?: string;
   staff_phone?: string;
   staff_email?: string;
+
+  // 複数社・連名奏上フィールド
+  has_multi_entities?: number; // 0 or 1
+  multi_entities_data?: string; // JSON string of MultiEntityItem[]
+  multi_entities?: MultiEntityItem[];
   
   // 団体お札・授与品
   talisman_name?: string;
