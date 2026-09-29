@@ -124,7 +124,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     const displayAddressKana = (isIndiv ? booking.address_kana : booking.company_address_kana) || '';
     const isMultiEntity = !isIndiv && (Number(booking.has_multi_entities) === 1 || getBookingMultiEntities(booking).length > 1);
     const multiEntities = isMultiEntity ? getBookingMultiEntities(booking) : [];
-    const kanjiNums = ['壱', '弐', '参', '四', '五', '六', '七', '八'];
+    const circleNums = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 
     // 動的フォントサイズ & 行間調整ロジック (情報量過多への自動縮退対応)
     const nameFontSize = displayName.length > 25 ? '1.05rem' : displayName.length > 15 ? '1.25rem' : '1.45rem';
@@ -249,13 +249,13 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                       <span style={{
                         backgroundColor: '#d80100',
                         color: '#fff',
-                        fontSize: isDense ? '0.62rem' : '0.68rem',
+                        fontSize: isDense ? '0.7rem' : '0.78rem',
                         fontWeight: 'bold',
-                        padding: '0.04rem 0.28rem',
-                        borderRadius: '2px',
+                        padding: '0.02rem 0.28rem',
+                        borderRadius: '3px',
                         lineHeight: '1.2'
                       }}>
-                        {kanjiNums[eIdx] || String(eIdx + 1)}
+                        {circleNums[eIdx] || `(${eIdx + 1})`}
                       </span>
                       {ent.company_address && (
                         <div style={{ fontSize: isDense ? '0.68rem' : '0.76rem', color: '#333', lineHeight: '1.2' }}>

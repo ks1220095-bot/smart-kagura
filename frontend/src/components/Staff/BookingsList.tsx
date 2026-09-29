@@ -2719,7 +2719,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     <span>☑ 連名・複数社（所在地・団体名・役職名・氏名）の個別登録・レイアウトに切り替える</span>
                   </label>
                   <div style={{ fontSize: '0.72rem', color: '#15803d', marginTop: '0.25rem', lineHeight: '1.4', paddingLeft: '1.6rem' }}>
-                    ※チェックを入れると、1つのお申込みで複数の奏上対象（会社・所在地・役職・氏名）を個別に登録でき、読み札（読神札）のレイアウトも自動的に奏上対象別（壱、弐、参…）に切り替わります。
+                    ※チェックを入れると、1つのお申込みで複数の奏上対象（会社・所在地・役職・氏名）を個別に登録でき、読み札（読神札）のレイアウトも自動的に奏上対象別（①、②、③…）に切り替わります。
                   </div>
                 </div>
                 {editHasMultiEntities ? (
