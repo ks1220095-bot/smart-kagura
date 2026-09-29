@@ -200,55 +200,29 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             <div><strong>祈祷日時:</strong> {formatImperialDate(booking.booking_date)} {booking.booking_time}の回</div>
           </div>
 
-          {/* Willing Section */}
-          <div style={{ borderBottom: '1px dashed #d80100', paddingBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 御願意</span>
-            {isMultiEntity ? (() => {
-              const prayersList = multiEntities.map(ent => {
-                const p1 = ent.prayer1 === 'その他（自由入力）' ? (ent.custom_prayer1 || 'その他') : (ent.prayer1 || booking.prayer1 || '');
-                const p2 = ent.prayer2 === 'その他（自由入力）' ? (ent.custom_prayer2 || '') : (ent.prayer2 || '');
-                return `${p1}__${p2}`;
-              });
-              const isAllSamePrayer = prayersList.length > 0 && prayersList.every(p => p === prayersList[0]);
-              if (isAllSamePrayer) {
-                return (
-                  <strong style={{ fontSize: '1.4rem', color: '#d80100', display: 'block', marginTop: '0.1rem', lineHeight: '1.2' }}>
-                    {booking.prayer1}
-                    {booking.prayer2 && `　並びに ${booking.prayer2}`}
-                  </strong>
-                );
-              } else {
-                return (
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.1rem', flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: '1.25rem', color: '#d80100', lineHeight: '1.2' }}>
-                      各社別願意
-                    </strong>
-                    <span style={{ fontSize: '0.72rem', color: '#666' }}>
-                      （※各奏上ブロックに記載の願意を読誦）
-                    </span>
-                  </div>
-                );
-              }
-            })() : (
+          {/* Willing Section（※連名・複数社時は各社カード内に個別願意が記載されるため、上部御願意は非表示にして見切れを防止） */}
+          {!isMultiEntity && (
+            <div style={{ borderBottom: '1px dashed #d80100', paddingBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 御願意</span>
               <strong style={{ fontSize: '1.4rem', color: '#d80100', display: 'block', marginTop: '0.1rem', lineHeight: '1.2' }}>
                 {isIndiv && booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}
                 {booking.prayer2 && `　並びに ${booking.prayer2}`}
               </strong>
-            )}
-            {isIndiv && booking.prayer1 === '厄年のお祓い' && booking.yakudoshi_type && (
-              <span style={{ 
-                fontSize: '0.75rem', 
-                color: '#d80100', 
-                border: '1px solid #d80100', 
-                padding: '0.05rem 0.25rem', 
-                borderRadius: '2px', 
-                display: 'inline-block', 
-                marginTop: '0.15rem' 
-              }}>
-                {booking.yakudoshi_type === 'maeyaku' ? '前厄' : booking.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
-              </span>
-            )}
-          </div>
+              {isIndiv && booking.prayer1 === '厄年のお祓い' && booking.yakudoshi_type && (
+                <span style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#d80100', 
+                  border: '1px solid #d80100', 
+                  padding: '0.05rem 0.25rem', 
+                  borderRadius: '2px', 
+                  display: 'inline-block', 
+                  marginTop: '0.15rem' 
+                }}>
+                  {booking.yakudoshi_type === 'maeyaku' ? '前厄' : booking.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
+                </span>
+              )}
+            </div>
+          )}
 
           {isMultiEntity ? (
             /* 複数社・連名レイアウト（神職奏上最適化レイアウト） */
@@ -265,11 +239,11 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                     style={{
                       border: '1.5px solid #d80100',
                       borderRadius: '4px',
-                      padding: isDense ? '0.2rem 0.4rem' : '0.3rem 0.5rem',
+                      padding: isDense ? '0.15rem 0.35rem' : '0.22rem 0.45rem',
                       backgroundColor: eIdx % 2 === 0 ? 'rgba(216, 1, 0, 0.02)' : '#ffffff',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.1rem'
+                      gap: '0.08rem'
                     }}
                   >
                     {/* 奏上番号 & 所在地 */}
@@ -277,7 +251,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                       <span style={{
                         backgroundColor: '#d80100',
                         color: '#fff',
-                        fontSize: isDense ? '0.7rem' : '0.78rem',
+                        fontSize: isDense ? '0.68rem' : '0.75rem',
                         fontWeight: 'bold',
                         padding: '0.02rem 0.28rem',
                         borderRadius: '3px',
@@ -286,7 +260,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                         {circleNums[eIdx] || `(${eIdx + 1})`}
                       </span>
                       {ent.company_address && (
-                        <div style={{ fontSize: isDense ? '0.68rem' : '0.76rem', color: '#333', lineHeight: '1.2' }}>
+                        <div style={{ fontSize: isDense ? '0.66rem' : '0.74rem', color: '#333', lineHeight: '1.2' }}>
                           <span>{ent.company_address}</span>
                           {ent.company_address_kana && (
                             <span style={{ fontSize: '0.58rem', color: '#777', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>
@@ -296,34 +270,34 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                     </div>
 
                     {/* 会社・団体名 */}
-                    <div style={{ marginTop: '0.08rem' }}>
+                    <div style={{ marginTop: '0.05rem' }}>
                       {ent.company_kana && (
                         <span style={{ fontSize: '0.58rem', color: '#777', display: 'block', lineHeight: '1.1' }}>
                           フリガナ: {ent.company_kana}
                         </span>
                       )}
-                      <strong style={{ fontSize: isDense ? '1.05rem' : '1.22rem', color: '#111', display: 'block', lineHeight: '1.2' }}>
+                      <strong style={{ fontSize: isDense ? '0.98rem' : '1.14rem', color: '#111', display: 'block', lineHeight: '1.2' }}>
                         {ent.company_name}
                       </strong>
                     </div>
 
                     {/* 役職・氏名 */}
                     {(ent.representative_title || ent.representative_name) && (
-                      <div style={{ marginTop: '0.08rem', display: 'flex', alignItems: 'baseline', gap: '0.3rem', flexWrap: 'wrap' }}>
+                      <div style={{ marginTop: '0.05rem', display: 'flex', alignItems: 'baseline', gap: '0.3rem', flexWrap: 'wrap' }}>
                         {ent.representative_title && (
                           <span style={{
-                            fontSize: isDense ? '0.64rem' : '0.72rem',
+                            fontSize: isDense ? '0.62rem' : '0.7rem',
                             fontWeight: 'bold',
                             color: '#555',
                             backgroundColor: '#f3f4f6',
                             border: '1px solid #e5e7eb',
-                            padding: '0.04rem 0.25rem',
+                            padding: '0.03rem 0.22rem',
                             borderRadius: '2px'
                           }}>
                             {ent.representative_title}
                           </span>
                         )}
-                        <strong style={{ fontSize: isDense ? '0.95rem' : '1.08rem', color: '#111' }}>
+                        <strong style={{ fontSize: isDense ? '0.9rem' : '1.02rem', color: '#111' }}>
                           {ent.representative_name}
                         </strong>
                         {ent.representative_kana && (
@@ -345,8 +319,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                       if (!entPrayer1) return null;
                       return (
                         <div style={{
-                          marginTop: '0.12rem',
-                          paddingTop: '0.12rem',
+                          marginTop: '0.08rem',
+                          paddingTop: '0.08rem',
                           borderTop: '1px dashed rgba(216, 1, 0, 0.25)',
                           display: 'flex',
                           alignItems: 'baseline',
@@ -354,14 +328,14 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                           flexWrap: 'wrap'
                         }}>
                           <span style={{
-                            fontSize: isDense ? '0.62rem' : '0.7rem',
+                            fontSize: isDense ? '0.62rem' : '0.68rem',
                             color: '#777',
                             fontWeight: 'bold'
                           }}>
                             🎋 御願意:
                           </span>
                           <strong style={{
-                            fontSize: isDense ? '0.95rem' : '1.12rem',
+                            fontSize: isDense ? '0.88rem' : '1.02rem',
                             color: '#d80100',
                             lineHeight: '1.2'
                           }}>
@@ -369,7 +343,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                           </strong>
                           {entPrayer2 && entPrayer2 !== 'なし' && (
                             <span style={{
-                              fontSize: isDense ? '0.8rem' : '0.92rem',
+                              fontSize: isDense ? '0.78rem' : '0.88rem',
                               color: '#d80100',
                               fontWeight: 'bold'
                             }}>
@@ -585,7 +559,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                 ? booking.name 
                 : (booking.staff_dept_title_name || booking.name || booking.representative_title_name);
               return (
-                <div style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: '#555' }}>
+                <div style={{ marginTop: isMultiEntity ? '0.15rem' : 'auto', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: '#555' }}>
                   <div><strong>連絡先:</strong> {booking.phone || booking.staff_phone}</div>
                   {contactName && <div><strong>担当者:</strong> {contactName}</div>}
                   <div><strong>人数:</strong> {booking.attending_count}名</div>
@@ -624,13 +598,13 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             {/* Representative & Talisman Name Details (Gold highlight border block - お札墨書名 & 追加授与品 & 追加祈願符（木札）) */}
             {!isIndiv && (booking.talisman_name || booking.additional_talismans || ((booking.wood_talisman_count ?? 0) > 0) || ((booking.wood_talisman_large_count ?? 0) > 0)) && (
               <div style={{ 
-                marginTop: '0.3rem', 
-                padding: '0.4rem 0.55rem', 
+                marginTop: isMultiEntity ? '0.15rem' : '0.3rem', 
+                padding: isMultiEntity ? '0.25rem 0.45rem' : '0.4rem 0.55rem', 
                 backgroundColor: 'rgba(197, 160, 89, 0.03)', 
                 border: '1.5px solid rgba(197, 160, 89, 0.25)', 
                 borderRadius: '4px',
-                fontSize: '0.8rem', 
-                lineHeight: '1.35' 
+                fontSize: isMultiEntity ? '0.75rem' : '0.8rem', 
+                lineHeight: '1.3' 
               }}>
                 {booking.talisman_name && (
                   <div>
@@ -744,8 +718,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           alignItems: 'flex-end', 
           borderTop: '1.5px solid #d80100', 
           paddingTop: '0.2rem',
-          marginTop: '0.25rem',
+          marginTop: isMultiEntity ? '0.15rem' : '0.25rem',
           backgroundColor: '#ffffff',
+          flexShrink: 0,
           zIndex: 10
         }}>
           {/* 左下に入れ替えた受付NO.丸枠 */}
