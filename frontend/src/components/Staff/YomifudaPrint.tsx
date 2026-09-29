@@ -203,10 +203,38 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           {/* Willing Section */}
           <div style={{ borderBottom: '1px dashed #d80100', paddingBottom: '0.4rem' }}>
             <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 御願意</span>
-            <strong style={{ fontSize: '1.4rem', color: '#d80100', display: 'block', marginTop: '0.1rem', lineHeight: '1.2' }}>
-              {isIndiv && booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}
-              {booking.prayer2 && `　並びに ${booking.prayer2}`}
-            </strong>
+            {isMultiEntity ? (() => {
+              const prayersList = multiEntities.map(ent => {
+                const p1 = ent.prayer1 === 'その他（自由入力）' ? (ent.custom_prayer1 || 'その他') : (ent.prayer1 || booking.prayer1 || '');
+                const p2 = ent.prayer2 === 'その他（自由入力）' ? (ent.custom_prayer2 || '') : (ent.prayer2 || '');
+                return `${p1}__${p2}`;
+              });
+              const isAllSamePrayer = prayersList.length > 0 && prayersList.every(p => p === prayersList[0]);
+              if (isAllSamePrayer) {
+                return (
+                  <strong style={{ fontSize: '1.4rem', color: '#d80100', display: 'block', marginTop: '0.1rem', lineHeight: '1.2' }}>
+                    {booking.prayer1}
+                    {booking.prayer2 && `　並びに ${booking.prayer2}`}
+                  </strong>
+                );
+              } else {
+                return (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.1rem', flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: '1.25rem', color: '#d80100', lineHeight: '1.2' }}>
+                      各社別願意
+                    </strong>
+                    <span style={{ fontSize: '0.72rem', color: '#666' }}>
+                      （※各奏上ブロックに記載の願意を読誦）
+                    </span>
+                  </div>
+                );
+              }
+            })() : (
+              <strong style={{ fontSize: '1.4rem', color: '#d80100', display: 'block', marginTop: '0.1rem', lineHeight: '1.2' }}>
+                {isIndiv && booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}
+                {booking.prayer2 && `　並びに ${booking.prayer2}`}
+              </strong>
+            )}
             {isIndiv && booking.prayer1 === '厄年のお祓い' && booking.yakudoshi_type && (
               <span style={{ 
                 fontSize: '0.75rem', 
@@ -305,6 +333,52 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                         )}
                       </div>
                     )}
+
+                    {/* 個別御願意 */}
+                    {(() => {
+                      const entPrayer1 = ent.prayer1 === 'その他（自由入力）' 
+                        ? (ent.custom_prayer1 || 'その他') 
+                        : (ent.prayer1 || booking.prayer1 || '');
+                      const entPrayer2 = ent.prayer2 === 'その他（自由入力）' 
+                        ? (ent.custom_prayer2 || '') 
+                        : (ent.prayer2 || '');
+                      if (!entPrayer1) return null;
+                      return (
+                        <div style={{
+                          marginTop: '0.12rem',
+                          paddingTop: '0.12rem',
+                          borderTop: '1px dashed rgba(216, 1, 0, 0.25)',
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '0.3rem',
+                          flexWrap: 'wrap'
+                        }}>
+                          <span style={{
+                            fontSize: isDense ? '0.62rem' : '0.7rem',
+                            color: '#777',
+                            fontWeight: 'bold'
+                          }}>
+                            🎋 御願意:
+                          </span>
+                          <strong style={{
+                            fontSize: isDense ? '0.95rem' : '1.12rem',
+                            color: '#d80100',
+                            lineHeight: '1.2'
+                          }}>
+                            {entPrayer1}
+                          </strong>
+                          {entPrayer2 && entPrayer2 !== 'なし' && (
+                            <span style={{
+                              fontSize: isDense ? '0.8rem' : '0.92rem',
+                              color: '#d80100',
+                              fontWeight: 'bold'
+                            }}>
+                              （並びに {entPrayer2}）
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

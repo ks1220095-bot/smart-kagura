@@ -125,6 +125,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
       representative_title: '',
       representative_name: booking.representative_title_name || '',
       representative_kana: booking.representative_kana || '',
+      prayer1: booking.prayer1 || '社運隆昌',
+      custom_prayer1: booking.custom_prayer1 || '',
+      prayer2: booking.prayer2 || '',
+      custom_prayer2: booking.custom_prayer2 || '',
     }]);
     setEditHasMultiEntities(Number(booking.has_multi_entities) === 1 || bMulti.length > 1);
   };
@@ -148,6 +152,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         representative_title: '',
         representative_name: '',
         representative_kana: '',
+        prayer1: editFormData.prayer1 || '社運隆昌',
+        custom_prayer1: '',
+        prayer2: editFormData.prayer2 || '',
+        custom_prayer2: '',
       }
     ]);
   };
@@ -190,6 +198,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         representative_title: title,
         representative_name: repName,
         representative_kana: repKanas[i] || '',
+        prayer1: editFormData.prayer1 || '社運隆昌',
+        custom_prayer1: '',
+        prayer2: editFormData.prayer2 || '',
+        custom_prayer2: '',
       });
     }
 
@@ -1655,22 +1667,32 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                                 <span style={{ fontSize: '0.65rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '0.1rem 0.35rem', borderRadius: '3px', border: '1px solid #bbf7d0' }}>個別レイアウト適用</span>
                                               </div>
                                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.4rem' }}>
-                                                {multiEntities.map((ent, eIdx) => (
-                                                  <div key={eIdx} style={{ backgroundColor: '#fff', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.4rem 0.5rem', fontSize: '0.75rem' }}>
-                                                    <div style={{ fontWeight: 'bold', color: '#15803d', borderBottom: '1px dashed #bbf7d0', paddingBottom: '0.2rem', marginBottom: '0.25rem' }}>
-                                                      【{eIdx + 1}社目】{ent.company_name}
-                                                      {ent.company_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.3rem', fontWeight: 'normal' }}>({ent.company_kana})</span>}
+                                                {multiEntities.map((ent, eIdx) => {
+                                                  const p1 = ent.prayer1 === 'その他（自由入力）' ? (ent.custom_prayer1 || 'その他') : (ent.prayer1 || b.prayer1);
+                                                  const p2 = ent.prayer2 === 'その他（自由入力）' ? (ent.custom_prayer2 || 'その他') : ent.prayer2;
+                                                  return (
+                                                    <div key={eIdx} style={{ backgroundColor: '#fff', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.4rem 0.5rem', fontSize: '0.75rem' }}>
+                                                      <div style={{ fontWeight: 'bold', color: '#15803d', borderBottom: '1px dashed #bbf7d0', paddingBottom: '0.2rem', marginBottom: '0.25rem' }}>
+                                                        【{eIdx + 1}社目】{ent.company_name}
+                                                        {ent.company_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.3rem', fontWeight: 'normal' }}>({ent.company_kana})</span>}
+                                                      </div>
+                                                      <div style={{ color: '#555', fontSize: '0.7rem', marginBottom: '0.15rem' }}>
+                                                        📍 <strong>所在地:</strong> {ent.company_address || '（未登録）'}
+                                                        {ent.company_address_kana && <span style={{ fontSize: '0.65rem', color: '#888', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>}
+                                                      </div>
+                                                      <div style={{ color: '#333', fontSize: '0.72rem' }}>
+                                                        👤 <strong>役職・氏名:</strong> {ent.representative_title ? `［${ent.representative_title}］` : ''}<strong>{ent.representative_name}</strong>
+                                                        {ent.representative_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.25rem' }}>({ent.representative_kana})</span>}
+                                                      </div>
+                                                      {p1 && (
+                                                        <div style={{ color: '#b91c1c', fontSize: '0.72rem', fontWeight: 600, marginTop: '0.15rem' }}>
+                                                          🎋 <strong>御願意:</strong> {p1}
+                                                          {p2 && p2 !== 'なし' && <span>（並びに {p2}）</span>}
+                                                        </div>
+                                                      )}
                                                     </div>
-                                                    <div style={{ color: '#555', fontSize: '0.7rem', marginBottom: '0.15rem' }}>
-                                                      📍 <strong>所在地:</strong> {ent.company_address || '（未登録）'}
-                                                      {ent.company_address_kana && <span style={{ fontSize: '0.65rem', color: '#888', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>}
-                                                    </div>
-                                                    <div style={{ color: '#333', fontSize: '0.72rem' }}>
-                                                      👤 <strong>役職・氏名:</strong> {ent.representative_title ? `［${ent.representative_title}］` : ''}<strong>{ent.representative_name}</strong>
-                                                      {ent.representative_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.25rem' }}>({ent.representative_kana})</span>}
-                                                    </div>
-                                                  </div>
-                                                ))}
+                                                  );
+                                                })}
                                               </div>
                                             </div>
                                           );
@@ -2711,6 +2733,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                             representative_title: '',
                             representative_name: editFormData.representative_title_name || '',
                             representative_kana: editFormData.representative_kana || '',
+                            prayer1: editFormData.prayer1 || '社運隆昌',
+                            custom_prayer1: '',
+                            prayer2: editFormData.prayer2 || '',
+                            custom_prayer2: '',
                           }]);
                         }
                       }}
@@ -2849,6 +2875,55 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                               onChange={(e) => handleUpdateEditMultiEntity(idx, 'representative_kana', e.target.value)}
                               style={{ fontSize: '0.8rem' }}
                             />
+                          </div>
+
+                          {/* 各社個別の御願意設定 */}
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem', color: '#b91c1c', fontWeight: 'bold' }}>🎋 主願意</label>
+                            <select
+                              className="form-control"
+                              value={ent.prayer1 || editFormData.prayer1 || '社運隆昌'}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'prayer1', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            >
+                              {ORGANIZATION_PRAYERS.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                            {(ent.prayer1 === 'その他（自由入力）' || (!ent.prayer1 && editFormData.prayer1 === 'その他（自由入力）')) && (
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="主願意を入力してください"
+                                value={ent.custom_prayer1 || ''}
+                                onChange={(e) => handleUpdateEditMultiEntity(idx, 'custom_prayer1', e.target.value)}
+                                style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}
+                              />
+                            )}
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem', color: '#b91c1c', fontWeight: 'bold' }}>🎋 副願意（任意）</label>
+                            <select
+                              className="form-control"
+                              value={ent.prayer2 || ''}
+                              onChange={(e) => handleUpdateEditMultiEntity(idx, 'prayer2', e.target.value)}
+                              style={{ fontSize: '0.8rem' }}
+                            >
+                              <option value="">なし（副願意を設定しない）</option>
+                              {ORGANIZATION_PRAYERS.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                            {ent.prayer2 === 'その他（自由入力）' && (
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="副願意を入力してください"
+                                value={ent.custom_prayer2 || ''}
+                                onChange={(e) => handleUpdateEditMultiEntity(idx, 'custom_prayer2', e.target.value)}
+                                style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}
+                              />
+                            )}
                           </div>
                         </div>
                       </div>

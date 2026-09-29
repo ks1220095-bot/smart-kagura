@@ -6,6 +6,10 @@ export interface MultiEntityItem {
   representative_title: string;
   representative_name: string;
   representative_kana?: string;
+  prayer1?: string;
+  custom_prayer1?: string;
+  prayer2?: string;
+  custom_prayer2?: string;
 }
 
 export interface Booking {
@@ -15,7 +19,11 @@ export interface Booking {
   booking_date: string; // YYYY-MM-DD
   booking_time: string; // HH:MM
   prayer1: string;      // 主願意
+  custom_prayer1?: string; // 主願意（自由入力）
   prayer2?: string;     // 副願意 (団体のみ)
+  custom_prayer2?: string; // 副願意（自由入力）
+  org_custom_prayer1?: string;
+  org_custom_prayer2?: string;
   hatsuhoryo: number;   // 初穂料
   payment_status: 'unpaid' | 'paid';
   attending_count: number; // 参列予定人数
@@ -324,6 +332,10 @@ export const getBookingMultiEntities = (b: Booking | any): MultiEntityItem[] => 
           representative_title: item.representative_title || '',
           representative_name: item.representative_name || '',
           representative_kana: item.representative_kana || '',
+          prayer1: item.prayer1 !== undefined ? item.prayer1 : (b.prayer1 || ''),
+          custom_prayer1: item.custom_prayer1 || '',
+          prayer2: item.prayer2 !== undefined ? item.prayer2 : (b.prayer2 || ''),
+          custom_prayer2: item.custom_prayer2 || '',
         }));
       }
     } catch (e) {
@@ -349,6 +361,10 @@ export const getBookingMultiEntities = (b: Booking | any): MultiEntityItem[] => 
     representative_title: repTitle,
     representative_name: repName,
     representative_kana: b.representative_kana || '',
+    prayer1: b.prayer1 || '',
+    custom_prayer1: '',
+    prayer2: b.prayer2 || '',
+    custom_prayer2: '',
   }];
 };
 
