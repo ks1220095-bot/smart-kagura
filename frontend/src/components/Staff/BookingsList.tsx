@@ -1253,6 +1253,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 const isCancelled = b.is_cancelled === 1;
                 const isChanged = b.is_changed === 1;
                 
+                const isExpanded = expandedBookingIds.includes(b.id!);
+                
                 let rowStyle: React.CSSProperties = { 
                   borderBottom: '1px solid var(--color-border)', 
                   transition: 'background-color 0.15s' 
@@ -1272,7 +1274,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 }
 
                 return (
-                  <tr key={b.id} style={rowStyle} className={isCancelled ? "" : "hover-row"}>
+                  <React.Fragment key={b.id}>
+                    <tr style={rowStyle} className={isCancelled ? "" : "hover-row"}>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <input 
                         type="checkbox" 
@@ -1417,411 +1420,54 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           !!b.staff_phone ||
                           !!b.staff_email
                         );
-                        
                         const hasDetails = hasChild || hasParents || hasYakudoshi || hasKotobuki || hasTournament || hasConstruction || hasOrgDetails || !!b.notes;
-                        const isExpanded = expandedBookingIds.includes(b.id!);
-
+                        
                         if (!hasDetails) return null;
 
                         return (
-                          <>
-                            <div style={{ marginTop: '0.4rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => toggleAccordion(b.id!)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.2rem',
-                                  border: 'none',
-                                  background: 'none',
-                                  color: 'var(--color-mizuiro-hover)',
-                                  cursor: 'pointer',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 'bold',
-                                  padding: 0,
-                                  outline: 'none'
-                                }}
-                              >
-                                {isExpanded ? (
-                                  <>
-                                    <ChevronUp size={11} />
-                                    詳細を閉じる
-                                  </>
-                                ) : (
-                                  <>
-                                    <ChevronDown size={11} />
-                                    詳細を表示 (
-                                    {(() => {
-                                      const parts = [];
-                                      if (hasChild) parts.push('子息情報');
-                                      if (hasParents) parts.push('家族情報');
-                                      if (hasYakudoshi || hasKotobuki) parts.push('祈祷情報');
-                                      if (hasTournament || hasConstruction) parts.push('行事・工事情報');
-                                      if (hasOrgDetails) parts.push('団体・授与品詳細');
-                                      if (b.notes) parts.push('備考');
-                                      return parts.join('・');
-                                    })()}
-                                    )
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            {isExpanded && (
-                              <div style={{
-                                marginTop: '0.4rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.35rem',
-                                padding: '0.4rem',
-                                backgroundColor: '#fafafa',
-                                border: '1px solid #e5e5e5',
-                                borderRadius: '4px',
-                                maxWidth: '280px'
-                              }}>
-                                {/* A. お子様情報 */}
-                                {hasChild && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#faf7f0',
-                                    border: '1px solid rgba(197, 160, 89, 0.3)',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px'
-                                  }}>
-                                    {bookingChildren.map((child, cIdx) => (
-                                      <div key={cIdx} style={{ borderTop: cIdx > 0 ? '1px dashed rgba(197,160,89,0.2)' : 'none', marginTop: cIdx > 0 ? '0.25rem' : '0', paddingTop: cIdx > 0 ? '0.25rem' : '0' }}>
-                                        <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                          👶 {bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name} ({child.kana}){child.gender ? ` [${child.gender}]` : ''}
-                                        </div>
-                                        {child.birthday && (
-                                          <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)' }}>
-                                            生年月日: {child.birthday} {child.age_text ? `(${child.age_text})` : ''}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* B. 家族情報（父母の名前） */}
-                                {hasParents && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#f5f7fa',
-                                    border: '1px solid #dcdfe6',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px',
-                                    display: 'grid',
-                                    gridTemplateColumns: '1fr 1fr',
-                                    gap: '0.3rem'
-                                  }}>
-                                    {b.father_name && (
-                                      <div>
-                                        <div style={{ fontSize: '0.62rem', color: '#777' }}>父親 (フリガナ)</div>
-                                        <strong style={{ fontSize: '0.82rem' }}>{b.father_name}</strong>
-                                        <div style={{ fontSize: '0.65rem', color: '#666' }}>({b.father_kana || '不明'})</div>
-                                      </div>
-                                    )}
-                                    {b.mother_name && (
-                                      <div>
-                                        <div style={{ fontSize: '0.62rem', color: '#777' }}>母親 (フリガナ)</div>
-                                        <strong style={{ fontSize: '0.82rem' }}>{b.mother_name}</strong>
-                                        <div style={{ fontSize: '0.65rem', color: '#666' }}>({b.mother_kana || '不明'})</div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* C. 厄年情報 */}
-                                {hasYakudoshi && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#faf1f1',
-                                    border: '1px solid #f5c2c2',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px'
-                                  }}>
-                                    <div style={{ color: '#d3381c', fontWeight: 'bold' }}>
-                                      👹 厄年区分: {b.yakudoshi_type === 'maeyaku' ? '前厄' : b.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* D. 寿祝い情報 */}
-                                {hasKotobuki && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#faf5f0',
-                                    border: '1px solid #f5dab1',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px'
-                                  }}>
-                                    <div style={{ color: '#e6a23c', fontWeight: 'bold' }}>
-                                      🎉 寿祝い: {b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* E-1. 団体参拝・授与品・領収証詳細 */}
-                                {!isIndiv && hasOrgDetails && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#fbf9f5',
-                                    border: '1px solid rgba(197, 160, 89, 0.35)',
-                                    padding: '0.5rem 0.6rem',
-                                    borderRadius: '4px',
-                                    lineHeight: '1.4',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '0.4rem'
-                                  }}>
-                                    <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', borderBottom: '1px dashed rgba(197, 160, 89, 0.4)', paddingBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <span>🏢 団体参拝・授与品・領収証詳細</span>
-                                      {b.wants_receipt === 1 && (
-                                        <span style={{ backgroundColor: '#e6a23c', color: '#fff', padding: '0.1rem 0.4rem', borderRadius: '3px', fontSize: '0.65rem' }}>
-                                          🧾 領収証希望
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.4rem' }}>
-                                      {/* お札墨書名 */}
-                                      {b.talisman_name && (
-                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                          <div style={{ fontSize: '0.65rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>お札墨書名</div>
-                                          <strong style={{ fontSize: '0.85rem', color: 'var(--color-shu)' }}>{b.talisman_name}</strong>
-                                        </div>
-                                      )}
-                                      {/* 追加授与品（守札） */}
-                                      {b.additional_talismans && (
-                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                          <div style={{ fontSize: '0.65rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>追加授与品（守札）</div>
-                                          <strong style={{ fontSize: '0.85rem', color: '#222', whiteSpace: 'pre-wrap' }}>{b.additional_talismans}</strong>
-                                        </div>
-                                      )}
-                                      {/* 追加祈願符（木札） */}
-                                      {((b.wood_talisman_count ?? 0) > 0 || (b.wood_talisman_large_count ?? 0) > 0) && (() => {
-                                        const woodTalismans = getBookingWoodTalismans(b);
-                                        return (
-                                          <div style={{ backgroundColor: '#fffbe6', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #ffd591', gridColumn: 'span 2' }}>
-                                            <div style={{ fontSize: '0.7rem', color: '#b22222', fontWeight: 'bold' }}>🎋 追加祈願符（木札）</div>
-                                            <div style={{ fontSize: '0.85rem', color: '#111', marginTop: '0.15rem' }}>
-                                              {(b.wood_talisman_count ?? 0) > 0 && <span style={{ marginRight: '0.75rem' }}>祈願符（約36cm）: <strong>{b.wood_talisman_count}</strong>体</span>}
-                                              {(b.wood_talisman_large_count ?? 0) > 0 && <span>祈願符・大（約45cm）: <strong>{b.wood_talisman_large_count}</strong>体</span>}
-                                            </div>
-                                            {(woodTalismans.standard.length > 0 || woodTalismans.large.length > 0) ? (
-                                              <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                                {woodTalismans.standard.length > 0 && (
-                                                  <div style={{ backgroundColor: '#fff', padding: '0.3rem 0.5rem', borderRadius: '3px', border: '1px solid #ffe58f' }}>
-                                                    <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#b22222' }}>【36cm】</div>
-                                                    {woodTalismans.standard.map((item, i) => {
-                                                      const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
-                                                      const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
-                                                      return (
-                                                        <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.4rem', marginTop: '0.15rem' }}>
-                                                          <span style={{ color: '#666' }}>{i + 1}体目: </span>
-                                                          <strong style={{ color: 'var(--color-shu)' }}>{item.name || '（未入力・お札墨書名適用）'}</strong>
-                                                          <span style={{ marginLeft: '0.5rem', color: '#555', fontSize: '0.75rem' }}>
-                                                            [主: {p1}{p2 ? ` / 副: ${p2}` : ''}]
-                                                          </span>
-                                                        </div>
-                                                      );
-                                                    })}
-                                                  </div>
-                                                )}
-                                                {woodTalismans.large.length > 0 && (
-                                                  <div style={{ backgroundColor: '#fff', padding: '0.3rem 0.5rem', borderRadius: '3px', border: '1px solid #ffe58f' }}>
-                                                    <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#b22222' }}>【大45cm】</div>
-                                                    {woodTalismans.large.map((item, i) => {
-                                                      const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
-                                                      const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
-                                                      return (
-                                                        <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.4rem', marginTop: '0.15rem' }}>
-                                                          <span style={{ color: '#666' }}>{i + 1}体目: </span>
-                                                          <strong style={{ color: 'var(--color-shu)' }}>{item.name || '（未入力・お札墨書名適用）'}</strong>
-                                                          <span style={{ marginLeft: '0.5rem', color: '#555', fontSize: '0.75rem' }}>
-                                                            [主: {p1}{p2 ? ` / 副: ${p2}` : ''}]
-                                                          </span>
-                                                        </div>
-                                                      );
-                                                    })}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ) : b.wood_talisman_name ? (
-                                              <div style={{ fontSize: '0.8rem', color: 'var(--color-shu)', marginTop: '0.2rem' }}>
-                                                木札墨書名: <strong>{b.wood_talisman_name}</strong>
-                                              </div>
-                                            ) : null}
-                                          </div>
-                                        );
-                                      })()}
-                                      {/* 参拝代表者・団体所在地（複数社・単一で分岐） */}
-                                      {(() => {
-                                        const multiEntities = getBookingMultiEntities(b);
-                                        if (b.has_multi_entities === 1 || multiEntities.length > 1) {
-                                          return (
-                                            <div style={{ backgroundColor: '#f0fdf4', padding: '0.5rem 0.6rem', borderRadius: '4px', border: '1px solid #86efac', gridColumn: 'span 2' }}>
-                                              <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 'bold', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <span>🏢 連名・複数社 奏上対象一覧（全{multiEntities.length}社）</span>
-                                                <span style={{ fontSize: '0.65rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '0.1rem 0.35rem', borderRadius: '3px', border: '1px solid #bbf7d0' }}>個別レイアウト適用</span>
-                                              </div>
-                                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.4rem' }}>
-                                                {multiEntities.map((ent, eIdx) => {
-                                                  const p1 = ent.prayer1 === 'その他（自由入力）' ? (ent.custom_prayer1 || 'その他') : (ent.prayer1 || b.prayer1);
-                                                  const p2 = ent.prayer2 === 'その他（自由入力）' ? (ent.custom_prayer2 || 'その他') : ent.prayer2;
-                                                  return (
-                                                    <div key={eIdx} style={{ backgroundColor: '#fff', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.4rem 0.5rem', fontSize: '0.75rem' }}>
-                                                      <div style={{ fontWeight: 'bold', color: '#15803d', borderBottom: '1px dashed #bbf7d0', paddingBottom: '0.2rem', marginBottom: '0.25rem' }}>
-                                                        【{eIdx + 1}社目】{ent.company_name}
-                                                        {ent.company_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.3rem', fontWeight: 'normal' }}>({ent.company_kana})</span>}
-                                                      </div>
-                                                      <div style={{ color: '#555', fontSize: '0.7rem', marginBottom: '0.15rem' }}>
-                                                        📍 <strong>所在地:</strong> {ent.company_address || '（未登録）'}
-                                                        {ent.company_address_kana && <span style={{ fontSize: '0.65rem', color: '#888', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>}
-                                                      </div>
-                                                      <div style={{ color: '#333', fontSize: '0.72rem' }}>
-                                                        👤 <strong>役職・氏名:</strong> {ent.representative_title ? `［${ent.representative_title}］` : ''}<strong>{ent.representative_name}</strong>
-                                                        {ent.representative_kana && <span style={{ fontSize: '0.65rem', color: '#666', marginLeft: '0.25rem' }}>({ent.representative_kana})</span>}
-                                                      </div>
-                                                      {p1 && (
-                                                        <div style={{ color: '#b91c1c', fontSize: '0.72rem', fontWeight: 600, marginTop: '0.15rem' }}>
-                                                          🎋 <strong>御願意:</strong> {p1}
-                                                          {p2 && p2 !== 'なし' && <span>（並びに {p2}）</span>}
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            </div>
-                                          );
-                                        }
-                                        return (
-                                          <>
-                                            {b.representative_title_name && (
-                                              <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                                <div style={{ fontSize: '0.65rem', color: '#777' }}>参拝代表者役職・氏名</div>
-                                                <strong style={{ fontSize: '0.85rem' }}>{b.representative_title_name}</strong>
-                                                {b.representative_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.representative_kana})</div>}
-                                              </div>
-                                            )}
-                                            {b.company_address && (
-                                              <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                                <div style={{ fontSize: '0.65rem', color: '#777' }}>団体所在地</div>
-                                                <div style={{ fontSize: '0.8rem' }}>{b.company_address}</div>
-                                                {b.company_address_kana && <div style={{ fontSize: '0.68rem', color: '#888' }}>({b.company_address_kana})</div>}
-                                              </div>
-                                            )}
-                                          </>
-                                        );
-                                      })()}
-                                      {/* 領収証情報 */}
-                                      {b.wants_receipt === 1 && (() => {
-                                        const bReceipts = getBookingReceipts(b);
-                                        return (
-                                          <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                            <div style={{ fontSize: '0.65rem', color: '#777', fontWeight: 'bold' }}>
-                                              領収証 宛名・金額 {bReceipts.length > 1 ? `（全${bReceipts.length}社分）` : ''}
-                                            </div>
-                                            {bReceipts.length > 1 ? (
-                                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem' }}>
-                                                {bReceipts.map((r, rIdx) => (
-                                                  <div key={rIdx} style={{ fontSize: '0.78rem', borderBottom: rIdx < bReceipts.length - 1 ? '1px dashed #eee' : 'none', paddingBottom: rIdx < bReceipts.length - 1 ? '0.15rem' : '0' }}>
-                                                    {rIdx + 1}社目: <strong>{r.name || '（未指定）'}</strong> ({Number(r.amount) ? `${Number(r.amount).toLocaleString()} 円` : '未設定'})
-                                                  </div>
-                                                ))}
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', borderTop: '1px solid #ddd', paddingTop: '0.2rem', marginTop: '0.1rem' }}>
-                                                  合計: {bReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0).toLocaleString()} 円
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <>
-                                                <div style={{ fontSize: '0.8rem' }}>宛名: <strong>{bReceipts[0]?.name || b.receipt_name || b.company_name || '（未指定）'}</strong></div>
-                                                <div style={{ fontSize: '0.8rem' }}>金額: <strong>{bReceipts[0]?.amount ? `${Number(bReceipts[0].amount).toLocaleString()} 円` : `${(b.hatsuhoryo || 0).toLocaleString()} 円 (初穂料)`}</strong></div>
-                                              </>
-                                            )}
-                                          </div>
-                                        );
-                                      })()}
-                                      {/* 申込担当者 */}
-                                      {(b.staff_dept_title_name || b.staff_phone || b.staff_email) && (
-                                        <div style={{ backgroundColor: '#fff', padding: '0.35rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                          <div style={{ fontSize: '0.65rem', color: '#777' }}>申込担当者情報</div>
-                                          {b.staff_dept_title_name && <div>氏名: <strong>{b.staff_dept_title_name}</strong></div>}
-                                          {b.staff_phone && <div>TEL: <strong>{b.staff_phone}</strong></div>}
-                                          {b.staff_email && <div>Email: <strong>{b.staff_email}</strong></div>}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* E. 団体大会情報 */}
-                                {hasTournament && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#fdf6ec',
-                                    border: '1px solid #f5dab1',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px'
-                                  }}>
-                                    <div style={{ fontWeight: 'bold', color: '#e6a23c' }}>🏆 必勝祈願 大会情報</div>
-                                    <div><strong>大会名:</strong> {b.tournament_name}</div>
-                                    {b.tournament_schedule && <div><strong>日程:</strong> {b.tournament_schedule}</div>}
-                                  </div>
-                                )}
-
-                                {/* F. 団体工事安全情報 */}
-                                {hasConstruction && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    backgroundColor: '#f0f9eb',
-                                    border: '1px solid #c2e7b0',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '3px',
-                                    lineHeight: '1.3'
-                                  }}>
-                                    <div style={{ fontWeight: 'bold', color: '#67c23a' }}>🚧 工事安全祈願 情報</div>
-                                    <div><strong>工事名:</strong> {b.construction_name}</div>
-                                    {b.construction_builder && <div><strong>施工:</strong> {b.construction_builder}</div>}
-                                    {b.construction_designer && <div><strong>設計:</strong> {b.construction_designer}</div>}
-                                    {b.construction_period && <div><strong>工期:</strong> {b.construction_period}</div>}
-                                  </div>
-                                )}
-
-                                {/* G. 備考（メモ） */}
-                                {b.notes && (
-                                  <div style={{ 
-                                    fontSize: '0.73rem', 
-                                    backgroundColor: '#ffffff', 
-                                    padding: '0.3rem 0.45rem', 
-                                    borderRadius: '2px', 
-                                    color: '#555',
-                                    borderLeft: '3px solid var(--color-gold)',
-                                    borderTop: '1px solid #f0f0f0',
-                                    borderRight: '1px solid #f0f0f0',
-                                    borderBottom: '1px solid #f0f0f0',
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-all'
-                                  }} title={b.notes}>
-                                    📝 {b.notes}
-                                  </div>
-                                )}
-
-                                {/* 予約情報編集ボタン */}
-                                <div style={{ marginTop: '0.45rem', display: 'flex', justifyContent: 'flex-end' }}>
-                                  <button
-                                    onClick={() => handleOpenEditModal(b)}
-                                    className="btn btn-outline-gold"
-                                    style={{ fontSize: '0.72rem', padding: '0.25rem 0.5rem', backgroundColor: '#ffffff', border: '1px solid var(--color-gold)', color: 'var(--color-gold)', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold' }}
-                                  >
-                                    ✏️ 予約情報を編集・書き換える
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </>
+                          <div style={{ marginTop: '0.4rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => toggleAccordion(b.id!)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                border: 'none',
+                                background: isExpanded ? '#e0f2fe' : 'none',
+                                color: isExpanded ? '#0369a1' : 'var(--color-mizuiro-hover)',
+                                padding: isExpanded ? '0.15rem 0.45rem' : '0',
+                                borderRadius: isExpanded ? '3px' : '0',
+                                cursor: 'pointer',
+                                fontSize: '0.72rem',
+                                fontWeight: 'bold',
+                                outline: 'none'
+                              }}
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={12} />
+                                  詳細を閉じる ▲
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown size={12} />
+                                  詳細を表示 (
+                                  {(() => {
+                                    const parts = [];
+                                    if (hasChild) parts.push('子息情報');
+                                    if (hasParents) parts.push('家族情報');
+                                    if (hasYakudoshi || hasKotobuki) parts.push('祈祷情報');
+                                    if (hasTournament || hasConstruction) parts.push('行事・工事情報');
+                                    if (hasOrgDetails) parts.push('団体・授与品詳細');
+                                    if (b.notes) parts.push('備考');
+                                    return parts.join('・');
+                                  })()}
+                                  ) ▼
+                                </>
+                              )}
+                            </button>
+                          </div>
                         );
                       })()}
                     </td>
@@ -2092,6 +1738,396 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                       </button>
                     </td>
                   </tr>
+
+                  {/* PC詳細行の全幅アコーディオン展開（情報量が多くても美しく崩れないRow Expansion） */}
+                  {isExpanded && (() => {
+                    const bookingChildren = isIndiv ? getBookingChildren(b) : [];
+                    const hasChild = bookingChildren.length > 0;
+                    const hasParents = isIndiv && (!!b.father_name || !!b.mother_name);
+                    const hasYakudoshi = isIndiv && !!b.yakudoshi_type;
+                    const hasKotobuki = isIndiv && !!b.kotobuki_type;
+                    const hasTournament = !isIndiv && !!b.tournament_name;
+                    const hasConstruction = !isIndiv && !!b.construction_name;
+                    const hasOrgDetails = !isIndiv && (
+                      !!b.talisman_name ||
+                      !!b.additional_talismans ||
+                      !!b.representative_title_name ||
+                      !!b.company_address ||
+                      b.wants_receipt === 1 ||
+                      !!b.receipt_name ||
+                      !!b.receipt_amount ||
+                      !!b.staff_dept_title_name ||
+                      !!b.staff_phone ||
+                      !!b.staff_email
+                    );
+                    const multiEntities = !isIndiv ? getBookingMultiEntities(b) : [];
+                    const isMulti = !isIndiv && (b.has_multi_entities === 1 || multiEntities.length > 1);
+
+                    return (
+                      <tr key={`${b.id}-details`} style={{ backgroundColor: '#fcfbfa' }}>
+                        <td colSpan={11} style={{ padding: '0.6rem 1.25rem 1.25rem 3.5rem', borderBottom: '2px solid #cbd5e1' }}>
+                          <div style={{
+                            backgroundColor: '#ffffff',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            padding: '1.1rem 1.35rem',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.85rem'
+                          }}>
+                            {/* ヘッダー：タイトル ＋ 予約編集ボタン */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                                  📋 予約詳細情報（#{b.receipt_number || b.id} {nameDisplay} 様）
+                                </span>
+                                {isMulti && (
+                                  <span style={{ fontSize: '0.68rem', backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '0.12rem 0.45rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                                    🏢 連名・複数社（全{multiEntities.length}社）
+                                  </span>
+                                )}
+                                {b.wants_receipt === 1 && (
+                                  <span style={{ backgroundColor: '#e6a23c', color: '#fff', padding: '0.12rem 0.45rem', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 'bold' }}>
+                                    🧾 領収証希望
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(b)}
+                                className="btn btn-outline-gold"
+                                style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem', backgroundColor: '#ffffff', border: '1px solid var(--color-gold)', color: 'var(--color-gold)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                              >
+                                ✏️ 予約情報を編集・書き換える
+                              </button>
+                            </div>
+
+                            {/* A. お子様情報 */}
+                            {hasChild && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#faf7f0',
+                                border: '1px solid rgba(197, 160, 89, 0.3)',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '4px'
+                              }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.35rem' }}>👶 祝子（お子様）情報</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.4rem' }}>
+                                  {bookingChildren.map((child, cIdx) => (
+                                    <div key={cIdx} style={{ backgroundColor: '#fff', padding: '0.4rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
+                                      <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
+                                        {bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name} ({child.kana}){child.gender ? ` [${child.gender}]` : ''}
+                                      </div>
+                                      {child.birthday && (
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.1rem' }}>
+                                          生年月日: {child.birthday} {child.age_text ? `(${child.age_text})` : ''}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* B. 家族情報（父母の名前） */}
+                            {hasParents && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#f5f7fa',
+                                border: '1px solid #dcdfe6',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '4px',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                gap: '0.5rem'
+                              }}>
+                                {b.father_name && (
+                                  <div>
+                                    <div style={{ fontSize: '0.65rem', color: '#777' }}>父親 (フリガナ)</div>
+                                    <strong style={{ fontSize: '0.85rem' }}>{b.father_name}</strong>
+                                    <span style={{ fontSize: '0.7rem', color: '#666', marginLeft: '0.3rem' }}>({b.father_kana || '不明'})</span>
+                                  </div>
+                                )}
+                                {b.mother_name && (
+                                  <div>
+                                    <div style={{ fontSize: '0.65rem', color: '#777' }}>母親 (フリガナ)</div>
+                                    <strong style={{ fontSize: '0.85rem' }}>{b.mother_name}</strong>
+                                    <span style={{ fontSize: '0.7rem', color: '#666', marginLeft: '0.3rem' }}>({b.mother_kana || '不明'})</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* C. 厄年情報 */}
+                            {hasYakudoshi && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#faf1f1',
+                                border: '1px solid #f5c2c2',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '4px'
+                              }}>
+                                <span style={{ color: '#d3381c', fontWeight: 'bold' }}>
+                                  👹 厄年区分: {b.yakudoshi_type === 'maeyaku' ? '前厄' : b.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* D. 寿祝い情報 */}
+                            {hasKotobuki && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#faf5f0',
+                                border: '1px solid #f5dab1',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '4px'
+                              }}>
+                                <span style={{ color: '#e6a23c', fontWeight: 'bold' }}>
+                                  🎉 寿祝い: {b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* E-1. 団体参拝・授与品・連名・領収証詳細 */}
+                            {!isIndiv && hasOrgDetails && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#fbf9f5',
+                                border: '1px solid rgba(197, 160, 89, 0.35)',
+                                padding: '0.75rem 0.85rem',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.6rem'
+                              }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', borderBottom: '1px dashed rgba(197, 160, 89, 0.4)', paddingBottom: '0.3rem', fontSize: '0.82rem' }}>
+                                  🏢 団体参拝・授与品・領収証詳細
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.5rem' }}>
+                                  {/* お札墨書名 */}
+                                  {b.talisman_name && (
+                                    <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                      <div style={{ fontSize: '0.68rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>お札墨書名</div>
+                                      <strong style={{ fontSize: '0.92rem', color: 'var(--color-shu)' }}>{b.talisman_name}</strong>
+                                    </div>
+                                  )}
+                                  {/* 追加授与品（守札） */}
+                                  {b.additional_talismans && (
+                                    <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                      <div style={{ fontSize: '0.68rem', color: 'var(--color-gold)', fontWeight: 'bold' }}>追加授与品（守札）</div>
+                                      <strong style={{ fontSize: '0.85rem', color: '#222', whiteSpace: 'pre-wrap' }}>{b.additional_talismans}</strong>
+                                    </div>
+                                  )}
+                                  {/* 追加祈願符（木札） */}
+                                  {((b.wood_talisman_count ?? 0) > 0 || (b.wood_talisman_large_count ?? 0) > 0) && (() => {
+                                    const woodTalismans = getBookingWoodTalismans(b);
+                                    return (
+                                      <div style={{ backgroundColor: '#fffbe6', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #ffd591', gridColumn: 'span 2' }}>
+                                        <div style={{ fontSize: '0.72rem', color: '#b22222', fontWeight: 'bold' }}>🎋 追加祈願符（木札）</div>
+                                        <div style={{ fontSize: '0.85rem', color: '#111', marginTop: '0.2rem' }}>
+                                          {(b.wood_talisman_count ?? 0) > 0 && <span style={{ marginRight: '1rem' }}>祈願符（約36cm）: <strong>{b.wood_talisman_count}</strong>体</span>}
+                                          {(b.wood_talisman_large_count ?? 0) > 0 && <span>祈願符・大（約45cm）: <strong>{b.wood_talisman_large_count}</strong>体</span>}
+                                        </div>
+                                        {(woodTalismans.standard.length > 0 || woodTalismans.large.length > 0) ? (
+                                          <div style={{ marginTop: '0.4rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.4rem' }}>
+                                            {woodTalismans.standard.length > 0 && (
+                                              <div style={{ backgroundColor: '#fff', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #ffe58f' }}>
+                                                <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#b22222' }}>【36cm】</div>
+                                                {woodTalismans.standard.map((item, i) => {
+                                                  const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                                  const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                                  return (
+                                                    <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.3rem', marginTop: '0.2rem' }}>
+                                                      <span style={{ color: '#666' }}>{i + 1}体目: </span>
+                                                      <strong style={{ color: 'var(--color-shu)' }}>{item.name || '（未入力・お札墨書名適用）'}</strong>
+                                                      <span style={{ marginLeft: '0.4rem', color: '#555', fontSize: '0.75rem' }}>
+                                                        [主: {p1}{p2 ? ` / 副: ${p2}` : ''}]
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                            {woodTalismans.large.length > 0 && (
+                                              <div style={{ backgroundColor: '#fff', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #ffe58f' }}>
+                                                <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#b22222' }}>【大45cm】</div>
+                                                {woodTalismans.large.map((item, i) => {
+                                                  const p1 = item.prayer1 === 'その他（自由入力）' ? (item.custom_prayer1 || 'その他') : (item.prayer1 || '社運隆昌');
+                                                  const p2 = item.prayer2 === 'その他（自由入力）' ? (item.custom_prayer2 || 'その他') : (item.prayer2 || '');
+                                                  return (
+                                                    <div key={i} style={{ fontSize: '0.8rem', marginLeft: '0.3rem', marginTop: '0.2rem' }}>
+                                                      <span style={{ color: '#666' }}>{i + 1}体目: </span>
+                                                      <strong style={{ color: 'var(--color-shu)' }}>{item.name || '（未入力・お札墨書名適用）'}</strong>
+                                                      <span style={{ marginLeft: '0.4rem', color: '#555', fontSize: '0.75rem' }}>
+                                                        [主: {p1}{p2 ? ` / 副: ${p2}` : ''}]
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : b.wood_talisman_name ? (
+                                          <div style={{ fontSize: '0.8rem', color: 'var(--color-shu)', marginTop: '0.2rem' }}>
+                                            木札墨書名: <strong>{b.wood_talisman_name}</strong>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* 参拝代表者・団体所在地（複数社・単一で分岐） */}
+                                  {isMulti ? (
+                                    <div style={{ backgroundColor: '#f0fdf4', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #86efac', gridColumn: 'span 2' }}>
+                                      <div style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 'bold', marginBottom: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span>🏢 連名・複数社 奏上対象一覧（全{multiEntities.length}社）</span>
+                                        <span style={{ fontSize: '0.65rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '0.1rem 0.4rem', borderRadius: '3px', border: '1px solid #bbf7d0' }}>個別レイアウト適用</span>
+                                      </div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '0.6rem' }}>
+                                        {multiEntities.map((ent, eIdx) => {
+                                          const p1 = ent.prayer1 === 'その他（自由入力）' ? (ent.custom_prayer1 || 'その他') : (ent.prayer1 || b.prayer1);
+                                          const p2 = ent.prayer2 === 'その他（自由入力）' ? (ent.custom_prayer2 || 'その他') : ent.prayer2;
+                                          return (
+                                            <div key={eIdx} style={{ backgroundColor: '#fff', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '0.6rem 0.75rem', fontSize: '0.78rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                              <div style={{ fontWeight: 'bold', color: '#15803d', borderBottom: '1px dashed #bbf7d0', paddingBottom: '0.3rem', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
+                                                【{eIdx + 1}社目】{ent.company_name}
+                                                {ent.company_kana && <span style={{ fontSize: '0.7rem', color: '#666', marginLeft: '0.35rem', fontWeight: 'normal' }}>({ent.company_kana})</span>}
+                                              </div>
+                                              <div style={{ color: '#555', fontSize: '0.74rem', marginBottom: '0.2rem' }}>
+                                                📍 <strong>所在地:</strong> {ent.company_address || '（未登録）'}
+                                                {ent.company_address_kana && <span style={{ fontSize: '0.68rem', color: '#888', marginLeft: '0.35rem' }}>({ent.company_address_kana})</span>}
+                                              </div>
+                                              <div style={{ color: '#333', fontSize: '0.76rem', marginBottom: '0.2rem' }}>
+                                                👤 <strong>役職・氏名:</strong> {ent.representative_title ? `［${ent.representative_title}］` : ''}<strong>{ent.representative_name}</strong>
+                                                {ent.representative_kana && <span style={{ fontSize: '0.68rem', color: '#666', marginLeft: '0.25rem' }}>({ent.representative_kana})</span>}
+                                              </div>
+                                              {p1 && (
+                                                <div style={{ color: '#b91c1c', fontSize: '0.76rem', fontWeight: 600, marginTop: '0.2rem', backgroundColor: '#fef2f2', padding: '0.2rem 0.4rem', borderRadius: '3px', border: '1px solid #fecaca' }}>
+                                                  🎋 <strong>御願意:</strong> {p1}
+                                                  {p2 && p2 !== 'なし' && <span>（並びに {p2}）</span>}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {b.representative_title_name && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.68rem', color: '#777' }}>参拝代表者役職・氏名</div>
+                                          <strong style={{ fontSize: '0.88rem' }}>{b.representative_title_name}</strong>
+                                          {b.representative_kana && <div style={{ fontSize: '0.7rem', color: '#888' }}>({b.representative_kana})</div>}
+                                        </div>
+                                      )}
+                                      {b.company_address && (
+                                        <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                          <div style={{ fontSize: '0.68rem', color: '#777' }}>団体所在地</div>
+                                          <div style={{ fontSize: '0.85rem' }}>{b.company_address}</div>
+                                          {b.company_address_kana && <div style={{ fontSize: '0.7rem', color: '#888' }}>({b.company_address_kana})</div>}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  {/* 領収証情報 */}
+                                  {b.wants_receipt === 1 && (() => {
+                                    const bReceipts = getBookingReceipts(b);
+                                    return (
+                                      <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                        <div style={{ fontSize: '0.68rem', color: '#777', fontWeight: 'bold' }}>
+                                          領収証 宛名・金額 {bReceipts.length > 1 ? `（全${bReceipts.length}社分）` : ''}
+                                        </div>
+                                        {bReceipts.length > 1 ? (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
+                                            {bReceipts.map((r, rIdx) => (
+                                              <div key={rIdx} style={{ fontSize: '0.8rem', borderBottom: rIdx < bReceipts.length - 1 ? '1px dashed #eee' : 'none', paddingBottom: rIdx < bReceipts.length - 1 ? '0.2rem' : '0' }}>
+                                                {rIdx + 1}社目: <strong>{r.name || '（未指定）'}</strong> ({Number(r.amount) ? `${Number(r.amount).toLocaleString()} 円` : '未設定'})
+                                              </div>
+                                            ))}
+                                            <div style={{ fontSize: '0.78rem', fontWeight: 'bold', color: 'var(--color-urushi)', borderTop: '1px solid #ddd', paddingTop: '0.25rem', marginTop: '0.15rem' }}>
+                                              合計: {bReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0).toLocaleString()} 円
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <div style={{ fontSize: '0.82rem', marginTop: '0.15rem' }}>宛名: <strong>{bReceipts[0]?.name || b.receipt_name || b.company_name || '（未指定）'}</strong></div>
+                                            <div style={{ fontSize: '0.82rem' }}>金額: <strong>{bReceipts[0]?.amount ? `${Number(bReceipts[0].amount).toLocaleString()} 円` : `${(b.hatsuhoryo || 0).toLocaleString()} 円 (初穂料)`}</strong></div>
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* 申込担当者 */}
+                                  {(b.staff_dept_title_name || b.staff_phone || b.staff_email) && (
+                                    <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                      <div style={{ fontSize: '0.68rem', color: '#777' }}>申込担当者情報</div>
+                                      {b.staff_dept_title_name && <div>氏名: <strong>{b.staff_dept_title_name}</strong></div>}
+                                      {b.staff_phone && <div>TEL: <strong>{b.staff_phone}</strong></div>}
+                                      {b.staff_email && <div>Email: <strong>{b.staff_email}</strong></div>}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* E. 団体大会情報 */}
+                            {hasTournament && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#fdf6ec',
+                                border: '1px solid #f5dab1',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '4px'
+                              }}>
+                                <div style={{ fontWeight: 'bold', color: '#e6a23c' }}>🏆 必勝祈願 大会情報</div>
+                                <div><strong>大会名:</strong> {b.tournament_name}</div>
+                                {b.tournament_schedule && <div><strong>日程:</strong> {b.tournament_schedule}</div>}
+                              </div>
+                            )}
+
+                            {/* F. 団体工事安全情報 */}
+                            {hasConstruction && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#f0f9eb',
+                                border: '1px solid #c2e7b0',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '4px',
+                                lineHeight: '1.4'
+                              }}>
+                                <div style={{ fontWeight: 'bold', color: '#67c23a' }}>🚧 工事安全祈願 情報</div>
+                                <div><strong>工事名:</strong> {b.construction_name}</div>
+                                {b.construction_builder && <div><strong>施工:</strong> {b.construction_builder}</div>}
+                                {b.construction_designer && <div><strong>設計:</strong> {b.construction_designer}</div>}
+                                {b.construction_period && <div><strong>工期:</strong> {b.construction_period}</div>}
+                              </div>
+                            )}
+
+                            {/* G. 備考 */}
+                            {b.notes && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '4px',
+                                backgroundColor: '#ffffff',
+                                color: '#555',
+                                borderLeft: '3px solid var(--color-gold)',
+                                borderTop: '1px solid #f0f0f0',
+                                borderRight: '1px solid #f0f0f0',
+                                borderBottom: '1px solid #f0f0f0',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-all'
+                              }} title={b.notes}>
+                                📝 {b.notes}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
+                </React.Fragment>
                 );
               })
             )}
