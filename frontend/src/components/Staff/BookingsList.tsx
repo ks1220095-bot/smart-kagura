@@ -1405,9 +1405,11 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         const hasParents = isIndiv && (!!b.father_name || !!b.mother_name);
                         const hasYakudoshi = isIndiv && !!b.yakudoshi_type;
                         const hasKotobuki = isIndiv && !!b.kotobuki_type;
-                        
+                        const hasCar = !!(b.car_maker || b.car_model || b.car_number);
                         const hasTournament = !isIndiv && !!b.tournament_name;
                         const hasConstruction = !isIndiv && !!b.construction_name;
+                        const multiEntities = !isIndiv ? getBookingMultiEntities(b) : [];
+                        const isMulti = !isIndiv && (b.has_multi_entities === 1 || multiEntities.length > 1);
                         const hasOrgDetails = !isIndiv && (
                           !!b.talisman_name ||
                           !!b.additional_talismans ||
@@ -1420,9 +1422,20 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           !!b.staff_phone ||
                           !!b.staff_email
                         );
-                        const hasDetails = hasChild || hasParents || hasYakudoshi || hasKotobuki || hasTournament || hasConstruction || hasOrgDetails || !!b.notes;
                         
-                        if (!hasDetails) return null;
+                        const parts: string[] = [];
+                        if (isMulti) parts.push(`連名${multiEntities.length}社`);
+                        if (hasChild) parts.push('祝子情報');
+                        if (hasParents) parts.push('家族情報');
+                        if (hasYakudoshi || hasKotobuki) parts.push('祈祷情報');
+                        if (hasCar) parts.push('車両情報');
+                        if (hasTournament || hasConstruction) parts.push('行事・工事');
+                        if (hasOrgDetails) parts.push('団体・授与品');
+                        if (b.notes) parts.push('備考');
+                        if (parts.length === 0) {
+                          if (isIndiv && b.address) parts.push('住所・詳細');
+                          else parts.push('詳細情報');
+                        }
 
                         return (
                           <div style={{ marginTop: '0.4rem' }}>
@@ -1452,18 +1465,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                               ) : (
                                 <>
                                   <ChevronDown size={12} />
-                                  詳細を表示 (
-                                  {(() => {
-                                    const parts = [];
-                                    if (hasChild) parts.push('子息情報');
-                                    if (hasParents) parts.push('家族情報');
-                                    if (hasYakudoshi || hasKotobuki) parts.push('祈祷情報');
-                                    if (hasTournament || hasConstruction) parts.push('行事・工事情報');
-                                    if (hasOrgDetails) parts.push('団体・授与品詳細');
-                                    if (b.notes) parts.push('備考');
-                                    return parts.join('・');
-                                  })()}
-                                  ) ▼
+                                  詳細を表示 ({parts.join('・')}) ▼
                                 </>
                               )}
                             </button>
@@ -1746,6 +1748,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                     const hasParents = isIndiv && (!!b.father_name || !!b.mother_name);
                     const hasYakudoshi = isIndiv && !!b.yakudoshi_type;
                     const hasKotobuki = isIndiv && !!b.kotobuki_type;
+                    const hasCar = !!(b.car_maker || b.car_model || b.car_number);
                     const hasTournament = !isIndiv && !!b.tournament_name;
                     const hasConstruction = !isIndiv && !!b.construction_name;
                     const hasOrgDetails = !isIndiv && (
@@ -1776,11 +1779,22 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                             flexDirection: 'column',
                             gap: '0.85rem'
                           }}>
-                            {/* ヘッダー：タイトル ＋ 予約編集ボタン */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {/* 1. ヘッダー：タイトル ＋ 各種バッジ ＋ 予約編集ボタン */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                                <span style={{ fontSize: '0.92rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
                                   📋 予約詳細情報（#{b.receipt_number || b.id} {nameDisplay} 様）
+                                </span>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  backgroundColor: isIndiv ? '#e6f4ea' : '#fef7e0',
+                                  color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-urushi)',
+                                  border: `1px solid ${isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)'}`,
+                                  padding: '0.12rem 0.45rem',
+                                  borderRadius: '4px',
+                                  fontWeight: 'bold'
+                                }}>
+                                  {isIndiv ? '個人祈祷' : '法人・団体祈祷'}
                                 </span>
                                 {isMulti && (
                                   <span style={{ fontSize: '0.68rem', backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '0.12rem 0.45rem', borderRadius: '4px', fontWeight: 'bold' }}>
@@ -1792,6 +1806,26 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     🧾 領収証希望
                                   </span>
                                 )}
+                                {hasCar && (
+                                  <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '0.12rem 0.45rem', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 'bold' }}>
+                                    🚘 車両祈祷
+                                  </span>
+                                )}
+                                {b.has_past_prayer === 1 && (
+                                  <span style={{ backgroundColor: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe', padding: '0.12rem 0.45rem', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 'bold' }}>
+                                    祈祷歴あり
+                                  </span>
+                                )}
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  backgroundColor: b.is_manual ? '#fef3c7' : '#f1f5f9',
+                                  color: b.is_manual ? '#92400e' : '#475569',
+                                  border: `1px solid ${b.is_manual ? '#fde68a' : '#cbd5e1'}`,
+                                  padding: '0.12rem 0.45rem',
+                                  borderRadius: '4px'
+                                }}>
+                                  {b.is_manual ? '社務所手動登録' : 'Webオンライン受付'}
+                                </span>
                               </div>
                               <button
                                 type="button"
@@ -1803,24 +1837,206 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                               </button>
                             </div>
 
-                            {/* A. お子様情報 */}
+                            {/* 2. 予約基本概要バー */}
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                              gap: '0.5rem',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              padding: '0.6rem 0.85rem'
+                            }}>
+                              <div>
+                                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>📅 祈祷日時</div>
+                                <div style={{ fontSize: '0.86rem', fontWeight: 'bold', color: '#1e293b' }}>
+                                  {b.booking_date} {b.booking_time}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>👥 参列予定人数</div>
+                                <div style={{ fontSize: '0.86rem', fontWeight: 'bold', color: '#1e293b' }}>
+                                  {b.attending_count ?? 1} 名
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>⛩️ 担当神職（斎主）</div>
+                                <div style={{ fontSize: '0.86rem', fontWeight: 'bold', color: b.saishu ? 'var(--color-urushi)' : '#94a3b8' }}>
+                                  {b.saishu ? `${b.saishu} 命` : '未指定（当日指定）'}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>💰 初穂料・納付状況</div>
+                                <div style={{ fontSize: '0.86rem', fontWeight: 'bold', color: b.payment_status === 'paid' ? 'var(--color-accent-green)' : 'var(--color-shu)' }}>
+                                  {(b.hatsuhoryo || 0).toLocaleString()} 円 ({b.payment_status === 'paid' ? '納付済' : '未納'})
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>⏰ 申込受付日時</div>
+                                <div style={{ fontSize: '0.8rem', color: '#334155' }}>
+                                  {b.created_at ? new Date(b.created_at).toLocaleString('ja-JP', { hour12: false }).slice(0, 16) : '不明'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 3. 申込者 住所・連絡先情報（個人予約の場合） */}
+                            {isIndiv && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                padding: '0.65rem 0.85rem'
+                              }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', borderBottom: '1px dashed #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.45rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span>📍 申込者 住所・連絡先情報</span>
+                                  {b.has_past_prayer === 1 && (
+                                    <span style={{ fontSize: '0.68rem', color: '#7e22ce', fontWeight: 'bold' }}>
+                                      ★ 過去に当神社での祈祷歴あり
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.5rem' }}>
+                                  <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee', gridColumn: b.address ? 'span 2' : 'span 1' }}>
+                                    <div style={{ fontSize: '0.68rem', color: '#777' }}>ご住所</div>
+                                    <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#1e293b' }}>
+                                      {b.address || '（住所未登録）'}
+                                    </div>
+                                    {b.address_kana && (
+                                      <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.1rem' }}>
+                                        （{b.address_kana}）
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                    <div style={{ fontSize: '0.68rem', color: '#777' }}>電話番号</div>
+                                    <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#1e293b' }}>
+                                      {b.phone || '（未登録）'}
+                                    </div>
+                                  </div>
+                                  <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                    <div style={{ fontSize: '0.68rem', color: '#777' }}>メールアドレス</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#1e293b', wordBreak: 'break-all' }}>
+                                      {b.email || '（未登録）'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 4. 御願意・祈願内容詳細 */}
+                            <div style={{
+                              fontSize: '0.75rem',
+                              backgroundColor: '#fffdf9',
+                              border: '1px solid #fde68a',
+                              borderRadius: '6px',
+                              padding: '0.65rem 0.85rem'
+                            }}>
+                              <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <span>🎋 祈願内容・御願意</span>
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#fff', padding: '0.35rem 0.65rem', borderRadius: '4px', border: '1px solid #fef08a' }}>
+                                  <span style={{ fontSize: '0.7rem', color: '#854d0e', fontWeight: 'bold' }}>主願意:</span>
+                                  <span style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '0.85rem' }}>
+                                    {b.prayer1}
+                                  </span>
+                                  {b.custom_prayer1 && (
+                                    <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                                      （自由入力: {b.custom_prayer1}）
+                                    </span>
+                                  )}
+                                </div>
+                                {b.prayer2 && b.prayer2 !== 'なし' && (
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#fff', padding: '0.35rem 0.65rem', borderRadius: '4px', border: '1px solid #fef08a' }}>
+                                    <span style={{ fontSize: '0.7rem', color: '#854d0e', fontWeight: 'bold' }}>副願意:</span>
+                                    <span style={{ fontWeight: 'bold', color: '#1d4ed8', fontSize: '0.85rem' }}>
+                                      {b.prayer2}
+                                    </span>
+                                    {b.custom_prayer2 && (
+                                      <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                                        （自由入力: {b.custom_prayer2}）
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {(b.org_custom_prayer1 || b.org_custom_prayer2) && (
+                                  <div style={{ fontSize: '0.74rem', color: '#78350f', backgroundColor: '#fff', padding: '0.35rem 0.65rem', borderRadius: '4px', border: '1px solid #fef08a' }}>
+                                    {b.org_custom_prayer1 && <div>法人自由願意1: <strong>{b.org_custom_prayer1}</strong></div>}
+                                    {b.org_custom_prayer2 && <div>法人自由願意2: <strong>{b.org_custom_prayer2}</strong></div>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 5. 交通安全・車両祈祷情報 */}
+                            {hasCar && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                backgroundColor: '#f0fdf4',
+                                border: '1px solid #bbf7d0',
+                                padding: '0.65rem 0.85rem',
+                                borderRadius: '6px'
+                              }}>
+                                <div style={{ fontWeight: 'bold', color: '#166534', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  🚘 交通安全祈願 車両情報（お祓い対象車両）
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                                  <div style={{ backgroundColor: '#fff', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #dcfce7' }}>
+                                    <div style={{ fontSize: '0.68rem', color: '#666' }}>車両メーカー</div>
+                                    <strong style={{ fontSize: '0.85rem', color: '#14532d' }}>{b.car_maker || '（未入力）'}</strong>
+                                  </div>
+                                  <div style={{ backgroundColor: '#fff', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #dcfce7' }}>
+                                    <div style={{ fontSize: '0.68rem', color: '#666' }}>車種・車名</div>
+                                    <strong style={{ fontSize: '0.85rem', color: '#14532d' }}>{b.car_model || '（未入力）'}</strong>
+                                  </div>
+                                  <div style={{ backgroundColor: '#fff', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #dcfce7' }}>
+                                    <div style={{ fontSize: '0.68rem', color: '#666' }}>ナンバープレート</div>
+                                    <strong style={{ fontSize: '0.9rem', color: '#b91c1c' }}>{b.car_number || '（未入力）'}</strong>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 6. お子様情報 */}
                             {hasChild && (
                               <div style={{
                                 fontSize: '0.75rem',
                                 backgroundColor: '#faf7f0',
                                 border: '1px solid rgba(197, 160, 89, 0.3)',
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '4px'
+                                padding: '0.65rem 0.85rem',
+                                borderRadius: '6px'
                               }}>
-                                <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.35rem' }}>👶 祝子（お子様）情報</div>
+                                <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <span>👶 祝子（お子様）情報</span>
+                                  {b.is_twin === 1 && (
+                                    <span style={{ fontSize: '0.65rem', backgroundColor: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe', padding: '0.1rem 0.35rem', borderRadius: '3px', fontWeight: 'bold' }}>
+                                      ♊ 双子
+                                    </span>
+                                  )}
+                                </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.4rem' }}>
                                   {bookingChildren.map((child, cIdx) => (
-                                    <div key={cIdx} style={{ backgroundColor: '#fff', padding: '0.4rem 0.5rem', borderRadius: '3px', border: '1px solid #eee' }}>
-                                      <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold' }}>
-                                        {bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name} ({child.kana}){child.gender ? ` [${child.gender}]` : ''}
+                                    <div key={cIdx} style={{ backgroundColor: '#fff', padding: '0.45rem 0.6rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                      <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                        {bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name}
+                                        {child.kana && <span style={{ fontSize: '0.72rem', color: '#666', marginLeft: '0.3rem', fontWeight: 'normal' }}>({child.kana})</span>}
+                                        {child.gender && (
+                                          <span style={{
+                                            fontSize: '0.68rem',
+                                            marginLeft: '0.4rem',
+                                            padding: '0.1rem 0.3rem',
+                                            borderRadius: '3px',
+                                            backgroundColor: child.gender === '男' ? '#eff6ff' : '#fdf2f8',
+                                            color: child.gender === '男' ? '#1d4ed8' : '#be185d',
+                                            border: `1px solid ${child.gender === '男' ? '#bfdbfe' : '#fbcfe8'}`
+                                          }}>
+                                            {child.gender}
+                                          </span>
+                                        )}
                                       </div>
                                       {child.birthday && (
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.1rem' }}>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>
                                           生年月日: {child.birthday} {child.age_text ? `(${child.age_text})` : ''}
                                         </div>
                                       )}
@@ -1830,7 +2046,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                               </div>
                             )}
 
-                            {/* B. 家族情報（父母の名前） */}
+                            {/* 7. 家族情報（父母の名前） */}
                             {hasParents && (
                               <div style={{
                                 fontSize: '0.75rem',
@@ -2035,8 +2251,19 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                     const bReceipts = getBookingReceipts(b);
                                     return (
                                       <div style={{ backgroundColor: '#fff', padding: '0.45rem 0.65rem', borderRadius: '4px', border: '1px solid #eee' }}>
-                                        <div style={{ fontSize: '0.68rem', color: '#777', fontWeight: 'bold' }}>
-                                          領収証 宛名・金額 {bReceipts.length > 1 ? `（全${bReceipts.length}社分）` : ''}
+                                        <div style={{ fontSize: '0.68rem', color: '#777', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                          <span>領収証 宛名・金額 {bReceipts.length > 1 ? `（全${bReceipts.length}社分）` : ''}</span>
+                                          <span style={{
+                                            fontSize: '0.65rem',
+                                            padding: '0.05rem 0.35rem',
+                                            borderRadius: '3px',
+                                            fontWeight: 'bold',
+                                            backgroundColor: Number(b.is_receipt_issued) === 1 ? '#dcfce7' : '#fef3c7',
+                                            color: Number(b.is_receipt_issued) === 1 ? '#15803d' : '#92400e',
+                                            border: `1px solid ${Number(b.is_receipt_issued) === 1 ? '#bbf7d0' : '#fde68a'}`
+                                          }}>
+                                            {Number(b.is_receipt_issued) === 1 ? '✅ 発行済' : '⏳ 未発行'}
+                                          </span>
                                         </div>
                                         {bReceipts.length > 1 ? (
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
@@ -2104,11 +2331,11 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                               </div>
                             )}
 
-                            {/* G. 備考 */}
-                            {b.notes && (
+                            {/* G. 備考・変更履歴・取消情報 */}
+                            {(b.notes || b.changed_history || isCancelled) && (
                               <div style={{
                                 fontSize: '0.75rem',
-                                padding: '0.5rem 0.75rem',
+                                padding: '0.55rem 0.85rem',
                                 borderRadius: '4px',
                                 backgroundColor: '#ffffff',
                                 color: '#555',
@@ -2116,10 +2343,25 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                 borderTop: '1px solid #f0f0f0',
                                 borderRight: '1px solid #f0f0f0',
                                 borderBottom: '1px solid #f0f0f0',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-all'
-                              }} title={b.notes}>
-                                📝 {b.notes}
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.35rem'
+                              }}>
+                                {b.notes && (
+                                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }} title={b.notes}>
+                                    📝 <strong>備考:</strong> {b.notes}
+                                  </div>
+                                )}
+                                {b.changed_history && (
+                                  <div style={{ color: '#0369a1', fontSize: '0.72rem' }}>
+                                    ✏️ <strong>変更履歴:</strong> {b.changed_history} {b.changed_at ? `(${b.changed_at})` : ''}
+                                  </div>
+                                )}
+                                {isCancelled && (
+                                  <div style={{ color: 'var(--color-shu)', fontWeight: 'bold', fontSize: '0.72rem' }}>
+                                    ❌ <strong>取消・キャンセル日時:</strong> {b.cancelled_at || '日時不明'}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
