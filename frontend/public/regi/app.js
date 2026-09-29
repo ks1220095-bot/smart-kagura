@@ -263,7 +263,20 @@ const state = {
     customEnd: '',
     statsRange: 'week', // 'week' | 'month' | 'year' | 'all' | 'custom'
     statsCustomStart: '',
-    statsCustomEnd: ''
+    statsCustomEnd: '',
+    monthly: {
+      selectedYear: new Date().getFullYear(),
+      selectedMonth: new Date().getMonth() + 1,
+      viewMode: 'monthly', // 'monthly' | 'annual'
+      selectedCategory: 'all',
+      searchQuery: '',
+      data: null,
+      isLocked: false,
+      status: '最新計算値',
+      lastUpdated: null,
+      operator: '',
+      adjustModalData: []
+    }
   },
   currentTab: 'dashboard', // 初期タブをダッシュボードに変更
   selectedCategory: 'all',
@@ -410,6 +423,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   setupOfflineMonitoring();
   syncOfflineTransactions();
+  initMonthlyInventoryControls();
+  checkAutoMonthlyClose();
 });
 
 function setupDateTime() {
@@ -4341,6 +4356,9 @@ function renderDashboardCharts() {
       }).join('');
     }
   }
+
+  // 4. 📅 月次在庫 ＆ 授与実績管理テーブルの描画
+  renderMonthlyInventorySection();
 }
 
 // 動作確認用モックダミー売上データを生成する関数
@@ -4703,4 +4721,885 @@ function showDashboardDetail(type) {
   contentEl.innerHTML = html;
   modal.style.display = 'flex';
 }
+
+// ==========================================================================
+// 📅 月次在庫 ＆ 授与実績管理（月締め台帳・年間推移表）ロジック
+// ==========================================================================
+
+function initMonthlyInventoryControls() {
+  const selectYear = document.getElementById('select-monthly-year');
+  const selectMonth = document.getElementById('select-monthly-month');
+  if (!selectYear || !selectMonth) return;
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+
+  // 年セレクターの初期化 (過去2年 〜 翌年)
+  selectYear.innerHTML = '';
+  for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = `${y}年 (令和${y >= 2019 ? y - 2018 : 1}年)`;
+    if (y === state.dashboard.monthly.selectedYear) opt.selected = true;
+    selectYear.appendChild(opt);
+  }
+
+  // 月セレクターの初期値
+  selectMonth.value = state.dashboard.monthly.selectedMonth;
+
+  // 年月変更イベント
+  selectYear.addEventListener('change', () => {
+    state.dashboard.monthly.selectedYear = parseInt(selectYear.value, 10);
+    const ym = `${state.dashboard.monthly.selectedYear}-${String(state.dashboard.monthly.selectedMonth).padStart(2, '0')}`;
+    fetchMonthlyInventoryData(ym);
+  });
+
+  selectMonth.addEventListener('change', () => {
+    state.dashboard.monthly.selectedMonth = parseInt(selectMonth.value, 10);
+    const ym = `${state.dashboard.monthly.selectedYear}-${String(state.dashboard.monthly.selectedMonth).padStart(2, '0')}`;
+    fetchMonthlyInventoryData(ym);
+  });
+
+  // 表示モード切替（月別詳細 vs 年間推移表）
+  const btnModeMonth = document.getElementById('btn-monthly-mode-month');
+  const btnModeAnnual = document.getElementById('btn-monthly-mode-annual');
+  const detailView = document.getElementById('monthly-detail-view');
+  const annualView = document.getElementById('monthly-annual-view');
+  const ymControls = document.getElementById('monthly-ym-controls');
+
+  if (btnModeMonth && btnModeAnnual) {
+    btnModeMonth.addEventListener('click', () => {
+      btnModeMonth.classList.add('active');
+      btnModeAnnual.classList.remove('active');
+      if (detailView) detailView.style.display = 'block';
+      if (annualView) annualView.style.display = 'none';
+      if (ymControls) ymControls.style.display = 'flex';
+      state.dashboard.monthly.viewMode = 'monthly';
+      renderMonthlyInventorySection();
+    });
+
+    btnModeAnnual.addEventListener('click', () => {
+      btnModeAnnual.classList.add('active');
+      btnModeMonth.classList.remove('active');
+      if (detailView) detailView.style.display = 'none';
+      if (annualView) annualView.style.display = 'block';
+      state.dashboard.monthly.viewMode = 'annual';
+      renderMonthlyInventorySection();
+    });
+  }
+
+  // カテゴリフィルター
+  const catButtons = document.querySelectorAll('#monthly-category-filters .category-btn');
+  catButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.dashboard.monthly.selectedCategory = btn.dataset.category || 'all';
+      renderMonthlyInventorySection();
+    });
+  });
+
+  // 検索フィルター
+  const inputSearch = document.getElementById('input-monthly-search');
+  if (inputSearch) {
+    inputSearch.addEventListener('input', (e) => {
+      state.dashboard.monthly.searchQuery = (e.target.value || '').trim().toLowerCase();
+      renderMonthlyInventorySection();
+    });
+  }
+
+  // 実棚卸・数量調整モーダル起動
+  const btnOpenAdjust = document.getElementById('btn-open-monthly-adjust');
+  if (btnOpenAdjust) {
+    btnOpenAdjust.addEventListener('click', openMonthlyAdjustModal);
+  }
+
+  // モーダルを閉じる
+  const btnCloseAdjust = document.getElementById('btn-close-monthly-adjust');
+  const btnCloseAdjustX = document.getElementById('btn-close-monthly-adjust-x');
+  const modalAdjust = document.getElementById('modal-monthly-adjust');
+  if (btnCloseAdjust && modalAdjust) {
+    btnCloseAdjust.addEventListener('click', () => { modalAdjust.style.display = 'none'; });
+  }
+  if (btnCloseAdjustX && modalAdjust) {
+    btnCloseAdjustX.addEventListener('click', () => { modalAdjust.style.display = 'none'; });
+  }
+
+  // 実棚卸の確定保存
+  const btnSaveAdjust = document.getElementById('btn-save-monthly-adjust');
+  if (btnSaveAdjust) {
+    btnSaveAdjust.addEventListener('click', saveMonthlyAdjust);
+  }
+
+  // CSV出力
+  const btnExportCsv = document.getElementById('btn-export-monthly-csv');
+  if (btnExportCsv) {
+    btnExportCsv.addEventListener('click', exportMonthlyInventoryCsv);
+  }
+
+  // 最新化リフレッシュ
+  const btnRefresh = document.getElementById('btn-refresh-monthly');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', () => {
+      const ym = `${state.dashboard.monthly.selectedYear}-${String(state.dashboard.monthly.selectedMonth).padStart(2, '0')}`;
+      fetchMonthlyInventoryData(ym, true);
+    });
+  }
+
+  // モーダル内検索フィルター
+  const inputModalFilter = document.getElementById('input-modal-adjust-filter');
+  if (inputModalFilter) {
+    inputModalFilter.addEventListener('input', (e) => {
+      const q = (e.target.value || '').trim().toLowerCase();
+      const rows = document.querySelectorAll('#modal-adjust-table-body tr');
+      rows.forEach(r => {
+        const name = (r.dataset.name || '').toLowerCase();
+        const id = (r.dataset.id || '').toLowerCase();
+        r.style.display = (!q || name.includes(q) || id.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+
+  // 初回データ読み込み
+  const initialYm = `${state.dashboard.monthly.selectedYear}-${String(state.dashboard.monthly.selectedMonth).padStart(2, '0')}`;
+  fetchMonthlyInventoryData(initialYm);
+}
+
+/**
+ * 月次在庫データの取得（GAS または 動的集計）
+ */
+async function fetchMonthlyInventoryData(yearMonth, forceRefresh = false) {
+  const parts = yearMonth.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+
+  const badgeEl = document.getElementById('monthly-lock-badge');
+  if (badgeEl) {
+    badgeEl.className = 'monthly-status-badge status-auto';
+    badgeEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 集計中...';
+  }
+
+  // 前年同月比較のため、取引履歴の取得範囲を広げてバックグラウンド取得
+  const prevYear = year - 1;
+  const startFetchDate = `${prevYear}-01-01`;
+  const endFetchDate = `${year}-12-31`;
+  if (!state.dashboard.earliestFetchedDate || state.dashboard.earliestFetchedDate > startFetchDate) {
+    fetchRangeTransactions(startFetchDate, endFetchDate, false, true);
+  }
+
+  let loadedData = null;
+  let isLocked = false;
+  let closingStatus = '最新計算値（未確定）';
+  let lastUpdated = '';
+  let operator = '';
+
+  // 1. GASと通信
+  if (!forceRefresh && !state.isUsingMock && GAS_API_URL !== 'YOUR_GAS_API_URL') {
+    try {
+      const res = await fetch(`${GAS_API_URL}?action=getMonthlyInventory&yearMonth=${yearMonth}`);
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.items) && data.items.length > 0) {
+        loadedData = data.items;
+        isLocked = Boolean(data.isLocked);
+        closingStatus = data.closingStatus || (isLocked ? '職員確定済' : '最新計算値');
+        lastUpdated = data.lastUpdated || '';
+        operator = data.operator || '';
+      }
+    } catch (err) {
+      console.warn('GAS monthly inventory fetch warning:', err);
+    }
+  }
+
+  // 2. ローカルストレージのスナップショットキャッシュを確認
+  if (!loadedData) {
+    const localSnapshot = localStorage.getItem('monthly_snapshot_' + yearMonth);
+    if (localSnapshot) {
+      try {
+        const parsed = JSON.parse(localSnapshot);
+        loadedData = parsed.items;
+        isLocked = true;
+        closingStatus = parsed.closingStatus || '✏️ 職員確定済 (ローカル保存)';
+        lastUpdated = parsed.updatedAt || '';
+        operator = parsed.operator || '';
+      } catch (e) {}
+    }
+  }
+
+  // 3. なければ取引ログとマスタから完全動的集計
+  if (!loadedData) {
+    loadedData = computeDynamicMonthlyInventory(yearMonth);
+    isLocked = false;
+    closingStatus = '最新計算値（未確定）';
+    lastUpdated = getJstDateString(new Date());
+    operator = 'システム自動計算';
+  }
+
+  // stateに反映
+  state.dashboard.monthly.data = loadedData;
+  state.dashboard.monthly.isLocked = isLocked;
+  state.dashboard.monthly.status = closingStatus;
+  state.dashboard.monthly.lastUpdated = lastUpdated;
+  state.dashboard.monthly.operator = operator;
+
+  // バッジとタイムスタンプの更新
+  if (badgeEl) {
+    if (isLocked) {
+      if (closingStatus.includes('自動')) {
+        badgeEl.className = 'monthly-status-badge status-auto';
+        badgeEl.innerHTML = `<i class="fa-solid fa-robot"></i> ${closingStatus}`;
+      } else {
+        badgeEl.className = 'monthly-status-badge status-confirmed';
+        badgeEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${closingStatus}`;
+      }
+    } else {
+      badgeEl.className = 'monthly-status-badge status-dynamic';
+      badgeEl.innerHTML = `<i class="fa-solid fa-chart-line"></i> ${closingStatus}`;
+    }
+  }
+
+  const syncTimestampEl = document.getElementById('monthly-sync-timestamp');
+  if (syncTimestampEl) {
+    syncTimestampEl.textContent = `最終記録: ${lastUpdated || '今'} (${operator || 'システム'})`;
+  }
+
+  renderMonthlyInventorySection();
+}
+
+/**
+ * 取引履歴とマスタから指定年月の月次データを動的に集計
+ */
+function computeDynamicMonthlyInventory(yearMonth) {
+  const parts = yearMonth.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const prevYearMonth = `${year - 1}-${String(month).padStart(2, '0')}`;
+
+  const allTxs = state.dashboard.rangeTransactions && state.dashboard.rangeTransactions.length > 0
+    ? state.dashboard.rangeTransactions
+    : (state.transactions || []).flatMap(tx => (tx.items || []).map(it => ({
+        date: (tx.timestamp || '').split(' ')[0],
+        itemId: it.id,
+        itemName: it.name,
+        quantity: it.quantity || 0,
+        subtotal: (it.price || 0) * (it.quantity || 0),
+        status: tx.status || '有効'
+      })));
+
+  // 当月および前年同月の数量集計マップ
+  const curDistMap = {};
+  const prevDistMap = {};
+
+  allTxs.forEach(tx => {
+    if (tx.status === '取消' || tx.status === 'キャンセル') return;
+    const dStr = String(tx.date || '');
+    const qty = Number(tx.quantity) || 0;
+    const key = tx.itemId || tx.itemName;
+
+    if (dStr.startsWith(yearMonth)) {
+      curDistMap[key] = (curDistMap[key] || 0) + qty;
+      if (tx.itemName) curDistMap[tx.itemName] = (curDistMap[tx.itemName] || 0) + qty;
+    } else if (dStr.startsWith(prevYearMonth)) {
+      prevDistMap[key] = (prevDistMap[key] || 0) + qty;
+      if (tx.itemName) prevDistMap[tx.itemName] = (prevDistMap[tx.itemName] || 0) + qty;
+    }
+  });
+
+  // マスタ全品目にマッピング
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+
+  return itemsSource.map(item => {
+    const distributed = curDistMap[item.id] || curDistMap[item.name] || 0;
+    const prevDistributed = prevDistMap[item.id] || prevDistMap[item.name] || 0;
+    const price = Number(item.price) || 0;
+    const calcStock = Number(item.stock) || 0;
+
+    return {
+      yearMonth: yearMonth,
+      id: item.id,
+      name: item.name,
+      category: item.category || 'other',
+      price: price,
+      monthlyDistributed: distributed,
+      monthlySales: distributed * price,
+      calculatedStock: calcStock,
+      monthEndStock: calcStock,
+      diff: 0,
+      prevYearDistributed: prevDistributed,
+      status: '最新計算値',
+      remark: ''
+    };
+  });
+}
+
+/**
+ * 月次在庫セクション全体の再描画
+ */
+function renderMonthlyInventorySection() {
+  const mode = state.dashboard.monthly.viewMode;
+  if (mode === 'monthly') {
+    renderMonthlyDetailTable(state.dashboard.monthly.data || []);
+  } else {
+    renderAnnualMatrixTable();
+  }
+}
+
+/**
+ * ① 月別詳細テーブルビューの描画
+ */
+function renderMonthlyDetailTable(items) {
+  const tbody = document.getElementById('monthly-inventory-table-body');
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--color-text-muted);">対象の授与品データがありません。</td></tr>';
+    return;
+  }
+
+  const categoryFilter = state.dashboard.monthly.selectedCategory;
+  const searchQuery = state.dashboard.monthly.searchQuery;
+
+  const categoryNameMap = {
+    'ofuda': 'お札',
+    'omamori': 'お守り',
+    'goshuin': '御朱印',
+    'engimono': '縁起物',
+    'other': 'その他'
+  };
+
+  const filtered = items.filter(it => {
+    if (categoryFilter !== 'all' && it.category !== categoryFilter) return false;
+    if (searchQuery) {
+      const name = (it.name || '').toLowerCase();
+      const id = (it.id || '').toLowerCase();
+      if (!name.includes(searchQuery) && !id.includes(searchQuery)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--color-text-muted);">条件に一致する授与品がありません。</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(item => {
+    let badgeClass = 'badge-other';
+    const catName = categoryNameMap[item.category] || 'その他';
+    if (catName === 'お札') badgeClass = 'category-badge badge-ofuda';
+    else if (catName === 'お守り') badgeClass = 'category-badge badge-omamori';
+    else if (catName === '御朱印') badgeClass = 'category-badge badge-goshuin';
+    else if (catName === '縁起物') badgeClass = 'category-badge badge-engimono';
+
+    const distributed = Number(item.monthlyDistributed || item.distributed || 0);
+    const sales = Number(item.monthlySales || (distributed * (item.price || 0)));
+    const stock = Number(item.monthEndStock !== undefined ? item.monthEndStock : item.calculatedStock || 0);
+    const diff = Number(item.diff || 0);
+    const prevDist = Number(item.prevYearDistributed || 0);
+
+    // 差異の装飾
+    let diffHtml = '<span class="diff-zero">-</span>';
+    if (diff > 0) {
+      diffHtml = `<span class="diff-positive">+${diff}体</span>`;
+    } else if (diff < 0) {
+      diffHtml = `<span class="diff-negative">${diff}体</span>`;
+    }
+
+    // 在庫状況タグ
+    let stockTag = '';
+    if (stock === 0) {
+      stockTag = '<span class="stock-tag-out"><i class="fa-solid fa-triangle-exclamation"></i> 在庫切れ</span>';
+    } else if (stock <= 10) {
+      stockTag = `<span class="stock-tag-low"><i class="fa-solid fa-circle-exclamation"></i> 残少 (${stock}体)</span>`;
+    } else {
+      stockTag = `<span class="stock-tag-healthy"><i class="fa-solid fa-check"></i> 適正 (${stock}体)</span>`;
+    }
+
+    // 翌年発注目安（前年または当月授与数 × 1.2 を基準に判定）
+    const basisDistributed = Math.max(distributed, prevDist);
+    const targetNextYear = Math.ceil(basisDistributed * 1.2);
+    const needOrder = Math.max(0, targetNextYear - stock);
+    let orderAdvice = '';
+    if (needOrder > 0) {
+      orderAdvice = `<div style="font-size:0.75rem; color:var(--color-vermilion); font-weight:700; margin-top:2px;"><i class="fa-solid fa-cart-plus"></i> 翌年目安: +${needOrder}体 発注推奨</div>`;
+    } else {
+      orderAdvice = `<div style="font-size:0.75rem; color:var(--color-text-muted); margin-top:2px;">翌年目安: 在庫十分</div>`;
+    }
+
+    return `
+      <tr style="border-bottom: 1px solid var(--color-border);">
+        <td style="padding: 0.65rem 0.8rem;">
+          <div style="font-weight: 700; color: var(--color-text);">${item.name}</div>
+          <small style="color: var(--color-text-muted); font-family: monospace;">${item.id}</small>
+        </td>
+        <td style="padding: 0.65rem 0.8rem; text-align: center;">
+          <span class="${badgeClass}" style="font-size:0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight:700;">${catName}</span>
+        </td>
+        <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 600;">¥${(item.price || 0).toLocaleString()}</td>
+        <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 700; color: var(--color-vermilion); font-size: 0.95rem;">${distributed.toLocaleString()} 体</td>
+        <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 700; color: var(--color-text);">¥${sales.toLocaleString()}</td>
+        <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 700; color: var(--color-green); font-size: 0.95rem;">${stock.toLocaleString()} 体</td>
+        <td style="padding: 0.65rem 0.8rem; text-align: center;">${diffHtml}</td>
+        <td style="padding: 0.65rem 0.8rem; text-align: right; font-weight: 600; color: var(--color-text-muted);">${prevDist > 0 ? `${prevDist.toLocaleString()} 体` : '-'}</td>
+        <td style="padding: 0.65rem 0.8rem;">
+          ${stockTag}
+          ${orderAdvice}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/**
+ * ② 年間推移マトリクスビュー (1〜12月) の描画
+ */
+function renderAnnualMatrixTable() {
+  const tbody = document.getElementById('monthly-annual-table-body');
+  if (!tbody) return;
+
+  const targetYear = state.dashboard.monthly.selectedYear;
+  const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+  const categoryFilter = state.dashboard.monthly.selectedCategory;
+  const searchQuery = state.dashboard.monthly.searchQuery;
+
+  const filteredItems = itemsSource.filter(it => {
+    if (categoryFilter !== 'all' && it.category !== categoryFilter) return false;
+    if (searchQuery) {
+      const name = (it.name || '').toLowerCase();
+      const id = (it.id || '').toLowerCase();
+      if (!name.includes(searchQuery) && !id.includes(searchQuery)) return false;
+    }
+    return true;
+  });
+
+  if (filteredItems.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; padding: 3rem; color: var(--color-text-muted);">条件に一致する授与品がありません。</td></tr>';
+    return;
+  }
+
+  // 取引履歴から当年の月別授与数を集計
+  const yearTxs = state.dashboard.rangeTransactions || [];
+  const monthDistMap = {}; // itemKey -> { 1: qty, 2: qty, ... }
+
+  yearTxs.forEach(tx => {
+    if (tx.status === '取消' || tx.status === 'キャンセル') return;
+    const dStr = String(tx.date || '');
+    if (!dStr.startsWith(String(targetYear))) return;
+
+    const m = parseInt(dStr.split('-')[1], 10);
+    const key = tx.itemId || tx.itemName;
+    const qty = Number(tx.quantity) || 0;
+
+    if (!monthDistMap[key]) monthDistMap[key] = {};
+    monthDistMap[key][m] = (monthDistMap[key][m] || 0) + qty;
+
+    if (tx.itemName && tx.itemName !== key) {
+      if (!monthDistMap[tx.itemName]) monthDistMap[tx.itemName] = {};
+      monthDistMap[tx.itemName][m] = (monthDistMap[tx.itemName][m] || 0) + qty;
+    }
+  });
+
+  // 各品目のHTML生成（授与数行 ＋ 月末在庫行）
+  let rowsHtml = '';
+  filteredItems.forEach(item => {
+    const itemMap = monthDistMap[item.id] || monthDistMap[item.name] || {};
+    let annualTotalDistributed = 0;
+
+    // 12ヶ月分のセル生成
+    const distCells = [];
+    const stockCells = [];
+
+    for (let m = 1; m <= 12; m++) {
+      const dist = itemMap[m] || 0;
+      annualTotalDistributed += dist;
+      distCells.push(`<td style="padding: 0.5rem; text-align: right; font-weight: ${dist > 0 ? '700' : 'normal'}; color: ${dist > 0 ? 'var(--color-vermilion)' : 'var(--color-text-muted)'};">${dist > 0 ? dist.toLocaleString() : '-'}</td>`);
+
+      // 月末在庫の確認（ローカルキャッシュにあればそれを表示、なければ最新在庫をフォールバック）
+      const ymStr = `${targetYear}-${String(m).padStart(2, '0')}`;
+      const savedSnap = localStorage.getItem('monthly_snapshot_' + ymStr);
+      let mStock = '-';
+      if (savedSnap) {
+        try {
+          const parsed = JSON.parse(savedSnap);
+          const found = (parsed.items || []).find(it => it.id === item.id || it.name === item.name);
+          if (found) mStock = found.monthEndStock !== undefined ? found.monthEndStock : found.calculatedStock;
+        } catch (e) {}
+      }
+      stockCells.push(`<td style="padding: 0.5rem; text-align: right; font-weight: 600; color: var(--color-green);">${mStock !== '-' ? Number(mStock).toLocaleString() : '-'}</td>`);
+    }
+
+    // 授与数 行
+    rowsHtml += `
+      <tr class="row-distributed" style="border-top: 2px solid var(--color-border);">
+        <td rowspan="2" style="padding: 0.6rem 0.75rem; vertical-align: middle; position: sticky; left: 0; background: white; z-index: 2; border-right: 1px solid var(--color-border);">
+          <div style="font-weight: 700; color: var(--color-text);">${item.name}</div>
+          <small style="color: var(--color-text-muted); font-family: monospace;">${item.id}</small>
+        </td>
+        <td style="padding: 0.5rem; text-align: center; font-weight: 700; color: var(--color-vermilion); background: rgba(217,75,52,0.04); position: sticky; left: 160px; z-index: 2; border-right: 1px solid var(--color-border);">授与数</td>
+        ${distCells.join('')}
+        <td style="padding: 0.6rem 0.75rem; text-align: right; font-weight: 800; font-size: 0.95rem; color: var(--color-vermilion); background: rgba(63, 81, 69, 0.08);">${annualTotalDistributed.toLocaleString()} 体</td>
+        <td rowspan="2" style="padding: 0.6rem 0.75rem; vertical-align: middle; text-align: right; font-weight: 800; font-size: 0.95rem; color: var(--color-green); background: rgba(63, 81, 69, 0.04); border-left: 1px solid var(--color-border);">${(item.stock || 0).toLocaleString()} 体</td>
+      </tr>
+      <tr class="row-stock" style="border-bottom: 2px solid var(--color-border);">
+        <td style="padding: 0.5rem; text-align: center; font-weight: 700; color: var(--color-green); background: rgba(63,81,69,0.06); position: sticky; left: 160px; z-index: 2; border-right: 1px solid var(--color-border);">月末在庫</td>
+        ${stockCells.join('')}
+        <td style="padding: 0.5rem 0.75rem; text-align: right; font-size: 0.8rem; color: var(--color-text-muted); background: rgba(63, 81, 69, 0.04);">(月平均: ${Math.round(annualTotalDistributed / 12)}体)</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = rowsHtml;
+}
+
+/**
+ * 実棚卸・数量調整モーダルを開く
+ */
+function openMonthlyAdjustModal() {
+  const modal = document.getElementById('modal-monthly-adjust');
+  const ymTitle = document.getElementById('modal-adjust-ym-title');
+  const tbody = document.getElementById('modal-adjust-table-body');
+  const countEl = document.getElementById('modal-adjust-item-count');
+  if (!modal || !tbody) return;
+
+  const currentYear = state.dashboard.monthly.selectedYear;
+  const currentMonth = state.dashboard.monthly.selectedMonth;
+  const ymStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+  if (ymTitle) ymTitle.textContent = `${currentYear}年${currentMonth}月`;
+
+  const items = state.dashboard.monthly.data || computeDynamicMonthlyInventory(ymStr);
+  if (countEl) countEl.textContent = items.length;
+
+  tbody.innerHTML = items.map((item) => {
+    const calcStock = Number(item.calculatedStock !== undefined ? item.calculatedStock : item.stock || 0);
+    const actualStock = Number(item.monthEndStock !== undefined ? item.monthEndStock : calcStock);
+    const diff = actualStock - calcStock;
+    const distributed = Number(item.monthlyDistributed || item.distributed || 0);
+
+    let diffText = diff > 0 ? `+${diff}` : String(diff);
+    let diffClass = diff > 0 ? 'diff-positive' : diff < 0 ? 'diff-negative' : 'diff-zero';
+
+    return `
+      <tr data-id="${item.id}" data-name="${item.name}" style="border-bottom: 1px solid var(--color-border);">
+        <td style="padding: 0.5rem 0.6rem;">
+          <div style="font-weight: 600;">${item.name}</div>
+          <small style="color: var(--color-text-muted); font-family: monospace;">${item.id}</small>
+        </td>
+        <td style="padding: 0.5rem 0.6rem; text-align: right;">¥${(item.price || 0).toLocaleString()}</td>
+        <td style="padding: 0.5rem 0.6rem; text-align: right; font-weight: 700; color: var(--color-vermilion);">${distributed} 体</td>
+        <td style="padding: 0.5rem 0.6rem; text-align: right; font-weight: 600;" id="calc-stock-${item.id}">${calcStock} 体</td>
+        <td style="padding: 0.5rem 0.6rem; text-align: center;">
+          <input type="number" min="0" class="adjust-stock-input" data-id="${item.id}" data-calc="${calcStock}" value="${actualStock}">
+        </td>
+        <td style="padding: 0.5rem 0.6rem; text-align: center;">
+          <span class="adjust-diff-badge ${diffClass}" id="diff-badge-${item.id}">${diffText}</span>
+        </td>
+        <td style="padding: 0.5rem 0.6rem;">
+          <input type="text" class="adjust-remark-input" data-id="${item.id}" value="${item.remark || ''}" placeholder="破損/奉製追加など...">
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // 実棚卸数変更時のリアルタイム差異計算リスナー
+  tbody.querySelectorAll('.adjust-stock-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const id = e.target.dataset.id;
+      const calc = parseInt(e.target.dataset.calc, 10) || 0;
+      const actual = parseInt(e.target.value, 10);
+      const diffBadge = document.getElementById(`diff-badge-${id}`);
+
+      if (diffBadge) {
+        if (isNaN(actual)) {
+          diffBadge.textContent = '-';
+          diffBadge.className = 'adjust-diff-badge diff-zero';
+        } else {
+          const diff = actual - calc;
+          diffBadge.textContent = diff > 0 ? `+${diff}` : String(diff);
+          diffBadge.className = `adjust-diff-badge ${diff > 0 ? 'diff-positive' : diff < 0 ? 'diff-negative' : 'diff-zero'}`;
+        }
+      }
+    });
+  });
+
+  modal.style.display = 'flex';
+}
+
+/**
+ * 実棚卸調整データの確定保存（GAS ＆ ローカルスナップショット保存）
+ */
+async function saveMonthlyAdjust() {
+  const currentYear = state.dashboard.monthly.selectedYear;
+  const currentMonth = state.dashboard.monthly.selectedMonth;
+  const ymStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+  const operatorInput = document.getElementById('input-adjust-operator');
+  const operator = (operatorInput && operatorInput.value.trim()) ? operatorInput.value.trim() : '授与所職員';
+  const chkSyncMaster = document.getElementById('chk-adjust-sync-master');
+  const syncMaster = chkSyncMaster ? chkSyncMaster.checked : true;
+
+  const currentItems = state.dashboard.monthly.data || computeDynamicMonthlyInventory(ymStr);
+  const rows = document.querySelectorAll('#modal-adjust-table-body tr');
+
+  const updatedItems = [];
+  rows.forEach(r => {
+    const id = r.dataset.id;
+    const original = currentItems.find(it => it.id === id);
+    if (!original) return;
+
+    const inputStock = r.querySelector('.adjust-stock-input');
+    const inputRemark = r.querySelector('.adjust-remark-input');
+
+    const actualStock = inputStock ? (parseInt(inputStock.value, 10) || 0) : original.calculatedStock;
+    const calcStock = original.calculatedStock || 0;
+    const diff = actualStock - calcStock;
+    const remark = inputRemark ? inputRemark.value.trim() : '';
+
+    updatedItems.push({
+      ...original,
+      monthEndStock: actualStock,
+      diff: diff,
+      remark: remark,
+      status: '✏️ 職員確定済'
+    });
+  });
+
+  const payload = {
+    action: 'saveMonthlySnapshot',
+    yearMonth: ymStr,
+    items: updatedItems,
+    operator: operator,
+    closingStatus: '✏️ 職員確定済',
+    syncMaster: syncMaster,
+    updatedAt: new Date().toLocaleString('ja-JP')
+  };
+
+  showLoader(true);
+  try {
+    // 1. GASへ送信
+    if (!state.isUsingMock && GAS_API_URL !== 'YOUR_GAS_API_URL') {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.status !== 'success') {
+        throw new Error(data.message || 'スプレッドシートへの保存に失敗しました');
+      }
+    }
+
+    // 2. ローカルキャッシュに保存
+    localStorage.setItem('monthly_snapshot_' + ymStr, JSON.stringify({
+      yearMonth: ymStr,
+      items: updatedItems,
+      closingStatus: '✏️ 職員確定済',
+      operator: operator,
+      updatedAt: getJstDateString(new Date()) + ' ' + new Date().toLocaleTimeString('ja-JP')
+    }));
+
+    // 3. マスタ現在庫への同期反映（チェックされている場合）
+    if (syncMaster) {
+      updatedItems.forEach(uItem => {
+        const target = state.items.find(m => m.id === uItem.id);
+        if (target) {
+          target.stock = uItem.monthEndStock;
+        }
+      });
+      localStorage.setItem('cached_master_items', JSON.stringify(state.items));
+      renderItems();
+      renderMasterGrid();
+    }
+
+    // 4. stateの更新と画面再描画
+    state.dashboard.monthly.data = updatedItems;
+    state.dashboard.monthly.isLocked = true;
+    state.dashboard.monthly.status = '✏️ 職員確定済';
+    state.dashboard.monthly.lastUpdated = new Date().toLocaleDateString('ja-JP') + ' ' + new Date().toLocaleTimeString('ja-JP');
+    state.dashboard.monthly.operator = operator;
+
+    const modal = document.getElementById('modal-monthly-adjust');
+    if (modal) modal.style.display = 'none';
+
+    // バッジとタイムスタンプの更新
+    const badgeEl = document.getElementById('monthly-lock-badge');
+    if (badgeEl) {
+      badgeEl.className = 'monthly-status-badge status-confirmed';
+      badgeEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> ✏️ 職員確定済`;
+    }
+    const syncTimestampEl = document.getElementById('monthly-sync-timestamp');
+    if (syncTimestampEl) {
+      syncTimestampEl.textContent = `最終記録: ${state.dashboard.monthly.lastUpdated} (${operator})`;
+    }
+
+    renderMonthlyInventorySection();
+    showToast(`【${ymStr}度】の実棚卸数および月末在庫データをスプレッドシートへ確定保存しました！`, 'success');
+
+  } catch (err) {
+    console.error('Save monthly snapshot error:', err);
+    // オフラインまたは通信障害時でもローカルには保存
+    localStorage.setItem('monthly_snapshot_' + ymStr, JSON.stringify({
+      yearMonth: ymStr,
+      items: updatedItems,
+      closingStatus: '✏️ 職員確定済 (オフライン保存)',
+      operator: operator,
+      updatedAt: getJstDateString(new Date()) + ' ' + new Date().toLocaleTimeString('ja-JP')
+    }));
+    state.dashboard.monthly.data = updatedItems;
+    state.dashboard.monthly.isLocked = true;
+    renderMonthlyInventorySection();
+    
+    const modal = document.getElementById('modal-monthly-adjust');
+    if (modal) modal.style.display = 'none';
+
+    showToast(`オフライン保存完了: スプレッドシート通信エラー (${err.message})。端末内にデータを安全に退避しました。`, 'warning');
+  } finally {
+    showLoader(false);
+  }
+}
+
+/**
+ * 月次在庫データのCSV出力（Excel文字化け防止BOM付き）
+ */
+function exportMonthlyInventoryCsv() {
+  const currentYear = state.dashboard.monthly.selectedYear;
+  const currentMonth = state.dashboard.monthly.selectedMonth;
+  const ymStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const mode = state.dashboard.monthly.viewMode;
+
+  let csvContent = '\uFEFF'; // Excel日本語文字化け防止BOM
+
+  if (mode === 'monthly') {
+    const items = state.dashboard.monthly.data || [];
+    if (items.length === 0) {
+      showToast('出力対象のデータがありません。', 'warning');
+      return;
+    }
+
+    csvContent += '対象年月,品目ID,授与品名,カテゴリ,初穂料,当月授与数,当月授与額,計算在庫,実棚卸確定在庫,棚卸差異,昨年同月授与数,確定ステータス,調整理由メモ\r\n';
+    items.forEach(it => {
+      const dist = Number(it.monthlyDistributed || it.distributed || 0);
+      const sales = Number(it.monthlySales || (dist * (it.price || 0)));
+      const calcStock = Number(it.calculatedStock || 0);
+      const actualStock = Number(it.monthEndStock !== undefined ? it.monthEndStock : calcStock);
+      const diff = Number(it.diff || 0);
+      const prevDist = Number(it.prevYearDistributed || 0);
+      const remark = String(it.remark || '').replace(/"/g, '""');
+
+      csvContent += `"${ymStr}","${it.id}","${it.name}","${it.category}",${it.price},${dist},${sales},${calcStock},${actualStock},${diff},${prevDist},"${it.status || ''}","${remark}"\r\n`;
+    });
+
+    downloadCsvBlob(csvContent, `授与品月次在庫台帳_${ymStr}.csv`);
+  } else {
+    // 年間推移表マトリクスCSV
+    const itemsSource = (state.items && state.items.length > 0) ? state.items : MOCK_ITEMS;
+    csvContent += `品目ID,授与品名,区分,1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月,年間累計,最新在庫\r\n`;
+
+    const yearTxs = state.dashboard.rangeTransactions || [];
+    const monthDistMap = {};
+    yearTxs.forEach(tx => {
+      if (tx.status === '取消' || tx.status === 'キャンセル') return;
+      const dStr = String(tx.date || '');
+      if (!dStr.startsWith(String(currentYear))) return;
+      const m = parseInt(dStr.split('-')[1], 10);
+      const key = tx.itemId || tx.itemName;
+      const qty = Number(tx.quantity) || 0;
+      if (!monthDistMap[key]) monthDistMap[key] = {};
+      monthDistMap[key][m] = (monthDistMap[key][m] || 0) + qty;
+    });
+
+    itemsSource.forEach(it => {
+      const itMap = monthDistMap[it.id] || monthDistMap[it.name] || {};
+      let totalDist = 0;
+      const distVals = [];
+      const stockVals = [];
+
+      for (let m = 1; m <= 12; m++) {
+        const d = itMap[m] || 0;
+        totalDist += d;
+        distVals.push(d);
+
+        const ym = `${currentYear}-${String(m).padStart(2, '0')}`;
+        const savedSnap = localStorage.getItem('monthly_snapshot_' + ym);
+        let sVal = '';
+        if (savedSnap) {
+          try {
+            const p = JSON.parse(savedSnap);
+            const found = (p.items || []).find(x => x.id === it.id || x.name === it.name);
+            if (found) sVal = found.monthEndStock;
+          } catch (e) {}
+        }
+        stockVals.push(sVal);
+      }
+
+      csvContent += `"${it.id}","${it.name}","授与数",${distVals.join(',')},${totalDist},""\r\n`;
+      csvContent += `"${it.id}","${it.name}","月末在庫",${stockVals.join(',')},"",${it.stock || 0}\r\n`;
+    });
+
+    downloadCsvBlob(csvContent, `授与品年間月別推移表_${currentYear}年.csv`);
+  }
+
+  showToast('CSVファイルをダウンロードしました。', 'success');
+}
+
+function downloadCsvBlob(content, filename) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * 毎月自動締めフェイルセーフ処理（アプリ起動時に自動チェック）
+ */
+async function checkAutoMonthlyClose() {
+  const now = new Date();
+  // 前月 (YYYY-MM)
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevYmStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const autoCloseKey = 'monthly_auto_closed_' + prevYmStr;
+  if (localStorage.getItem(autoCloseKey) || localStorage.getItem('monthly_snapshot_' + prevYmStr)) {
+    return; // すでに前月は保存済み
+  }
+
+  console.log(`[月次自動締め] 前月 (${prevYmStr}) の自動保存処理を開始します...`);
+
+  // 前月のデータを動的集計して自動保存
+  const autoItems = computeDynamicMonthlyInventory(prevYmStr);
+  if (!autoItems || autoItems.length === 0) return;
+
+  const payload = {
+    action: 'saveMonthlySnapshot',
+    yearMonth: prevYmStr,
+    items: autoItems,
+    operator: '🤖 自動フェイルセーフ保存',
+    closingStatus: '🤖 自動保存済',
+    syncMaster: false
+  };
+
+  try {
+    if (!state.isUsingMock && GAS_API_URL !== 'YOUR_GAS_API_URL') {
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }).catch(err => console.warn('Background auto close upload warning:', err));
+    }
+
+    localStorage.setItem('monthly_snapshot_' + prevYmStr, JSON.stringify({
+      yearMonth: prevYmStr,
+      items: autoItems,
+      closingStatus: '🤖 自動保存済',
+      operator: '🤖 自動フェイルセーフ保存',
+      updatedAt: getJstDateString(new Date()) + ' ' + new Date().toLocaleTimeString('ja-JP')
+    }));
+
+    localStorage.setItem(autoCloseKey, 'true');
+    console.log(`[月次自動締め] 前月 (${prevYmStr}) をスプレッドシートへ自動保存しました。`);
+  } catch (err) {
+    console.warn('Auto close check error:', err);
+  }
+}
+
 

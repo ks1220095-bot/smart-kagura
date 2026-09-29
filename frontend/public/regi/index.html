@@ -203,6 +203,141 @@
           </div>
         </div>
 
+        <!-- 📅 月次在庫 ＆ 授与実績管理（月締め台帳・年間推移）セクション -->
+        <div class="dashboard-card full-width" id="dashboard-monthly-inventory-card" style="margin-top: 1.5rem;">
+          <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <h3 class="card-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-calendar-check" style="color: var(--color-gold);"></i> 月次在庫 ＆ 授与実績管理（月締め台帳）
+              </h3>
+              <span id="monthly-lock-badge" class="monthly-status-badge status-auto">
+                <i class="fa-solid fa-spinner fa-spin"></i> データ読込中
+              </span>
+            </div>
+
+            <!-- 右側コントローラー -->
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <!-- 表示モード切替（月別詳細 vs 年間推移表） -->
+              <div class="view-mode-toggle" id="monthly-view-mode-toggle">
+                <button type="button" id="btn-monthly-mode-month" class="view-mode-btn active" title="月別詳細表示">
+                  <i class="fa-solid fa-calendar-day"></i> 月別詳細
+                </button>
+                <button type="button" id="btn-monthly-mode-annual" class="view-mode-btn" title="年間推移表 (1〜12月)">
+                  <i class="fa-solid fa-table-cells"></i> 年間推移表
+                </button>
+              </div>
+
+              <!-- 年月セレクター（月別表示用） -->
+              <div id="monthly-ym-controls" style="display: flex; align-items: center; gap: 0.35rem;">
+                <select id="select-monthly-year" class="form-input" style="padding: 0.3rem 0.5rem; font-size: 0.85rem; font-weight: 700; height: 34px; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer;"></select>
+                <select id="select-monthly-month" class="form-input" style="padding: 0.3rem 0.5rem; font-size: 0.85rem; font-weight: 700; height: 34px; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer;">
+                  <option value="1">1月</option>
+                  <option value="2">2月</option>
+                  <option value="3">3月</option>
+                  <option value="4">4月</option>
+                  <option value="5">5月</option>
+                  <option value="6">6月</option>
+                  <option value="7">7月</option>
+                  <option value="8">8月</option>
+                  <option value="9">9月</option>
+                  <option value="10">10月</option>
+                  <option value="11">11月</option>
+                  <option value="12">12月</option>
+                </select>
+              </div>
+
+              <!-- 操作ボタン -->
+              <button type="button" id="btn-open-monthly-adjust" class="btn-primary" style="height: 34px; padding: 0 0.85rem; font-size: 0.82rem; display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; background-color: var(--color-vermilion);">
+                <i class="fa-solid fa-pen-to-square"></i> 実棚卸・数量調整
+              </button>
+              <button type="button" id="btn-export-monthly-csv" class="btn-secondary" style="height: 34px; padding: 0 0.75rem; font-size: 0.82rem; display: flex; align-items: center; gap: 0.35rem; white-space: nowrap;">
+                <i class="fa-solid fa-file-arrow-down"></i> CSV出力
+              </button>
+              <button type="button" id="btn-refresh-monthly" class="btn-secondary" title="最新同期" style="height: 34px; padding: 0 0.6rem; font-size: 0.82rem;">
+                <i class="fa-solid fa-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- フィルターバー（カテゴリ & 検索） -->
+          <div class="search-filter-bar" style="padding: 0.6rem 1rem; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); background: rgba(0,0,0,0.01); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div class="category-filters" id="monthly-category-filters" style="margin: 0;">
+              <button type="button" class="category-btn active" data-category="all">すべて</button>
+              <button type="button" class="category-btn" data-category="ofuda">お札</button>
+              <button type="button" class="category-btn" data-category="omamori">お守り</button>
+              <button type="button" class="category-btn" data-category="goshuin">御朱印</button>
+              <button type="button" class="category-btn" data-category="engimono">縁起物</button>
+              <button type="button" class="category-btn" data-category="other">その他</button>
+            </div>
+            
+            <div class="search-box" style="max-width: 260px; height: 32px;">
+              <i class="fa-solid fa-magnifying-glass search-icon" style="font-size: 0.8rem;"></i>
+              <input type="text" id="input-monthly-search" placeholder="品名・IDで絞り込み..." style="font-size: 0.82rem; padding: 0.2rem 0.5rem 0.2rem 2rem;">
+            </div>
+          </div>
+
+          <div class="card-body" style="padding: 0;">
+            <!-- ① 月別詳細テーブルビュー -->
+            <div id="monthly-detail-view" style="display: block;">
+              <div class="table-container" style="overflow-x: auto; max-height: 520px;">
+                <table class="dashboard-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+                  <thead style="position: sticky; top: 0; z-index: 10; background-color: #F8FAF8; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <tr style="border-bottom: 2px solid var(--color-border);">
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text);">授与品名 / ID</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text); text-align: center; width: 90px;">カテゴリ</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text); text-align: right; width: 90px;">初穂料</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-vermilion); text-align: right; width: 110px;">当月授与数</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text); text-align: right; width: 120px;">当月授与額</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-green); text-align: right; width: 120px;">月末確定在庫</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text-muted); text-align: center; width: 90px;">棚卸差異</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text); text-align: right; width: 120px;">昨年同月授与</th>
+                      <th style="padding: 0.65rem 0.8rem; font-weight: 700; color: var(--color-text); width: 160px;">翌年発注・在庫状況</th>
+                    </tr>
+                  </thead>
+                  <tbody id="monthly-inventory-table-body">
+                    <tr><td colspan="9" style="text-align: center; padding: 3rem; color: var(--color-text-muted);"><i class="fa-solid fa-circle-notch fa-spin"></i> 月次データを集計中...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ② 年間推移マトリクスビュー (1〜12月) -->
+            <div id="monthly-annual-view" style="display: none;">
+              <div class="table-container" style="overflow-x: auto; max-height: 550px;">
+                <table class="dashboard-table annual-matrix-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; white-space: nowrap;">
+                  <thead style="position: sticky; top: 0; z-index: 10; background-color: #F8FAF8; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <tr style="border-bottom: 2px solid var(--color-border);">
+                      <th style="padding: 0.6rem 0.75rem; position: sticky; left: 0; background: #F8FAF8; z-index: 11; min-width: 160px;">授与品名</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: center; width: 75px; position: sticky; left: 160px; background: #F8FAF8; z-index: 11;">区分</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">1月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">2月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">3月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">4月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">5月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">6月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">7月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">8月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">9月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">10月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">11月</th>
+                      <th style="padding: 0.6rem 0.5rem; text-align: right; width: 65px;">12月</th>
+                      <th style="padding: 0.6rem 0.75rem; text-align: right; font-weight: 700; width: 90px; background: rgba(63, 81, 69, 0.08);">年間累計</th>
+                      <th style="padding: 0.6rem 0.75rem; text-align: right; font-weight: 700; width: 90px; background: rgba(63, 81, 69, 0.04);">最新在庫</th>
+                    </tr>
+                  </thead>
+                  <tbody id="monthly-annual-table-body">
+                    <tr><td colspan="16" style="text-align: center; padding: 3rem; color: var(--color-text-muted);">年間データを読み込み中...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer" style="padding: 0.6rem 1rem; background: var(--color-light-gray); border-top: 1px solid var(--color-border); font-size: 0.8rem; color: var(--color-text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <span><i class="fa-solid fa-circle-info" style="color: var(--color-gold);"></i> 毎月末に自動でスプレッドシート（『月次在庫台帳』『年間月別推移表』）へ完全自動記録されます。</span>
+            <span id="monthly-sync-timestamp">最終更新: -</span>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -669,6 +804,68 @@
       </div>
       <div class="modal-footer" style="border-top:1px solid var(--color-border); padding: 0.85rem 1.5rem; text-align:right; background-color: var(--color-light-gray); display:flex; justify-content:flex-end; gap:0.5rem;">
         <button class="btn-secondary" id="btn-close-dashboard-detail-footer" style="padding: 0.45rem 1.2rem; border-radius: 6px; font-weight: 700; color: var(--color-text); border: 1px solid var(--color-border); background:white;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✏️ 月次在庫・実棚卸調整モーダル -->
+  <div id="modal-monthly-adjust" class="modal-overlay" style="display: none;">
+    <div class="modal-content form-modal" style="max-width: 960px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="background-color: var(--color-vermilion); display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-pen-to-square modal-title-icon" style="color: white;"></i>
+          <h3 style="margin: 0; color: white;">【<span id="modal-adjust-ym-title">2026年9月</span>度】実棚卸・数量調整</h3>
+        </div>
+        <button type="button" id="btn-close-monthly-adjust-x" class="modal-close-corner" style="position: static; color: white; background: none; border: none; font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem; overflow-y: auto; flex: 1;">
+        <div style="background-color: #FBF9F0; border-left: 4px solid var(--color-gold); padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; color: #5c4e33;">
+          <p style="margin: 0; font-weight: 600;"><i class="fa-solid fa-lightbulb"></i> 柔軟な棚卸実数カウント機能</p>
+          <p style="margin: 0.25rem 0 0 0;">システム計算在庫と授与所の実棚卸数に差がある場合は、「実棚卸数」を直接入力してください。過不足差異は自動計算され、確定保存するとスプレッドシート（台帳および推移表）へ即座に反映されます。</p>
+        </div>
+
+        <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+          <input type="text" id="input-modal-adjust-filter" placeholder="品名で絞り込み..." style="padding: 0.35rem 0.6rem; font-size: 0.85rem; border: 1px solid var(--color-border); border-radius: 4px; max-width: 250px; width: 100%;">
+          <span style="font-size: 0.8rem; color: var(--color-text-muted);">全 <strong id="modal-adjust-item-count">0</strong> 品目</span>
+        </div>
+
+        <div class="table-container" style="overflow-x: auto; max-height: 380px; border: 1px solid var(--color-border); border-radius: 6px;">
+          <table class="dashboard-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead style="position: sticky; top: 0; z-index: 5; background-color: var(--color-light-gray);">
+              <tr style="border-bottom: 2px solid var(--color-border);">
+                <th style="padding: 0.6rem; text-align: left;">品目名</th>
+                <th style="padding: 0.6rem; text-align: right; width: 80px;">初穂料</th>
+                <th style="padding: 0.6rem; text-align: right; width: 85px;">当月授与</th>
+                <th style="padding: 0.6rem; text-align: right; width: 95px;">計算在庫</th>
+                <th style="padding: 0.6rem; text-align: center; width: 105px;">実棚卸数</th>
+                <th style="padding: 0.6rem; text-align: center; width: 75px;">差異</th>
+                <th style="padding: 0.6rem; text-align: left; width: 180px;">理由メモ</th>
+              </tr>
+            </thead>
+            <tbody id="modal-adjust-table-body">
+              <!-- JSで動的に行生成 -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: var(--color-surface); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid var(--color-border);">
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; cursor: pointer; font-weight: 600; margin: 0; color: var(--color-text);">
+            <input type="checkbox" id="chk-adjust-sync-master" checked style="width: 16px; height: 16px; accent-color: var(--color-vermilion);">
+            今回の棚卸実数に合わせて、現在のレジ在庫マスタも自動同期する
+          </label>
+          <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+            <label for="input-adjust-operator" style="font-weight: 600; white-space: nowrap;">担当者名:</label>
+            <input type="text" id="input-adjust-operator" placeholder="例: 授与所 担当神職" style="padding: 0.3rem 0.5rem; font-size: 0.85rem; border: 1px solid var(--color-border); border-radius: 4px; width: 160px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 0.85rem 1.25rem; background: var(--color-light-gray); border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" id="btn-close-monthly-adjust" class="btn-secondary" style="padding: 0.5rem 1.2rem; font-size: 0.88rem;">戻る</button>
+        <button type="button" id="btn-save-monthly-adjust" class="btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.88rem; background-color: var(--color-green);">
+          <i class="fa-solid fa-cloud-arrow-up"></i> スプレッドシートへ確定保存
+        </button>
       </div>
     </div>
   </div>

@@ -3055,3 +3055,128 @@ body.loading-state {
 .detail-modal-table tr:hover {
   background-color: rgba(196, 162, 100, 0.02);
 }
+
+/* ==========================================================================
+   📅 月次在庫 ＆ 授与実績管理（月締め台帳・年間推移表）専用スタイル
+   ========================================================================== */
+.monthly-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.monthly-status-badge.status-auto {
+  background-color: rgba(63, 81, 69, 0.1);
+  color: var(--color-green);
+  border: 1px solid rgba(63, 81, 69, 0.2);
+}
+
+.monthly-status-badge.status-confirmed {
+  background-color: rgba(217, 75, 52, 0.1);
+  color: var(--color-vermilion);
+  border: 1px solid rgba(217, 75, 52, 0.25);
+}
+
+.monthly-status-badge.status-dynamic {
+  background-color: rgba(196, 162, 100, 0.12);
+  color: #7a6125;
+  border: 1px solid rgba(196, 162, 100, 0.3);
+}
+
+/* 年間推移表マトリクス用固定ヘッダー・カラム装飾 */
+.annual-matrix-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.annual-matrix-table tr.row-distributed {
+  background-color: #FFFFFF;
+}
+
+.annual-matrix-table tr.row-stock {
+  background-color: #FAFBF9;
+  border-bottom: 1.5px solid rgba(63, 81, 69, 0.15) !important;
+}
+
+.annual-matrix-table tr:hover td {
+  background-color: rgba(196, 162, 100, 0.04) !important;
+}
+
+.stock-tag-healthy {
+  color: var(--color-green);
+  background-color: rgba(63, 81, 69, 0.08);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.stock-tag-low {
+  color: #b56c00;
+  background-color: rgba(245, 166, 35, 0.12);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.stock-tag-out {
+  color: var(--color-vermilion);
+  background-color: rgba(217, 75, 52, 0.12);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.diff-positive {
+  color: var(--color-green);
+  font-weight: 700;
+}
+
+.diff-negative {
+  color: var(--color-vermilion);
+  font-weight: 700;
+}
+
+.diff-zero {
+  color: var(--color-text-muted);
+}
+
+.adjust-stock-input {
+  width: 75px;
+  text-align: center;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: 1.5px solid var(--color-border);
+  border-radius: 4px;
+  background: white;
+  color: var(--color-text);
+  transition: border-color 0.2s;
+}
+
+.adjust-stock-input:focus {
+  border-color: var(--color-vermilion);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(217, 75, 52, 0.15);
+}
+
+.adjust-remark-input {
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: white;
+  color: var(--color-text);
+}
+
