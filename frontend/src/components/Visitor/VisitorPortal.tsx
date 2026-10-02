@@ -290,6 +290,9 @@ export const VisitorPortal: React.FC = () => {
   const [syncingTalismans, setSyncingTalismans] = useState(false);
   const [talismanFilterCategory, setTalismanFilterCategory] = useState<'all' | 'ofuda' | 'omamori'>('all');
 
+  // Parking guide modal state
+  const [showParkingModal, setShowParkingModal] = useState(false);
+
   // Form editing mode states (For full reschedule updates)
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBookingId, setEditBookingId] = useState<number | null>(null);
@@ -2750,6 +2753,27 @@ export const VisitorPortal: React.FC = () => {
             <div style={{ fontSize: '0.85rem', color: 'var(--color-accent-gray)', lineHeight: '1.6' }}>
               <p>※団体・企業ご参拝の方は、ご予約確定後に準備等について神社担当者より折り返しのご連絡を差し上げます。</p>
               <p style={{ color: '#d3381c', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem' }}>※令和8年の七五三時期（11月中）と令和9年のお正月時期（1月中）と節分（2月3日）は、臨時の駐車場を設けることが出来ません。ご不便をお掛けいたしますが、境内裏手の駐車場（約12台駐車可能）が満車の際は、お近くのコインパーキングをご利用いただくか、公共交通機関をご利用の上、ご参拝賜りますよう伏してお願い申し上げます。</p>
+              <div style={{ margin: '0.4rem 0 0.6rem 0' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowParkingModal(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    backgroundColor: '#f0f9ff',
+                    border: '1px solid #7dd3fc',
+                    borderRadius: '4px',
+                    padding: '0.35rem 0.75rem',
+                    color: '#0369a1',
+                    fontWeight: 'bold',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🚗 駐車場・近隣コインパーキング案内図を見る（拡大表示）
+                </button>
+              </div>
               <p>※ご不明な点がございましたら、清瀧神社TEL 047-351-5417 までお問い合わせください。</p>
             </div>
           </div>
@@ -3691,6 +3715,28 @@ export const VisitorPortal: React.FC = () => {
                       </div>
                     </>
                   )}
+                  <div style={{ marginTop: '0.6rem', paddingTop: '0.5rem', borderTop: '1px dashed rgba(197, 160, 89, 0.4)', fontSize: '0.8rem', color: '#555', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <span>※お祓いを受けるお車は、神社正面の鳥居をくぐり参道に停車してください。</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowParkingModal(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0284c7',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        padding: 0,
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      🚗 駐車場・近隣コインパーキング案内図を見る
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -4894,6 +4940,105 @@ export const VisitorPortal: React.FC = () => {
                     ※【団体祈祷限定】予約が完了次第、お申込内容を確認の上、担当より折り返し確認のご連絡を差し上げます。
                   </p>
                 )}
+
+                {/* お車でご参拝される皆様へ（駐車場・近隣コインパーキング案内） */}
+                <div style={{
+                  marginTop: '1.25rem',
+                  padding: '1rem 1.15rem',
+                  backgroundColor: '#f8fafc',
+                  border: '1.5px solid #0284c7',
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 8px rgba(2, 132, 199, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0369a1', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>🚗</span>
+                      <span>お車でご参拝される皆様へ（清瀧神社 駐車場・コインパーキング案内）</span>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                      境内裏手 無料12台
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    {/* サムネイル画像プレビュー */}
+                    <div 
+                      onClick={() => setShowParkingModal(true)}
+                      style={{ 
+                        flex: '0 0 auto', 
+                        width: '130px', 
+                        cursor: 'pointer', 
+                        position: 'relative',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        border: '1px solid #cbd5e1',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.06)'
+                      }}
+                      title="クリックして拡大表示"
+                    >
+                      <img 
+                        src="/parking_guide.jpg" 
+                        alt="清瀧神社 駐車場・近隣コインパーキング案内図" 
+                        style={{ width: '100%', height: 'auto', display: 'block' }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'rgba(3, 105, 161, 0.85)',
+                        color: '#ffffff',
+                        fontSize: '0.65rem',
+                        textAlign: 'center',
+                        padding: '0.2rem 0',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.2rem'
+                      }}>
+                        <span>🔍 拡大表示</span>
+                      </div>
+                    </div>
+
+                    {/* 要点テキスト説明 */}
+                    <div style={{ flex: '1 1 250px', fontSize: '0.82rem', color: '#334155', lineHeight: '1.6' }}>
+                      <p style={{ margin: '0 0 0.35rem 0', fontWeight: 'bold', color: '#1e293b' }}>
+                        境内裏手に無料駐車場（約12台駐車可能）がございます。
+                      </p>
+                      <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.78rem', color: '#64748b' }}>
+                        ※神社正面より向かって左手の細い路地を通ると、境内裏手の駐車場に進入いただけます。
+                      </p>
+                      <p style={{ margin: '0 0 0.45rem 0', fontSize: '0.8rem', color: '#b91c1c', fontWeight: 'bold' }}>
+                        ⚠️ 神社前の通りは片側一車線のため、路上駐車は緊急車両の通行を妨げますので絶対におやめください。
+                      </p>
+                      <p style={{ margin: '0 0 0.7rem 0', fontSize: '0.78rem', color: '#475569' }}>
+                        満車の際は、徒歩約2分〜6分圏内に多数のコインパーキングがございます。料金や空車確認QRコード付きの全体案内図をご確認ください。
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowParkingModal(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          backgroundColor: '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.82rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)'
+                        }}
+                      >
+                        <span>🗺️</span>
+                        <span>駐車場・近隣コインパーキング案内図を見る（拡大表示）</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -4952,6 +5097,30 @@ export const VisitorPortal: React.FC = () => {
                     }}
                   >
                     {faq.a}
+                    {faq.q.includes('駐車場') && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowParkingModal(true)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            backgroundColor: '#0284c7',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)'
+                          }}
+                        >
+                          🚗 駐車場・近隣コインパーキング案内図を見る（拡大表示）
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </details>
               ))}
@@ -5657,6 +5826,30 @@ export const VisitorPortal: React.FC = () => {
                     }}
                   >
                     {faq.a}
+                    {faq.q.includes('駐車場') && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowParkingModal(true)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            backgroundColor: '#0284c7',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)'
+                          }}
+                        >
+                          🚗 駐車場・近隣コインパーキング案内図を見る（拡大表示）
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </details>
               ))}
@@ -5828,6 +6021,145 @@ export const VisitorPortal: React.FC = () => {
           <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.75rem' }}>
             ※通信状況により、完了まで数秒かかる場合があります。
           </p>
+        </div>
+      </div>
+    )}
+
+    {/* 駐車場・近隣コインパーキング案内図 拡大モーダル */}
+    {showParkingModal && (
+      <div 
+        onClick={() => setShowParkingModal(false)}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999,
+          padding: '1rem',
+          overflowY: 'auto'
+        }}
+      >
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="card washi-bg"
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '1.25rem',
+            border: '2px solid var(--color-gold)',
+            borderRadius: '8px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+            backgroundColor: '#ffffff'
+          }}
+        >
+          {/* モーダルヘッダー */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1.5px solid #e2e8f0',
+            paddingBottom: '0.6rem',
+            marginBottom: '0.75rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-urushi)', fontWeight: 'bold', fontSize: '1rem', fontFamily: 'var(--font-serif)' }}>
+              <span>🚗</span>
+              <span>清瀧神社 駐車場・近隣コインパーキング案内図</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowParkingModal(false)}
+              style={{
+                background: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#475569',
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                transition: 'all 0.15s'
+              }}
+              title="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* 注意事項バナー */}
+          <div style={{
+            backgroundColor: '#fff1f2',
+            border: '1px solid #fecdd3',
+            color: '#9f1239',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '4px',
+            fontSize: '0.78rem',
+            lineHeight: '1.5',
+            marginBottom: '0.75rem'
+          }}>
+            <strong>【お願い】</strong>神社前の通りは片側一車線のため、路上駐車は緊急車両の通行を妨げますので絶対におやめください。境内裏手に無料駐車場（約12台）がございますが、満車の際は以下の近隣コインパーキングをご利用ください。
+          </div>
+
+          {/* 案内図画像（スクロール・高解像度表示） */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'auto',
+            textAlign: 'center',
+            backgroundColor: '#f8fafc',
+            borderRadius: '4px',
+            border: '1px solid #e2e8f0',
+            padding: '0.5rem'
+          }}>
+            <img 
+              src="/parking_guide.jpg" 
+              alt="清瀧神社裏手駐車場が満車の際は、近隣のコインパーキングをご利用ください" 
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                borderRadius: '2px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                display: 'inline-block'
+              }}
+            />
+          </div>
+
+          {/* モーダルフッター */}
+          <div style={{
+            marginTop: '0.75rem',
+            paddingTop: '0.5rem',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.5rem'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              ※各パーキングの空車・料金は現地または掲載QRコードよりご確認ください
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowParkingModal(false)}
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 1rem', fontSize: '0.85rem' }}
+            >
+              閉じる
+            </button>
+          </div>
         </div>
       </div>
     )}
