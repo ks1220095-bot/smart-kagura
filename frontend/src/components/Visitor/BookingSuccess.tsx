@@ -118,7 +118,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
             </button>
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', margin: '0.5rem 0 0 0' }}>
-            ※当日の社務所受付や、オンラインでのご予約照会・変更・キャンセルの際に必要となります。
+            ※オンラインでのご予約照会・変更・キャンセルの際に必要となります。
           </p>
         </div>
       )}
