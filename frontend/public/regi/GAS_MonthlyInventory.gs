@@ -643,3 +643,111 @@ function handleSaveAnnualOrderPlan(postData) {
     savedCount: newRows.length
   })).setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * ==========================================
+ * 取引明細（項目・数量）の個別修正API (POST action: 'updateTransactionItems')
+ * ==========================================
+ * ※既存の doPost(e) の switch/if 分岐に以下を追加してください:
+ *   if (action === 'updateTransactionItems') {
+ *     return handleUpdateTransactionItems(data);
+ *   }
+ */
+function handleUpdateTransactionItems(postData) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+  var masterSheet = ss.getSheetByName(SHEET_MASTER);
+  
+  var txId = postData.transactionId;
+  var newItems = postData.items || [];
+  var newTotal = Number(postData.total) || 0;
+  var stockDeltas = postData.stockDeltas || {}; // { 'M-01': deltaQty, ... } (delta = newQty - oldQty)
+  var note = postData.note || '';
+  var nowStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+  
+  if (!txId) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: '取引IDが指定されていません。'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 1. 取引履歴シートの更新
+  var txUpdated = false;
+  if (txSheet && txSheet.getLastRow() > 1) {
+    var txData = txSheet.getDataRange().getValues();
+    var txHeaders = txData[0];
+    
+    var idCol = -1, detailsCol = -1, totalCol = -1, statusCol = -1, noteCol = -1;
+    for (var c = 0; c < txHeaders.length; c++) {
+      var h = String(txHeaders[c]).trim();
+      if (h === '取引ID' || h === 'ID') idCol = c;
+      else if (h === '内訳' || h === '商品内訳' || h === '授与品内訳' || h === 'items') detailsCol = c;
+      else if (h === '合計' || h === '合計初穂料' || h === '売上' || h === 'total') totalCol = c;
+      else if (h === '状態' || h === 'ステータス' || h === 'status') statusCol = c;
+      else if (h === '備考' || h === 'メモ' || h === 'note') noteCol = c;
+    }
+    
+    // 内訳文字列の生成 (例: "おみくじ x 2, 交通安全お守り x 1")
+    var detailsStr = newItems.map(function(item) {
+      return item.name + ' x ' + item.quantity;
+    }).join(', ');
+    if (newItems.length === 0) detailsStr = '（全品取消）';
+
+    for (var r = 1; r < txData.length; r++) {
+      if (String(txData[r][idCol]) === String(txId)) {
+        var rowNum = r + 1;
+        if (detailsCol >= 0) txSheet.getRange(rowNum, detailsCol + 1).setValue(detailsStr);
+        if (totalCol >= 0) txSheet.getRange(rowNum, totalCol + 1).setValue(newTotal);
+        if (statusCol >= 0) {
+          var newStatus = newItems.length === 0 ? '取消' : '有効(修正済)';
+          txSheet.getRange(rowNum, statusCol + 1).setValue(newStatus);
+        }
+        if (noteCol >= 0) {
+          var existingNote = String(txData[r][noteCol] || '');
+          var logEntry = '[' + nowStr + ' 修正: ' + (note || '明細変更') + ']';
+          var fullNote = existingNote ? existingNote + ' / ' + logEntry : logEntry;
+          txSheet.getRange(rowNum, noteCol + 1).setValue(fullNote);
+        }
+        txUpdated = true;
+        break;
+      }
+    }
+  }
+
+  // 2. 授与品マスタの在庫連動更新
+  // delta = newQty - oldQty (増えたら在庫減らす -, 減ったら在庫増やす +)
+  if (masterSheet && masterSheet.getLastRow() > 1 && Object.keys(stockDeltas).length > 0) {
+    var mData = masterSheet.getDataRange().getValues();
+    var mHeaders = mData[0];
+    var mIdCol = -1, mNameCol = -1, mStockCol = -1;
+    for (var mc = 0; mc < mHeaders.length; mc++) {
+      var mh = String(mHeaders[mc]).trim();
+      if (mh === 'ID' || mh === '商品ID') mIdCol = mc;
+      else if (mh === '商品名' || mh === '授与品名' || mh === '名称') mNameCol = mc;
+      else if (mh === '在庫数' || mh === '在庫') mStockCol = mc;
+    }
+
+    if (mStockCol >= 0) {
+      for (var mr = 1; mr < mData.length; mr++) {
+        var itemId = String(mData[mr][mIdCol] || '');
+        var itemName = String(mData[mr][mNameCol] || '');
+        var delta = Number(stockDeltas[itemId] !== undefined ? stockDeltas[itemId] : stockDeltas[itemName]) || 0;
+        if (delta !== 0) {
+          var currentStock = Number(mData[mr][mStockCol]) || 0;
+          var newStock = Math.max(0, currentStock - delta);
+          masterSheet.getRange(mr + 1, mStockCol + 1).setValue(newStock);
+        }
+      }
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({
+    status: 'success',
+    message: '取引明細および在庫数を更新しました。',
+    transactionId: txId,
+    newTotal: newTotal,
+    txUpdated: txUpdated
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+

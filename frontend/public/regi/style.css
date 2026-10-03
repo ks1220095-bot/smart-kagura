@@ -3267,4 +3267,133 @@ body.loading-state {
   font-size: 0.78rem;
 }
 
+/* ==========================================
+   当日取引履歴：項目別明細修正モーダル用スタイル
+   ========================================== */
+.btn-edit-tx {
+  padding: 0.28rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid var(--color-green);
+  color: var(--color-green);
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-edit-tx:hover:not(:disabled) {
+  background: var(--color-green);
+  color: white;
+}
+
+.btn-edit-tx:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.edit-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  background: #f8f9fa;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.btn-qty-step {
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  background: white;
+  color: var(--color-dark);
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.btn-qty-step:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.btn-qty-step:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.edit-qty-input {
+  width: 44px;
+  height: 26px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+}
+
+.edit-qty-input:focus {
+  outline: none;
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 2px rgba(63, 81, 69, 0.2);
+}
+
+.btn-remove-tx-item {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid rgba(217, 75, 52, 0.4);
+  background: white;
+  color: var(--color-vermilion);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-remove-tx-item:hover {
+  background: var(--color-vermilion);
+  color: white;
+}
+
+/* 差額精算バッジ状態 */
+.diff-refund {
+  background-color: #fff2f0;
+  border: 1.5px solid #ff4d4f;
+  color: #cf1322;
+}
+
+.diff-additional {
+  background-color: #f6ffed;
+  border: 1.5px solid #52c41a;
+  color: #389e0d;
+}
+
+.diff-zero {
+  background-color: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  color: #595959;
+}
+
+.status-badge.modified {
+  background-color: rgba(63, 81, 69, 0.15);
+  color: var(--color-green);
+  border: 1px solid rgba(63, 81, 69, 0.3);
+  font-weight: 700;
+}
+
+
 

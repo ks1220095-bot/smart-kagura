@@ -297,6 +297,11 @@ const state = {
   cancelTargetTxId: null,
   isCheckingOut: false, // 2重会計防止用ガードフラグ
   
+  // 取引明細（項目・数量）個別修正用ステート
+  editingTxId: null,
+  editingTxItems: [],
+  editingTxOldTotal: 0,
+  
   // 報告書書式設定
   reportFormat: 'submission', // 'submission' (提出用B5) | 'standard' (通常A4)
   lastReportData: null,
@@ -746,6 +751,17 @@ function setupEventListeners() {
   });
 
   DOM.btnCancelConfirmYes.addEventListener('click', executeCancelTransaction);
+
+  // 取引明細（項目・数量）個別修正モーダルのイベントリスナー
+  const btnCloseTxEdit = document.getElementById('btn-close-tx-edit');
+  const btnEditTxCancel = document.getElementById('btn-edit-tx-cancel');
+  const btnEditTxAddItem = document.getElementById('btn-edit-tx-add-item');
+  const btnEditTxSave = document.getElementById('btn-edit-tx-save');
+
+  if (btnCloseTxEdit) btnCloseTxEdit.addEventListener('click', closeTxItemEditModal);
+  if (btnEditTxCancel) btnEditTxCancel.addEventListener('click', closeTxItemEditModal);
+  if (btnEditTxAddItem) btnEditTxAddItem.addEventListener('click', addTxItemToEditing);
+  if (btnEditTxSave) btnEditTxSave.addEventListener('click', saveTxItemChanges);
 
   DOM.btnRefreshHistory.addEventListener('click', fetchTransactions);
   if (DOM.historyGroupSelect) {
@@ -2347,7 +2363,8 @@ function renderHistoryTable() {
       `;
 
       const isCancelled = tx.status === '取消';
-      const statusClass = isCancelled ? 'cancelled' : 'active';
+      const isModified = tx.status && tx.status.includes('修正');
+      const statusClass = isCancelled ? 'cancelled' : (isModified ? 'modified' : 'active');
       
       row.innerHTML = `
         <td>${formatLocalTimestamp(tx.timestamp)}</td>
@@ -2356,9 +2373,14 @@ function renderHistoryTable() {
         <td style="font-family: var(--font-serif); font-weight:600; color:var(--color-vermilion);">${tx.total.toLocaleString()} 円</td>
         <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
         <td>
-          <button class="btn-cancel-tx" ${isCancelled ? 'disabled' : ''} onclick="confirmCancelTransaction('${tx.transactionId}'); event.stopPropagation();">
-            <i class="fa-solid fa-trash-can"></i> 取消
-          </button>
+          <div style="display: inline-flex; gap: 0.35rem; justify-content: center; align-items: center;">
+            <button class="btn-edit-tx" ${isCancelled ? 'disabled' : ''} onclick="openTxItemEditModal('${tx.transactionId}'); event.stopPropagation();" title="授与品の項目・数量を修正">
+              <i class="fa-solid fa-pen-to-square"></i> 修正
+            </button>
+            <button class="btn-cancel-tx" ${isCancelled ? 'disabled' : ''} onclick="confirmCancelTransaction('${tx.transactionId}'); event.stopPropagation();" title="取引全体を取り消し">
+              <i class="fa-solid fa-trash-can"></i> 取消
+            </button>
+          </div>
         </td>
       `;
       
@@ -2388,9 +2410,16 @@ function renderHistoryTable() {
       detailRow.innerHTML = `
         <td colspan="6">
           <div class="tx-detail-container">
-            <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; font-weight:700; color:#5c4e33;">
-              <i class="fa-solid fa-clipboard-list" style="margin-right:0.35rem; color:var(--color-gold);"></i> 授与品内訳明細
-            </h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+              <h4 style="margin: 0; font-size: 0.9rem; font-weight:700; color:#5c4e33;">
+                <i class="fa-solid fa-clipboard-list" style="margin-right:0.35rem; color:var(--color-gold);"></i> 授与品内訳明細
+              </h4>
+              ${!isCancelled ? `
+                <button type="button" class="btn-edit-tx" onclick="openTxItemEditModal('${tx.transactionId}'); event.stopPropagation();" style="padding: 0.25rem 0.65rem; font-size: 0.8rem;">
+                  <i class="fa-solid fa-pen-to-square"></i> この取引の明細を修正
+                </button>
+              ` : ''}
+            </div>
             <table class="detail-mini-table">
               <thead>
                 <tr>
@@ -2496,6 +2525,303 @@ function toggleAllTxDetails(open) {
 window.toggleHistoryGroup = toggleHistoryGroup;
 window.toggleTxDetails = toggleTxDetails;
 window.toggleAllTxDetails = toggleAllTxDetails;
+
+// ==========================================
+// 当日取引履歴：項目別明細（授与品・数量）修正ロジック
+// ==========================================
+function openTxItemEditModal(txId) {
+  if (!txId) return;
+  const tx = state.transactions.find(t => t.transactionId === txId);
+  if (!tx) {
+    showToast('対象の取引が見つかりません。', 'error');
+    return;
+  }
+  if (tx.status === '取消') {
+    showToast('取消済の取引は修正できません。', 'warning');
+    return;
+  }
+
+  state.editingTxId = txId;
+  // ディープコピーして編集バッファを作成
+  state.editingTxItems = (tx.items || []).map(it => ({
+    id: it.id,
+    name: it.name,
+    price: Number(it.price) || 0,
+    quantity: Number(it.quantity) || 1
+  }));
+  state.editingTxOldTotal = Number(tx.total) || 0;
+
+  // 基本情報バナーの更新
+  const idLabel = document.getElementById('edit-tx-id-label');
+  const timeLabel = document.getElementById('edit-tx-timestamp');
+  const oldTotalLabel = document.getElementById('edit-tx-old-total');
+  if (idLabel) idLabel.textContent = tx.transactionId;
+  if (timeLabel) timeLabel.textContent = formatLocalTimestamp(tx.timestamp);
+  if (oldTotalLabel) oldTotalLabel.textContent = '¥' + state.editingTxOldTotal.toLocaleString();
+
+  // 品目追加プルダウンの初期化
+  const selectEl = document.getElementById('edit-tx-add-item-select');
+  if (selectEl) {
+    selectEl.innerHTML = '';
+    const sortedItems = [...state.items].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    sortedItems.forEach(item => {
+      if (item.display === false) return;
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = `${item.name} (¥${item.price.toLocaleString()}) [現在庫: ${item.stock}]`;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  renderEditTxItemsTable();
+
+  const modal = document.getElementById('modal-tx-item-edit');
+  if (modal) modal.style.display = 'flex';
+}
+
+function renderEditTxItemsTable() {
+  const tbody = document.getElementById('edit-tx-items-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (state.editingTxItems.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--color-vermilion); font-weight: 700; background: #fff5f5;">
+          <i class="fa-solid fa-triangle-exclamation"></i> すべての品目が削除されました。<br>
+          <span style="font-size: 0.82rem; font-weight: normal; color: var(--color-text-muted);">このまま確定保存すると、取引全体が「取消（全額返金）」として処理されます。</span>
+        </td>
+      </tr>
+    `;
+    recalculateTxEditTotals();
+    return;
+  }
+
+  state.editingTxItems.forEach(item => {
+    const subtotal = item.price * item.quantity;
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--color-border)';
+
+    tr.innerHTML = `
+      <td style="padding: 0.6rem; text-align: left; font-weight: 600;">
+        ${item.name}
+      </td>
+      <td style="padding: 0.6rem; text-align: right; color: var(--color-text-muted); font-feature-settings: 'tnum';">
+        ¥${item.price.toLocaleString()}
+      </td>
+      <td style="padding: 0.6rem; text-align: center;">
+        <div class="edit-qty-stepper">
+          <button type="button" class="btn-qty-step" onclick="changeTxItemQty('${item.id}', -1)" ${item.quantity <= 1 ? 'disabled style="opacity:0.3;"' : ''}>-</button>
+          <input type="number" min="1" max="999" class="edit-qty-input" value="${item.quantity}" onchange="changeTxItemQtyDirect('${item.id}', this.value)">
+          <button type="button" class="btn-qty-step" onclick="changeTxItemQty('${item.id}', 1)">+</button>
+        </div>
+      </td>
+      <td style="padding: 0.6rem; text-align: right; font-weight: 700; color: var(--color-vermilion); font-feature-settings: 'tnum';">
+        ¥${subtotal.toLocaleString()}
+      </td>
+      <td style="padding: 0.6rem; text-align: center;">
+        <button type="button" class="btn-remove-tx-item" onclick="removeTxItem('${item.id}')" title="この品目を削除">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  recalculateTxEditTotals();
+}
+
+function changeTxItemQty(itemId, delta) {
+  const item = state.editingTxItems.find(it => it.id === itemId);
+  if (!item) return;
+  item.quantity = Math.max(1, item.quantity + delta);
+  renderEditTxItemsTable();
+}
+
+function changeTxItemQtyDirect(itemId, rawVal) {
+  const item = state.editingTxItems.find(it => it.id === itemId);
+  if (!item) return;
+  const val = parseInt(rawVal) || 1;
+  item.quantity = Math.max(1, Math.min(999, val));
+  renderEditTxItemsTable();
+}
+
+function removeTxItem(itemId) {
+  state.editingTxItems = state.editingTxItems.filter(it => it.id !== itemId);
+  renderEditTxItemsTable();
+}
+
+function addTxItemToEditing() {
+  const selectEl = document.getElementById('edit-tx-add-item-select');
+  if (!selectEl) return;
+  const selectedId = selectEl.value;
+  if (!selectedId) return;
+
+  const masterItem = state.items.find(it => it.id === selectedId);
+  if (!masterItem) return;
+
+  const existing = state.editingTxItems.find(it => it.id === selectedId);
+  if (existing) {
+    existing.quantity += 1;
+    showToast(`「${masterItem.name}」の数量を +1 しました。`, 'info');
+  } else {
+    state.editingTxItems.push({
+      id: masterItem.id,
+      name: masterItem.name,
+      price: masterItem.price,
+      quantity: 1
+    });
+    showToast(`「${masterItem.name}」を追加しました。`, 'info');
+  }
+
+  renderEditTxItemsTable();
+}
+
+function recalculateTxEditTotals() {
+  const newTotal = state.editingTxItems.reduce((sum, it) => sum + (it.price * it.quantity), 0);
+  const oldTotal = state.editingTxOldTotal;
+  const diff = newTotal - oldTotal;
+
+  const newTotalEl = document.getElementById('edit-tx-new-total');
+  const diffBadgeEl = document.getElementById('edit-tx-diff-badge');
+  if (newTotalEl) newTotalEl.textContent = '¥' + newTotal.toLocaleString();
+
+  if (!diffBadgeEl) return;
+
+  if (diff < 0) {
+    const refund = Math.abs(diff);
+    diffBadgeEl.className = 'diff-refund';
+    diffBadgeEl.innerHTML = `<i class="fa-solid fa-hand-holding-dollar"></i> 参拝者へ差額 <strong>¥${refund.toLocaleString()}</strong> を返金してください`;
+  } else if (diff > 0) {
+    diffBadgeEl.className = 'diff-additional';
+    diffBadgeEl.innerHTML = `<i class="fa-solid fa-coins"></i> 参拝者から差額 <strong>¥${diff.toLocaleString()}</strong> を追加受領してください`;
+  } else {
+    diffBadgeEl.className = 'diff-zero';
+    diffBadgeEl.innerHTML = `<i class="fa-solid fa-check"></i> 初穂料の差額はありません（同額修正）`;
+  }
+}
+
+async function saveTxItemChanges() {
+  const txId = state.editingTxId;
+  if (!txId) return;
+  const tx = state.transactions.find(t => t.transactionId === txId);
+  if (!tx) return;
+
+  // もし品目がゼロの場合
+  if (state.editingTxItems.length === 0) {
+    if (confirm('すべての品目が削除されています。この取引全体を「取消」として処理しますか？')) {
+      closeTxItemEditModal();
+      state.cancelTargetTxId = txId;
+      executeCancelTransaction();
+    }
+    return;
+  }
+
+  const oldTotal = state.editingTxOldTotal;
+  const newTotal = state.editingTxItems.reduce((sum, it) => sum + (it.price * it.quantity), 0);
+  const diff = newTotal - oldTotal;
+
+  // 1. 各品目の数量差分 (delta = newQty - oldQty) を計算
+  const oldMap = {};
+  (tx.items || []).forEach(it => {
+    oldMap[it.id] = (oldMap[it.id] || 0) + it.quantity;
+  });
+
+  const newMap = {};
+  state.editingTxItems.forEach(it => {
+    newMap[it.id] = (newMap[it.id] || 0) + it.quantity;
+  });
+
+  const allItemIds = new Set([...Object.keys(oldMap), ...Object.keys(newMap)]);
+  const stockDeltas = {};
+  const changeSummaryList = [];
+
+  allItemIds.forEach(id => {
+    const oldQty = oldMap[id] || 0;
+    const newQty = newMap[id] || 0;
+    const delta = newQty - oldQty;
+    if (delta !== 0) {
+      stockDeltas[id] = delta;
+      const targetItem = state.items.find(m => m.id === id);
+      const itemName = targetItem ? targetItem.name : id;
+      changeSummaryList.push(`${itemName} (${oldQty}体 ➡ ${newQty}体)`);
+
+      // ローカルマスタの在庫数を連動調整 (delta > 0 なら在庫を減らし、delta < 0 なら在庫を戻す)
+      if (targetItem) {
+        targetItem.stock = Math.max(0, targetItem.stock - delta);
+      }
+    }
+  });
+
+  const changeNote = changeSummaryList.join('、 ');
+
+  // 2. 取引データを更新
+  tx.items = JSON.parse(JSON.stringify(state.editingTxItems));
+  tx.total = newTotal;
+  tx.status = '有効(修正済)';
+  tx.note = tx.note ? `${tx.note} [修正: ${changeNote}]` : `[修正: ${changeNote}]`;
+
+  // ローカルキャッシュの永続化
+  try {
+    localStorage.setItem('cached_master_items', JSON.stringify(state.items));
+  } catch (e) {}
+
+  // 3. UIの即時再描画（ローカル反映）
+  closeTxItemEditModal();
+  renderItems();
+  renderMasterGrid();
+  renderHistoryTable();
+  loadDashboardData(true);
+
+  let message = `取引 ${txId} の明細を修正しました。`;
+  if (diff < 0) {
+    message += `（参拝者へ ¥${Math.abs(diff).toLocaleString()} 返金）`;
+  } else if (diff > 0) {
+    message += `（追加受領 ¥${diff.toLocaleString()}）`;
+  }
+  showToast(message, 'success');
+
+  // 4. スプレッドシート（GAS）への同期通信
+  if (!state.isUsingMock && GAS_API_URL !== 'YOUR_GAS_API_URL') {
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'updateTransactionItems',
+          transactionId: txId,
+          items: tx.items,
+          total: newTotal,
+          stockDeltas: stockDeltas,
+          note: changeNote
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        console.log('[GAS Sync] Transaction items updated on spreadsheet:', txId);
+      } else {
+        console.warn('[GAS Sync Error] Update transaction items returned:', data.message);
+      }
+    } catch (err) {
+      console.warn('[GAS Sync Error] Failed to connect to GAS for transaction update:', err);
+      showToast('スプレッドシート通信エラー（端末内の変更は正常に保存されました）。', 'warning');
+    }
+  }
+}
+
+function closeTxItemEditModal() {
+  const modal = document.getElementById('modal-tx-item-edit');
+  if (modal) modal.style.display = 'none';
+  state.editingTxId = null;
+  state.editingTxItems = [];
+}
+
+window.openTxItemEditModal = openTxItemEditModal;
+window.changeTxItemQty = changeTxItemQty;
+window.changeTxItemQtyDirect = changeTxItemQtyDirect;
+window.removeTxItem = removeTxItem;
+window.closeTxItemEditModal = closeTxItemEditModal;
+window.addTxItemToEditing = addTxItemToEditing;
+window.saveTxItemChanges = saveTxItemChanges;
 
 // 日次報告書 (社入表記への統一 ＆ 押印欄の削除)
 async function generateDailyReport() {
