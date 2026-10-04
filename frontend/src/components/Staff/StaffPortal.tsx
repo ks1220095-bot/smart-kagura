@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key, Coins, AlertCircle } from 'lucide-react';
 import type { Booking } from '../../types';
 import { getApiUrl } from '../../config/api';
-import Dashboard, { ScheduleInnerPrint, DailyReportPrint, MonthlyReportPrint } from './Dashboard';
+import Dashboard, { ScheduleInnerPrint, DailyReportPrint, MonthlyReportPrint, type ScheduleSortMode } from './Dashboard';
 import CalendarView from './CalendarView';
 import BookingsList from './BookingsList';
 import SettingsView from './SettingsView';
@@ -200,7 +200,11 @@ export const StaffPortal: React.FC = () => {
   const [selectedReceipt, setSelectedReceipt] = useState<Booking | null>(null);
   const [selectedBulkYomifuda, setSelectedBulkYomifuda] = useState<Booking[] | null>(null);
   const [selectedBulkReceipt, setSelectedBulkReceipt] = useState<Booking[] | null>(null);
-  const [selectedSchedulePrintDate, setSelectedSchedulePrintDate] = useState<string | null>(null);
+  const [selectedSchedulePrint, setSelectedSchedulePrint] = useState<{
+    date: string;
+    initialBookings?: Booking[];
+    initialSortMode?: ScheduleSortMode;
+  } | null>(null);
   const [selectedDailyReportPrintDate, setSelectedDailyReportPrintDate] = useState<string | null>(null);
   const [selectedMonthlyReportPrintMonth, setSelectedMonthlyReportPrintMonth] = useState<string | null>(null);
 
@@ -2052,7 +2056,9 @@ export const StaffPortal: React.FC = () => {
           {activeTab === 'dashboard' && (
             <Dashboard 
               bookings={bookings} 
-              onSelectSchedulePrint={setSelectedSchedulePrintDate}
+              onSelectSchedulePrint={(date, initialBookings, initialSortMode) => {
+                setSelectedSchedulePrint({ date, initialBookings, initialSortMode });
+              }}
               onSelectDailyReportPrint={setSelectedDailyReportPrintDate}
               onSelectMonthlyReportPrint={setSelectedMonthlyReportPrintMonth}
               onRefreshBookings={fetchBookings}
@@ -2063,7 +2069,7 @@ export const StaffPortal: React.FC = () => {
             <CalendarView 
               bookings={bookings} 
               onRefreshBookings={fetchBookings}
-              onSelectSchedulePrint={setSelectedSchedulePrintDate}
+              onSelectSchedulePrint={(date) => setSelectedSchedulePrint({ date })}
               onSelectDailyReportPrint={setSelectedDailyReportPrintDate}
             />
           )}
@@ -2111,11 +2117,13 @@ export const StaffPortal: React.FC = () => {
           />
         )}
 
-        {selectedSchedulePrintDate && (
+        {selectedSchedulePrint && (
           <ScheduleInnerPrint 
             bookings={bookings} 
-            date={selectedSchedulePrintDate} 
-            onClose={() => setSelectedSchedulePrintDate(null)} 
+            date={selectedSchedulePrint.date} 
+            initialBookings={selectedSchedulePrint.initialBookings}
+            initialSortMode={selectedSchedulePrint.initialSortMode}
+            onClose={() => setSelectedSchedulePrint(null)} 
             onRefreshBookings={fetchBookings}
           />
         )}

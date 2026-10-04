@@ -57,9 +57,39 @@ export const sortScheduleBookings = (list: Booking[], mode: ScheduleSortMode = '
   });
 };
 
+export const DEFAULT_SAISHU_PRESETS = ['宮司', '禰宜', '権禰宜', '出仕'];
+export const SAISHU_STORAGE_KEY = 'smart_kagura_saishu_presets';
+
+export const getInitialSaishuPresets = (allBookings?: Booking[]): string[] => {
+  let saved: string[] = [];
+  try {
+    const raw = localStorage.getItem(SAISHU_STORAGE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch (e) {}
+
+  const fromBookings = (allBookings || [])
+    .map(b => b.saishu?.trim())
+    .filter((s): s is string => !!s && !DEFAULT_SAISHU_PRESETS.includes(s));
+
+  return Array.from(new Set([...DEFAULT_SAISHU_PRESETS, ...saved, ...fromBookings]));
+};
+
+export const saveCustomSaishuPreset = (name: string): string[] => {
+  const trimmed = name.trim();
+  const current = getInitialSaishuPresets();
+  if (!trimmed) return current;
+  if (current.includes(trimmed)) return current;
+  const next = [...current, trimmed];
+  try {
+    const customOnly = next.filter(s => !DEFAULT_SAISHU_PRESETS.includes(s));
+    localStorage.setItem(SAISHU_STORAGE_KEY, JSON.stringify(customOnly));
+  } catch (e) {}
+  return next;
+};
+
 interface DashboardProps {
   bookings: Booking[];
-  onSelectSchedulePrint?: (date: string) => void;
+  onSelectSchedulePrint?: (date: string, initialBookings?: Booking[], initialSortMode?: ScheduleSortMode) => void;
   onSelectDailyReportPrint?: (date: string) => void;
   onSelectMonthlyReportPrint?: (month: string) => void;
   onRefreshBookings?: () => void;
@@ -191,6 +221,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         throw new Error(data.error || '予約日時の変更に失敗しました。');
       }
 
+      if (editingBooking.saishu) {
+        saveCustomSaishuPreset(editingBooking.saishu);
+      }
+
       // 2. Batch update related bookings if checkbox is checked
       if (batchRescheduleRelated && editRelatedBookings.length > 0) {
         for (const rel of editRelatedBookings) {
@@ -274,7 +308,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   // Target month bookings for report
-  const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth));
+  const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth) && Number(b.is_cancelled) !== 1);
   const monthlyTotalPrayers = monthlyBookings.length;
   const monthlyIndividualPrayers = monthlyBookings.filter(b => b.booking_type === 'individual').length;
   const monthlyOrganizationPrayers = monthlyBookings.filter(b => b.booking_type === 'organization').length;
@@ -649,7 +683,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </button>
                 {dashboardList.length > 0 && (
                   <button 
-                    onClick={() => onSelectSchedulePrint && onSelectSchedulePrint(reportDate)}
+                    onClick={() => onSelectSchedulePrint && onSelectSchedulePrint(reportDate, dashboardList, dashboardSortMode)}
                     className="btn btn-primary"
                     style={{ padding: '0.25rem 0.55rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                   >
@@ -1564,10 +1598,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }}
           />
           <datalist id="saishu-edit-presets">
-            <option value="宮司" />
-            <option value="禰宜" />
-            <option value="権禰宜" />
-            <option value="出仕" />
+            {getInitialSaishuPresets(bookings).map(preset => (
+              <option key={preset} value={preset} />
+            ))}
           </datalist>
         </div>
 
@@ -1818,39 +1851,70 @@ export const ScheduleInnerPrint: React.FC<{
   date: string; 
   onClose: () => void;
   onRefreshBookings?: () => void | Promise<void>;
-}> = ({ bookings, date, onClose, onRefreshBookings }) => {
+  initialBookings?: Booking[];
+  initialSortMode?: ScheduleSortMode;
+  onOrderChange?: (ordered: Booking[], mode: ScheduleSortMode) => void;
+}> = ({ bookings, date, onClose, onRefreshBookings, initialBookings, initialSortMode, onOrderChange }) => {
   const printRef = useRef<HTMLDivElement>(null);
-  const [sortMode, setSortMode] = useState<ScheduleSortMode>('created_asc');
+  const [sortMode, setSortMode] = useState<ScheduleSortMode>(initialSortMode || 'created_asc');
   const [pageSize, setPageSize] = useState<number>(15);
   const [selectedPage, setSelectedPage] = useState<'all' | number>('all');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // 斎主管理用の状態
+  const [saishuPresets, setSaishuPresets] = useState<string[]>(() => getInitialSaishuPresets(bookings));
   const [daySaishuPreset, setDaySaishuPreset] = useState<string>('宮司');
+  const [isCustomDaySaishu, setIsCustomDaySaishu] = useState<boolean>(false);
+  const [customDaySaishuVal, setCustomDaySaishuVal] = useState<string>('');
   const [saishuSaving, setSaishuSaving] = useState<boolean>(false);
   const [saishuSaveMsg, setSaishuSaveMsg] = useState<string>('');
   const [editingCustomSlot, setEditingCustomSlot] = useState<string | null>(null);
   const [customInputVal, setCustomInputVal] = useState<string>('');
 
+  const registerCustomSaishu = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const updated = saveCustomSaishuPreset(trimmed);
+    setSaishuPresets(updated);
+  };
+
   const [orderedBookings, setOrderedBookings] = useState<Booking[]>(() => {
-    return sortScheduleBookings(bookings.filter(b => b.booking_date === date), 'created_asc');
+    if (initialBookings && initialBookings.length > 0) {
+      return initialBookings.filter(b => Number(b.is_cancelled) !== 1);
+    }
+    return sortScheduleBookings(
+      bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1),
+      initialSortMode || 'created_asc'
+    );
   });
 
   useEffect(() => {
     if (sortMode !== 'custom') {
-      setOrderedBookings(sortScheduleBookings(bookings.filter(b => b.booking_date === date), sortMode));
+      const sorted = sortScheduleBookings(
+        bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1),
+        sortMode
+      );
+      setOrderedBookings(sorted);
+      if (onOrderChange) onOrderChange(sorted, sortMode);
     }
   }, [bookings, date, sortMode]);
 
   // 時間枠ごとの斎主設定（同時間枠の全予約へ自動連動＆DB保存）
   const handleUpdateSlotSaishu = async (slotTime: string, newSaishu: string) => {
     const saishuVal = newSaishu ? newSaishu.trim() : '';
-    setOrderedBookings(prev => prev.map(b => {
-      if (b.booking_time === slotTime) {
-        return { ...b, saishu: saishuVal };
-      }
-      return b;
-    }));
+    if (saishuVal) {
+      registerCustomSaishu(saishuVal);
+    }
+    setOrderedBookings(prev => {
+      const next = prev.map(b => {
+        if (b.booking_time === slotTime) {
+          return { ...b, saishu: saishuVal };
+        }
+        return b;
+      });
+      if (onOrderChange) onOrderChange(next, sortMode);
+      return next;
+    });
 
     setSaishuSaving(true);
     try {
@@ -1881,7 +1945,14 @@ export const ScheduleInnerPrint: React.FC<{
     if (!saishuVal && !confirm('本日のすべての時間枠の斎主をクリア（未設定に）しますか？')) {
       return;
     }
-    setOrderedBookings(prev => prev.map(b => ({ ...b, saishu: saishuVal })));
+    if (saishuVal) {
+      registerCustomSaishu(saishuVal);
+    }
+    setOrderedBookings(prev => {
+      const next = prev.map(b => ({ ...b, saishu: saishuVal }));
+      if (onOrderChange) onOrderChange(next, sortMode);
+      return next;
+    });
 
     setSaishuSaving(true);
     try {
@@ -1909,7 +1980,12 @@ export const ScheduleInnerPrint: React.FC<{
   const handleSortChange = (mode: ScheduleSortMode) => {
     setSortMode(mode);
     if (mode !== 'custom') {
-      setOrderedBookings(sortScheduleBookings(bookings.filter(b => b.booking_date === date), mode));
+      const sorted = sortScheduleBookings(
+        bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1),
+        mode
+      );
+      setOrderedBookings(sorted);
+      if (onOrderChange) onOrderChange(sorted, mode);
     }
   };
 
@@ -1922,6 +1998,7 @@ export const ScheduleInnerPrint: React.FC<{
     nextList[targetIndex] = item;
     setSortMode('custom');
     setOrderedBookings(nextList);
+    if (onOrderChange) onOrderChange(nextList, 'custom');
   };
 
   const getWarekiDateString = (dateStr: string) => {
@@ -2227,46 +2304,127 @@ export const ScheduleInnerPrint: React.FC<{
           }}>
             <Award size={14} style={{ color: 'var(--color-gold)' }} />
             <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-gold)' }}>斎主一括:</span>
-            <select
-              value={daySaishuPreset}
-              onChange={(e) => setDaySaishuPreset(e.target.value)}
-              style={{
-                backgroundColor: '#ffffff',
-                color: '#111111',
-                border: '1px solid var(--color-gold)',
-                borderRadius: '3px',
-                padding: '0.25rem 0.4rem',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="宮司">宮司</option>
-              <option value="禰宜">禰宜</option>
-              <option value="権禰宜">権禰宜</option>
-              <option value="出仕">出仕</option>
-              <option value="">（未設定クリア）</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => handleUpdateDaySaishu(daySaishuPreset)}
-              disabled={saishuSaving}
-              style={{
-                padding: '0.25rem 0.55rem',
-                fontSize: '0.78rem',
-                backgroundColor: 'var(--color-gold)',
-                color: '#111',
-                border: 'none',
-                borderRadius: '3px',
-                fontWeight: 'bold',
-                cursor: saishuSaving ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-              title="本日のすべての時間枠の斎主を一括設定します"
-            >
-              {saishuSaving ? '保存中...' : '全枠に適用'}
-            </button>
+            {isCustomDaySaishu ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <input
+                  type="text"
+                  value={customDaySaishuVal}
+                  onChange={(e) => setCustomDaySaishuVal(e.target.value)}
+                  placeholder="神職名を入力"
+                  autoFocus
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#111111',
+                    border: '1px solid var(--color-gold)',
+                    borderRadius: '3px',
+                    padding: '0.2rem 0.4rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    outline: 'none',
+                    width: '90px'
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (customDaySaishuVal.trim()) {
+                        handleUpdateDaySaishu(customDaySaishuVal.trim());
+                        setIsCustomDaySaishu(false);
+                      }
+                    } else if (e.key === 'Escape') {
+                      setIsCustomDaySaishu(false);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customDaySaishuVal.trim()) {
+                      handleUpdateDaySaishu(customDaySaishuVal.trim());
+                      setIsCustomDaySaishu(false);
+                    }
+                  }}
+                  disabled={saishuSaving || !customDaySaishuVal.trim()}
+                  style={{
+                    padding: '0.25rem 0.45rem',
+                    fontSize: '0.75rem',
+                    backgroundColor: 'var(--color-gold)',
+                    color: '#111',
+                    border: 'none',
+                    borderRadius: '3px',
+                    fontWeight: 'bold',
+                    cursor: saishuSaving ? 'not-allowed' : 'pointer'
+                  }}
+                  title="確定して全枠に適用"
+                >
+                  適用
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomDaySaishu(false)}
+                  style={{
+                    padding: '0.25rem 0.35rem',
+                    fontSize: '0.75rem',
+                    backgroundColor: '#555',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '3px',
+                    cursor: 'pointer'
+                  }}
+                  title="キャンセル"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={daySaishuPreset}
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') {
+                      setIsCustomDaySaishu(true);
+                      setCustomDaySaishuVal('');
+                    } else {
+                      setDaySaishuPreset(e.target.value);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#111111',
+                    border: '1px solid var(--color-gold)',
+                    borderRadius: '3px',
+                    padding: '0.25rem 0.4rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {saishuPresets.map(preset => (
+                    <option key={preset} value={preset}>{preset}</option>
+                  ))}
+                  <option value="__custom__">✏️ 新しい神職名を直接入力...</option>
+                  <option value="">（未設定クリア）</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateDaySaishu(daySaishuPreset)}
+                  disabled={saishuSaving}
+                  style={{
+                    padding: '0.25rem 0.55rem',
+                    fontSize: '0.78rem',
+                    backgroundColor: 'var(--color-gold)',
+                    color: '#111',
+                    border: 'none',
+                    borderRadius: '3px',
+                    fontWeight: 'bold',
+                    cursor: saishuSaving ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="本日のすべての時間枠の斎主を一括設定します"
+                >
+                  {saishuSaving ? '保存中...' : '全枠に適用'}
+                </button>
+              </>
+            )}
           </div>
 
           {saishuSaveMsg && (
@@ -2668,11 +2826,10 @@ export const ScheduleInnerPrint: React.FC<{
                                       }}
                                     >
                                       <option value="">（未設定）</option>
-                                      <option value="宮司">宮司</option>
-                                      <option value="禰宜">禰宜</option>
-                                      <option value="権禰宜">権禰宜</option>
-                                      <option value="出仕">出仕</option>
-                                      {b.saishu && !['宮司', '禰宜', '権禰宜', '出仕'].includes(b.saishu) && (
+                                      {saishuPresets.map(preset => (
+                                        <option key={preset} value={preset}>{preset}</option>
+                                      ))}
+                                      {b.saishu && !saishuPresets.includes(b.saishu) && (
                                         <option value={b.saishu}>{b.saishu}</option>
                                       )}
                                       <option value="__custom__">✏️ 直接入力...</option>
@@ -2788,7 +2945,7 @@ export const DailyReportPrint: React.FC<{ bookings: Booking[]; date: string; onC
     const eraStr = reiwaYear === 1 ? '元' : reiwaYear;
     return `令和${eraStr}年${month}月${day}日（${dayOfWeek}）`;
   };
-  const reportBookings = bookings.filter(b => b.booking_date === date);
+  const reportBookings = bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1);
   const reportTotalPrayers = reportBookings.length;
   const reportIndividualPrayers = reportBookings.filter(b => b.booking_type === 'individual').length;
   const reportOrganizationPrayers = reportBookings.filter(b => b.booking_type === 'organization').length;
@@ -2989,7 +3146,7 @@ export const MonthlyReportPrint: React.FC<{ bookings: Booking[]; month: string; 
     return `令和${eraStr}年${monthVal}月度`;
   };
 
-  const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(month));
+  const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(month) && Number(b.is_cancelled) !== 1);
   const monthlyTotalPrayers = monthlyBookings.length;
   const monthlyIndividualPrayers = monthlyBookings.filter(b => b.booking_type === 'individual').length;
   const monthlyOrganizationPrayers = monthlyBookings.filter(b => b.booking_type === 'organization').length;
