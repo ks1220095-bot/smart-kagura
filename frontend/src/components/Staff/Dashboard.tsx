@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2 } from 'lucide-react';
+import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2, Settings } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { type Booking, getBookingChildren } from '../../types';
@@ -59,32 +59,77 @@ export const sortScheduleBookings = (list: Booking[], mode: ScheduleSortMode = '
 
 export const DEFAULT_SAISHU_PRESETS = ['宮司', '禰宜', '権禰宜', '出仕'];
 export const SAISHU_STORAGE_KEY = 'smart_kagura_saishu_presets';
+export const SAISHU_DELETED_KEY = 'smart_kagura_saishu_deleted_presets';
 
 export const getInitialSaishuPresets = (allBookings?: Booking[]): string[] => {
   let saved: string[] = [];
+  let deleted: string[] = [];
   try {
     const raw = localStorage.getItem(SAISHU_STORAGE_KEY);
     if (raw) saved = JSON.parse(raw);
   } catch (e) {}
+  try {
+    const rawDel = localStorage.getItem(SAISHU_DELETED_KEY);
+    if (rawDel) deleted = JSON.parse(rawDel);
+  } catch (e) {}
 
   const fromBookings = (allBookings || [])
     .map(b => b.saishu?.trim())
-    .filter((s): s is string => !!s && !DEFAULT_SAISHU_PRESETS.includes(s));
+    .filter((s): s is string => !!s && !DEFAULT_SAISHU_PRESETS.includes(s) && !deleted.includes(s));
 
-  return Array.from(new Set([...DEFAULT_SAISHU_PRESETS, ...saved, ...fromBookings]));
+  const allCustom = Array.from(new Set([...saved, ...fromBookings])).filter(s => !deleted.includes(s));
+  return Array.from(new Set([...DEFAULT_SAISHU_PRESETS, ...allCustom]));
 };
 
-export const saveCustomSaishuPreset = (name: string): string[] => {
+export const saveCustomSaishuPreset = (name: string, allBookings?: Booking[]): string[] => {
   const trimmed = name.trim();
-  const current = getInitialSaishuPresets();
-  if (!trimmed) return current;
-  if (current.includes(trimmed)) return current;
-  const next = [...current, trimmed];
+  if (!trimmed) return getInitialSaishuPresets(allBookings);
+  
+  // 削除除外リストにあれば解除
   try {
-    const customOnly = next.filter(s => !DEFAULT_SAISHU_PRESETS.includes(s));
-    localStorage.setItem(SAISHU_STORAGE_KEY, JSON.stringify(customOnly));
+    const rawDel = localStorage.getItem(SAISHU_DELETED_KEY);
+    if (rawDel) {
+      const deleted: string[] = JSON.parse(rawDel);
+      const filtered = deleted.filter(s => s !== trimmed);
+      localStorage.setItem(SAISHU_DELETED_KEY, JSON.stringify(filtered));
+    }
   } catch (e) {}
-  return next;
+
+  try {
+    const raw = localStorage.getItem(SAISHU_STORAGE_KEY);
+    const saved: string[] = raw ? JSON.parse(raw) : [];
+    if (!saved.includes(trimmed) && !DEFAULT_SAISHU_PRESETS.includes(trimmed)) {
+      saved.push(trimmed);
+      localStorage.setItem(SAISHU_STORAGE_KEY, JSON.stringify(saved));
+    }
+  } catch (e) {}
+
+  return getInitialSaishuPresets(allBookings);
+};
+
+export const removeCustomSaishuPreset = (name: string, allBookings?: Booking[]): string[] => {
+  const trimmed = name.trim();
+  if (!trimmed) return getInitialSaishuPresets(allBookings);
+
+  try {
+    const raw = localStorage.getItem(SAISHU_STORAGE_KEY);
+    if (raw) {
+      const saved: string[] = JSON.parse(raw);
+      const filtered = saved.filter(s => s !== trimmed);
+      localStorage.setItem(SAISHU_STORAGE_KEY, JSON.stringify(filtered));
+    }
+  } catch (e) {}
+
+  try {
+    const rawDel = localStorage.getItem(SAISHU_DELETED_KEY);
+    const deleted: string[] = rawDel ? JSON.parse(rawDel) : [];
+    if (!deleted.includes(trimmed)) {
+      deleted.push(trimmed);
+      localStorage.setItem(SAISHU_DELETED_KEY, JSON.stringify(deleted));
+    }
+  } catch (e) {}
+
+  return getInitialSaishuPresets(allBookings);
 };
 
 interface DashboardProps {
@@ -1870,11 +1915,17 @@ export const ScheduleInnerPrint: React.FC<{
   const [saishuSaveMsg, setSaishuSaveMsg] = useState<string>('');
   const [editingCustomSlot, setEditingCustomSlot] = useState<string | null>(null);
   const [customInputVal, setCustomInputVal] = useState<string>('');
+  const [showSaishuManager, setShowSaishuManager] = useState<boolean>(false);
 
   const registerCustomSaishu = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const updated = saveCustomSaishuPreset(trimmed);
+    const updated = saveCustomSaishuPreset(trimmed, bookings);
+    setSaishuPresets(updated);
+  };
+
+  const handleRemoveCustomSaishu = (name: string) => {
+    const updated = removeCustomSaishuPreset(name, bookings);
     setSaishuPresets(updated);
   };
 
@@ -2382,6 +2433,8 @@ export const ScheduleInnerPrint: React.FC<{
                     if (e.target.value === '__custom__') {
                       setIsCustomDaySaishu(true);
                       setCustomDaySaishuVal('');
+                    } else if (e.target.value === '__manage__') {
+                      setShowSaishuManager(true);
                     } else {
                       setDaySaishuPreset(e.target.value);
                     }
@@ -2403,6 +2456,9 @@ export const ScheduleInnerPrint: React.FC<{
                   ))}
                   <option value="__custom__">✏️ 新しい神職名を直接入力...</option>
                   <option value="">（未設定クリア）</option>
+                  {saishuPresets.some(p => !DEFAULT_SAISHU_PRESETS.includes(p)) && (
+                    <option value="__manage__">🗑️ 保存候補の整理・削除...</option>
+                  )}
                 </select>
                 <button
                   type="button"
@@ -2423,6 +2479,29 @@ export const ScheduleInnerPrint: React.FC<{
                 >
                   {saishuSaving ? '保存中...' : '全枠に適用'}
                 </button>
+                {saishuPresets.some(p => !DEFAULT_SAISHU_PRESETS.includes(p)) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSaishuManager(true)}
+                    style={{
+                      padding: '0.25rem 0.45rem',
+                      fontSize: '0.75rem',
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      color: 'var(--color-gold)',
+                      border: '1px solid rgba(197, 160, 89, 0.5)',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.2rem',
+                      fontWeight: 'bold'
+                    }}
+                    title="保存されたカスタム神職名を取り消し・整理します"
+                  >
+                    <Settings size={12} />
+                    候補整理
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -2795,9 +2874,25 @@ export const ScheduleInnerPrint: React.FC<{
                                         fontSize: '0.68rem',
                                         cursor: 'pointer'
                                       }}
-                                      title="確定"
+                                      title="確定して保存"
                                     >
                                       ✓
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingCustomSlot(null)}
+                                      style={{
+                                        padding: '1px 3px',
+                                        background: '#666',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '2px',
+                                        fontSize: '0.68rem',
+                                        cursor: 'pointer'
+                                      }}
+                                      title="入力を取り消す"
+                                    >
+                                      ✕
                                     </button>
                                   </div>
                                 ) : (
@@ -2808,6 +2903,8 @@ export const ScheduleInnerPrint: React.FC<{
                                         if (e.target.value === '__custom__') {
                                           setEditingCustomSlot(b.booking_time);
                                           setCustomInputVal(b.saishu || '');
+                                        } else if (e.target.value === '__manage__') {
+                                          setShowSaishuManager(true);
                                         } else {
                                           handleUpdateSlotSaishu(b.booking_time, e.target.value);
                                         }
@@ -2833,6 +2930,9 @@ export const ScheduleInnerPrint: React.FC<{
                                         <option value={b.saishu}>{b.saishu}</option>
                                       )}
                                       <option value="__custom__">✏️ 直接入力...</option>
+                                      {saishuPresets.some(p => !DEFAULT_SAISHU_PRESETS.includes(p)) && (
+                                        <option value="__manage__">🗑️ 保存候補の整理・削除...</option>
+                                      )}
                                     </select>
                                     <button
                                       type="button"
@@ -2853,6 +2953,24 @@ export const ScheduleInnerPrint: React.FC<{
                                     >
                                       <Edit3 size={10} />
                                     </button>
+                                    {b.saishu && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateSlotSaishu(b.booking_time, '')}
+                                        style={{
+                                          background: 'transparent',
+                                          border: 'none',
+                                          color: '#c93a3a',
+                                          cursor: 'pointer',
+                                          padding: '1px',
+                                          display: 'flex',
+                                          alignItems: 'center'
+                                        }}
+                                        title="この時間枠の斎主設定を取り消す（未設定に戻す）"
+                                      >
+                                        <X size={11} />
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -2924,6 +3042,142 @@ export const ScheduleInnerPrint: React.FC<{
           );
         })}
       </div>
+      {/* 斎主プリセット（保存候補）管理モーダル */}
+      {showSaishuManager && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10000,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '6px',
+            width: '100%',
+            maxWidth: '440px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              backgroundColor: 'var(--color-urushi)',
+              color: '#ffffff',
+              padding: '0.75rem 1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '2px solid var(--color-gold)'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '0.98rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Award size={16} style={{ color: 'var(--color-gold)' }} />
+                保存済み斎主候補の整理・取り消し
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSaishuManager(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  padding: '0.2rem',
+                  display: 'flex'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '1.25rem' }}>
+              <p style={{ fontSize: '0.82rem', color: '#555', marginTop: 0, marginBottom: '0.9rem', lineHeight: 1.5 }}>
+                直接入力で保存された神職名の一覧です。誤って保存した情報や不要になった候補は「削除」を押して取り消すことができます。
+              </p>
+
+              {saishuPresets.filter(p => !DEFAULT_SAISHU_PRESETS.includes(p)).length === 0 ? (
+                <div style={{ padding: '1.5rem', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '4px', color: '#888', fontSize: '0.85rem' }}>
+                  現在、直接入力で保存されたカスタム神職名はございません。<br />
+                  （標準候補: 宮司、禰宜、権禰宜、出仕）
+                </div>
+              ) : (
+                <div style={{
+                  maxHeight: '220px',
+                  overflowY: 'auto',
+                  border: '1px solid #eee',
+                  borderRadius: '4px',
+                  backgroundColor: '#fafafa'
+                }}>
+                  {saishuPresets.filter(p => !DEFAULT_SAISHU_PRESETS.includes(p)).map((preset) => (
+                    <div 
+                      key={preset}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0.55rem 0.85rem',
+                        borderBottom: '1px solid #eee',
+                        backgroundColor: '#fff'
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#222' }}>
+                        {preset}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`斎主候補「${preset}」を取り消しますか？\n（次回以降のプルダウン候補から削除されます）`)) {
+                            handleRemoveCustomSaishu(preset);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: '#fff',
+                          color: '#c93a3a',
+                          border: '1px solid #e0b4b4',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '3px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          fontWeight: 500
+                        }}
+                        title="この候補をプルダウンから削除・取り消し"
+                      >
+                        <Trash2 size={12} />
+                        削除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#fdfbf7', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowSaishuManager(false)}
+                className="btn btn-secondary"
+                style={{ padding: '0.35rem 1rem', fontSize: '0.82rem' }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>,
     document.body
   );
