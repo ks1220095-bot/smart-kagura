@@ -132,6 +132,65 @@ export const removeCustomSaishuPreset = (name: string, allBookings?: Booking[]):
   return getInitialSaishuPresets(allBookings);
 };
 
+export interface SavedScheduleOrder {
+  mode: ScheduleSortMode;
+  orderedIds?: number[];
+}
+
+export const saveScheduleOrder = (date: string, mode: ScheduleSortMode, list: Booking[]) => {
+  if (!date) return;
+  try {
+    const data: SavedScheduleOrder = {
+      mode,
+      orderedIds: mode === 'custom' ? list.map(b => b.id).filter((id): id is number => typeof id === 'number') : undefined
+    };
+    localStorage.setItem(`smart_kagura_schedule_order_${date}`, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save schedule order:', e);
+  }
+};
+
+export const loadScheduleOrder = (date: string, activeList: Booking[]): { mode: ScheduleSortMode; list: Booking[] } => {
+  if (!date) return { mode: 'created_asc', list: activeList };
+  try {
+    const raw = localStorage.getItem(`smart_kagura_schedule_order_${date}`);
+    if (raw) {
+      const data: SavedScheduleOrder = JSON.parse(raw);
+      if (data.mode === 'custom' && data.orderedIds && data.orderedIds.length > 0) {
+        const idMap = new Map(activeList.map(b => [b.id, b]));
+        const ordered: Booking[] = [];
+        const seenIds = new Set<number>();
+
+        for (const id of data.orderedIds) {
+          const item = idMap.get(id);
+          if (item) {
+            ordered.push(item);
+            seenIds.add(id);
+          }
+        }
+        for (const b of activeList) {
+          if (b.id && !seenIds.has(b.id)) {
+            ordered.push(b);
+          }
+        }
+        return { mode: 'custom', list: ordered };
+      } else if (data.mode && data.mode !== 'custom') {
+        return {
+          mode: data.mode,
+          list: sortScheduleBookings(activeList, data.mode)
+        };
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load schedule order:', e);
+  }
+  return {
+    mode: 'created_asc',
+    list: sortScheduleBookings(activeList, 'created_asc')
+  };
+};
+
+
 interface DashboardProps {
   bookings: Booking[];
   onSelectSchedulePrint?: (date: string, initialBookings?: Booking[], initialSortMode?: ScheduleSortMode) => void;
@@ -228,10 +287,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [dashboardList, setDashboardList] = useState<Booking[]>([]);
 
   useEffect(() => {
-    if (dashboardSortMode !== 'custom') {
-      setDashboardList(sortScheduleBookings(activeBookings.filter(b => b.booking_date === reportDate), dashboardSortMode));
-    }
-  }, [bookings, reportDate, dashboardSortMode]);
+    const currentDayBookings = activeBookings.filter(b => b.booking_date === reportDate);
+    const restored = loadScheduleOrder(reportDate, currentDayBookings);
+    setDashboardSortMode(restored.mode);
+    setDashboardList(restored.list);
+  }, [bookings, reportDate]);
 
   const moveDashboardRow = (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -242,6 +302,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
     nextList[targetIndex] = item;
     setDashboardSortMode('custom');
     setDashboardList(nextList);
+    saveScheduleOrder(reportDate, 'custom', nextList);
+  };
+
+  const handleDashboardSortChange = (newMode: ScheduleSortMode) => {
+    setDashboardSortMode(newMode);
+    if (newMode !== 'custom') {
+      const currentDayBookings = activeBookings.filter(b => b.booking_date === reportDate);
+      const sorted = sortScheduleBookings(currentDayBookings, newMode);
+      setDashboardList(sorted);
+      saveScheduleOrder(reportDate, newMode, sorted);
+    }
   };
 
   // Reschedule / Edit booking handler
@@ -758,7 +829,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span style={{ fontWeight: 600, color: 'var(--color-urushi)' }}>並び順:</span>
                 <select
                   value={dashboardSortMode}
-                  onChange={(e) => setDashboardSortMode(e.target.value as ScheduleSortMode)}
+                  onChange={(e) => handleDashboardSortChange(e.target.value as ScheduleSortMode)}
                   style={{
                     padding: '0.15rem 0.35rem',
                     fontSize: '0.75rem',
@@ -780,7 +851,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {dashboardSortMode === 'custom' && (
                 <button
                   type="button"
-                  onClick={() => setDashboardSortMode('created_asc')}
+                  onClick={() => handleDashboardSortChange('created_asc')}
                   style={{
                     padding: '0.1rem 0.4rem',
                     fontSize: '0.7rem',
@@ -1901,7 +1972,10 @@ export const ScheduleInnerPrint: React.FC<{
   onOrderChange?: (ordered: Booking[], mode: ScheduleSortMode) => void;
 }> = ({ bookings, date, onClose, onRefreshBookings, initialBookings, initialSortMode, onOrderChange }) => {
   const printRef = useRef<HTMLDivElement>(null);
-  const [sortMode, setSortMode] = useState<ScheduleSortMode>(initialSortMode || 'created_asc');
+  const [sortMode, setSortMode] = useState<ScheduleSortMode>(() => {
+    if (initialSortMode) return initialSortMode;
+    return loadScheduleOrder(date, []).mode;
+  });
   const [pageSize, setPageSize] = useState<number>(15);
   const [selectedPage, setSelectedPage] = useState<'all' | number>('all');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
@@ -1933,10 +2007,8 @@ export const ScheduleInnerPrint: React.FC<{
     if (initialBookings && initialBookings.length > 0) {
       return initialBookings.filter(b => Number(b.is_cancelled) !== 1);
     }
-    return sortScheduleBookings(
-      bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1),
-      initialSortMode || 'created_asc'
-    );
+    const currentDayBookings = bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1);
+    return loadScheduleOrder(date, currentDayBookings).list;
   });
 
   useEffect(() => {
@@ -2036,6 +2108,7 @@ export const ScheduleInnerPrint: React.FC<{
         mode
       );
       setOrderedBookings(sorted);
+      saveScheduleOrder(date, mode, sorted);
       if (onOrderChange) onOrderChange(sorted, mode);
     }
   };
@@ -2049,6 +2122,7 @@ export const ScheduleInnerPrint: React.FC<{
     nextList[targetIndex] = item;
     setSortMode('custom');
     setOrderedBookings(nextList);
+    saveScheduleOrder(date, 'custom', nextList);
     if (onOrderChange) onOrderChange(nextList, 'custom');
   };
 
