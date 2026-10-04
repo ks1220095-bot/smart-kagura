@@ -135,19 +135,69 @@ export const removeCustomSaishuPreset = (name: string, allBookings?: Booking[]):
 export interface SavedScheduleOrder {
   mode: ScheduleSortMode;
   orderedIds?: number[];
+  updatedAt?: number;
 }
+
+export const applyScheduleOrder = (
+  data: SavedScheduleOrder,
+  activeList: Booking[]
+): { mode: ScheduleSortMode; list: Booking[] } => {
+  if (data.mode === 'custom' && data.orderedIds && data.orderedIds.length > 0) {
+    const idMap = new Map(activeList.map(b => [b.id, b]));
+    const ordered: Booking[] = [];
+    const seenIds = new Set<number>();
+
+    for (const id of data.orderedIds) {
+      const item = idMap.get(id);
+      if (item) {
+        ordered.push(item);
+        seenIds.add(id);
+      }
+    }
+    for (const b of activeList) {
+      if (b.id && !seenIds.has(b.id)) {
+        ordered.push(b);
+      }
+    }
+    return { mode: 'custom', list: ordered };
+  } else if (data.mode && data.mode !== 'custom') {
+    return {
+      mode: data.mode,
+      list: sortScheduleBookings(activeList, data.mode)
+    };
+  }
+  return {
+    mode: 'created_asc',
+    list: sortScheduleBookings(activeList, 'created_asc')
+  };
+};
 
 export const saveScheduleOrder = (date: string, mode: ScheduleSortMode, list: Booking[]) => {
   if (!date) return;
+  const orderedIds = mode === 'custom' ? list.map(b => b.id).filter((id): id is number => typeof id === 'number') : undefined;
+  const updatedAt = Date.now();
+  const data: SavedScheduleOrder = {
+    mode,
+    orderedIds,
+    updatedAt
+  };
   try {
-    const data: SavedScheduleOrder = {
-      mode,
-      orderedIds: mode === 'custom' ? list.map(b => b.id).filter((id): id is number => typeof id === 'number') : undefined
-    };
     localStorage.setItem(`smart_kagura_schedule_order_${date}`, JSON.stringify(data));
   } catch (e) {
-    console.error('Failed to save schedule order:', e);
+    console.error('Failed to save schedule order locally:', e);
   }
+
+  // サーバーへ非同期送信して他端末へリアルタイム同期
+  try {
+    const apiUrl = getApiUrl();
+    fetch(`${apiUrl}/api/settings/schedule-order/${date}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, orderedIds })
+    }).catch(err => {
+      console.warn('Failed to sync schedule order to server:', err);
+    });
+  } catch (e) {}
 };
 
 export const loadScheduleOrder = (date: string, activeList: Booking[]): { mode: ScheduleSortMode; list: Booking[] } => {
@@ -156,39 +206,36 @@ export const loadScheduleOrder = (date: string, activeList: Booking[]): { mode: 
     const raw = localStorage.getItem(`smart_kagura_schedule_order_${date}`);
     if (raw) {
       const data: SavedScheduleOrder = JSON.parse(raw);
-      if (data.mode === 'custom' && data.orderedIds && data.orderedIds.length > 0) {
-        const idMap = new Map(activeList.map(b => [b.id, b]));
-        const ordered: Booking[] = [];
-        const seenIds = new Set<number>();
-
-        for (const id of data.orderedIds) {
-          const item = idMap.get(id);
-          if (item) {
-            ordered.push(item);
-            seenIds.add(id);
-          }
-        }
-        for (const b of activeList) {
-          if (b.id && !seenIds.has(b.id)) {
-            ordered.push(b);
-          }
-        }
-        return { mode: 'custom', list: ordered };
-      } else if (data.mode && data.mode !== 'custom') {
-        return {
-          mode: data.mode,
-          list: sortScheduleBookings(activeList, data.mode)
-        };
-      }
+      return applyScheduleOrder(data, activeList);
     }
   } catch (e) {
-    console.error('Failed to load schedule order:', e);
+    console.error('Failed to load schedule order locally:', e);
   }
   return {
     mode: 'created_asc',
     list: sortScheduleBookings(activeList, 'created_asc')
   };
 };
+
+export const fetchScheduleOrderFromServer = async (date: string): Promise<SavedScheduleOrder | null> => {
+  if (!date) return null;
+  try {
+    const apiUrl = getApiUrl();
+    const res = await fetch(`${apiUrl}/api/settings/schedule-order/${date}`);
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        mode: data.mode,
+        orderedIds: data.orderedIds,
+        updatedAt: data.updatedAt || 0
+      };
+    }
+  } catch (e) {
+    console.warn('Failed to fetch schedule order from server:', e);
+  }
+  return null;
+};
+
 
 
 interface DashboardProps {
@@ -286,12 +333,93 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [dashboardSortMode, setDashboardSortMode] = useState<ScheduleSortMode>('created_asc');
   const [dashboardList, setDashboardList] = useState<Booking[]>([]);
 
+  // 1. Initial local load + server fetch for the current date
   useEffect(() => {
     const currentDayBookings = activeBookings.filter(b => b.booking_date === reportDate);
     const restored = loadScheduleOrder(reportDate, currentDayBookings);
     setDashboardSortMode(restored.mode);
     setDashboardList(restored.list);
+
+    // Fetch latest order from server in background
+    let isMounted = true;
+    fetchScheduleOrderFromServer(reportDate).then(serverData => {
+      if (!isMounted || !serverData) return;
+      const localRaw = localStorage.getItem(`smart_kagura_schedule_order_${reportDate}`);
+      let localUpdatedAt = 0;
+      if (localRaw) {
+        try { localUpdatedAt = JSON.parse(localRaw).updatedAt || 0; } catch (_) {}
+      }
+      if (serverData.updatedAt && serverData.updatedAt > localUpdatedAt) {
+        const applied = applyScheduleOrder(serverData, currentDayBookings);
+        setDashboardSortMode(applied.mode);
+        setDashboardList(applied.list);
+        try {
+          localStorage.setItem(`smart_kagura_schedule_order_${reportDate}`, JSON.stringify(serverData));
+        } catch (_) {}
+      }
+    });
+
+    return () => { isMounted = false; };
   }, [bookings, reportDate]);
+
+  // 2. Real-time multi-device sync via SSE + backup polling + window focus
+  useEffect(() => {
+    let es: EventSource | null = null;
+    const apiUrl = getApiUrl();
+
+    // SSE connection for immediate real-time broadcast (<0.2s)
+    try {
+      es = new EventSource(`${apiUrl}/api/settings/schedule-order-events`);
+      es.addEventListener('schedule_order_updated', (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data && data.date === reportDate) {
+            const currentDayBookings = activeBookings.filter(b => b.booking_date === reportDate);
+            const applied = applyScheduleOrder(data, currentDayBookings);
+            setDashboardSortMode(applied.mode);
+            setDashboardList(applied.list);
+            try {
+              localStorage.setItem(`smart_kagura_schedule_order_${reportDate}`, JSON.stringify(data));
+            } catch (_) {}
+          }
+        } catch (err) {
+          console.error('Error handling SSE schedule order update:', err);
+        }
+      });
+    } catch (e) {
+      console.warn('SSE connection not available:', e);
+    }
+
+    // Backup polling check (every 5s) & focus listener for robust offline/sleep recovery
+    const syncLatestFromServer = async () => {
+      const serverData = await fetchScheduleOrderFromServer(reportDate);
+      if (serverData && serverData.updatedAt) {
+        const localRaw = localStorage.getItem(`smart_kagura_schedule_order_${reportDate}`);
+        let localUpdatedAt = 0;
+        if (localRaw) {
+          try { localUpdatedAt = JSON.parse(localRaw).updatedAt || 0; } catch (_) {}
+        }
+        if (serverData.updatedAt > localUpdatedAt) {
+          const currentDayBookings = activeBookings.filter(b => b.booking_date === reportDate);
+          const applied = applyScheduleOrder(serverData, currentDayBookings);
+          setDashboardSortMode(applied.mode);
+          setDashboardList(applied.list);
+          try {
+            localStorage.setItem(`smart_kagura_schedule_order_${reportDate}`, JSON.stringify(serverData));
+          } catch (_) {}
+        }
+      }
+    };
+
+    const interval = setInterval(syncLatestFromServer, 5000);
+    window.addEventListener('focus', syncLatestFromServer);
+
+    return () => {
+      if (es) es.close();
+      clearInterval(interval);
+      window.removeEventListener('focus', syncLatestFromServer);
+    };
+  }, [reportDate, activeBookings]);
 
   const moveDashboardRow = (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -2010,6 +2138,20 @@ export const ScheduleInnerPrint: React.FC<{
     const currentDayBookings = bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1);
     return loadScheduleOrder(date, currentDayBookings).list;
   });
+
+  // Sync latest order from server on mount for ScheduleInnerPrint
+  useEffect(() => {
+    let isMounted = true;
+    fetchScheduleOrderFromServer(date).then(serverData => {
+      if (!isMounted || !serverData) return;
+      const currentDayBookings = bookings.filter(b => b.booking_date === date && Number(b.is_cancelled) !== 1);
+      const applied = applyScheduleOrder(serverData, currentDayBookings);
+      setSortMode(applied.mode);
+      setOrderedBookings(applied.list);
+      if (onOrderChange) onOrderChange(applied.list, applied.mode);
+    });
+    return () => { isMounted = false; };
+  }, [date, bookings]);
 
   useEffect(() => {
     if (sortMode !== 'custom') {
