@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { type Booking, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities, getShichigosanAge } from '../../types';
+import { type Booking, type ChildItem, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities, getShichigosanAge } from '../../types';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -118,6 +118,11 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
 
   const renderHalfSheet = (booking: Booking, title: '神社控' | '祈祷控') => {
     const isIndiv = booking.booking_type === 'individual';
+    const children = isIndiv ? getBookingChildren(booking) : [];
+    const childCount = children.length;
+    const isMultiChild = childCount >= 2;
+    const isManyChild = childCount >= 3;
+
     const displayName = (isIndiv ? booking.name : booking.company_name) || '';
     const displayKana = (isIndiv ? booking.kana : booking.company_kana) || '';
     const displayAddress = (isIndiv ? booking.address : booking.company_address) || '';
@@ -126,11 +131,19 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     const multiEntities = isMultiEntity ? getBookingMultiEntities(booking) : [];
     const circleNums = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 
-    // 動的フォントサイズ & 行間調整ロジック (情報量過多への自動縮退対応)
-    const nameFontSize = displayName.length > 25 ? '1.05rem' : displayName.length > 15 ? '1.25rem' : '1.45rem';
-    const nameLineHeight = displayName.length > 15 ? '1.15' : '1.2';
+    // 動的フォントサイズ & 行間調整ロジック (情報量過多・複数対象者への自動縮退対応)
+    const nameFontSize = isManyChild
+      ? (displayName.length > 20 ? '0.92rem' : '1.02rem')
+      : isMultiChild
+        ? (displayName.length > 20 ? '1.02rem' : '1.15rem')
+        : (displayName.length > 25 ? '1.05rem' : displayName.length > 15 ? '1.25rem' : '1.45rem');
+    const nameLineHeight = isMultiChild ? '1.15' : (displayName.length > 15 ? '1.15' : '1.2');
     
-    const addressFontSize = displayAddress.length > 35 ? '0.68rem' : displayAddress.length > 25 ? '0.76rem' : '0.85rem';
+    const addressFontSize = displayAddress.length > 35 
+      ? (isManyChild ? '0.64rem' : '0.68rem') 
+      : displayAddress.length > 25 
+        ? (isManyChild ? '0.72rem' : '0.76rem') 
+        : (isManyChild ? '0.78rem' : '0.85rem');
     const addressLineHeight = displayAddress.length > 25 ? '1.15' : '1.3';
     
     const notesFontSize = (booking.notes || '').length > 80 ? '0.58rem' : (booking.notes || '').length > 40 ? '0.64rem' : '0.7rem';
@@ -143,7 +156,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         width: '100%',
         height: '100%',
         border: '3px double #d80100',
-        padding: '3.5mm 4.5mm',
+        padding: isManyChild ? '2.5mm 3.5mm' : '3.5mm 4.5mm',
         boxSizing: 'border-box',
         position: 'relative',
         backgroundColor: '#ffffff',
@@ -169,16 +182,16 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
         </div>
 
         {/* Inner Content Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', flex: 1, overflow: 'hidden', zIndex: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isManyChild ? '0.12rem' : '0.22rem', width: '100%', flex: 1, overflow: 'hidden', zIndex: 2 }}>
           
           {/* Header Title Bar */}
           <div style={{ 
-            fontSize: '1.2rem', 
+            fontSize: isManyChild ? '1.1rem' : '1.2rem', 
             fontWeight: 'bold', 
             color: '#d80100', 
             letterSpacing: '0.1em', 
             borderBottom: '2px solid #d80100', 
-            paddingBottom: '0.2rem',
+            paddingBottom: isManyChild ? '0.12rem' : '0.2rem',
             textAlign: 'center'
           }}>
             ご祈祷読み札　【 {title} 】
@@ -186,15 +199,15 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           
           {/* Metadata Block (Horizontal Grid) */}
           <div style={{ 
-            fontSize: '0.75rem', 
+            fontSize: isManyChild ? '0.7rem' : '0.75rem', 
             color: '#333', 
             backgroundColor: '#f9f9f9', 
-            padding: '0.4rem 0.5rem', 
+            padding: isManyChild ? '0.25rem 0.4rem' : '0.4rem 0.5rem', 
             borderRadius: '2px', 
             border: '1px solid #eee',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.2rem'
+            gap: isManyChild ? '0.1rem' : '0.2rem'
           }}>
             <div><strong>初穂料:</strong> 金 {booking.hatsuhoryo?.toLocaleString()} 円 ({booking.payment_status === 'paid' ? '納済' : '当日'})</div>
             <div><strong>祈祷日時:</strong> {formatImperialDate(booking.booking_date)} {booking.booking_time}の回</div>
@@ -202,9 +215,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
 
           {/* Willing Section（※連名・複数社時は各社カード内に個別願意が記載されるため、上部御願意は非表示にして見切れを防止） */}
           {!isMultiEntity && (
-            <div style={{ borderBottom: '1px dashed #d80100', paddingBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 御願意</span>
-              <strong style={{ fontSize: '1.4rem', color: '#d80100', display: 'block', marginTop: '0.1rem', lineHeight: '1.2' }}>
+            <div style={{ borderBottom: '1px dashed #d80100', paddingBottom: isManyChild ? '0.18rem' : '0.35rem' }}>
+              <span style={{ fontSize: isManyChild ? '0.6rem' : '0.65rem', color: '#777', display: 'block' }}>■ 御願意</span>
+              <strong style={{ fontSize: isManyChild ? '1.2rem' : '1.4rem', color: '#d80100', display: 'block', marginTop: isManyChild ? '0.04rem' : '0.1rem', lineHeight: '1.2' }}>
                 {isIndiv && booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}
                 {booking.prayer2 && `　並びに ${booking.prayer2}`}
               </strong>
@@ -361,19 +374,19 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             /* 通常の単一レイアウト */
             <>
               {/* Address Section */}
-              <div style={{ borderBottom: '1px dashed #eee', paddingBottom: '0.25rem' }}>
-                <span style={{ fontSize: '0.65rem', color: '#777', display: 'block' }}>■ 郵便番号・住所</span>
-                <span style={{ fontSize: '0.62rem', color: '#888', display: 'block' }}>フリガナ: {displayAddressKana}</span>
-                <span style={{ fontSize: addressFontSize, display: 'block', marginTop: '0.05rem', lineHeight: addressLineHeight }}>
+              <div style={{ borderBottom: '1px dashed #eee', paddingBottom: isManyChild ? '0.15rem' : '0.25rem' }}>
+                <span style={{ fontSize: isManyChild ? '0.6rem' : '0.65rem', color: '#777', display: 'block' }}>■ 郵便番号・住所</span>
+                <span style={{ fontSize: isManyChild ? '0.58rem' : '0.62rem', color: '#888', display: 'block' }}>フリガナ: {displayAddressKana}</span>
+                <span style={{ fontSize: addressFontSize, display: 'block', marginTop: '0.04rem', lineHeight: addressLineHeight }}>
                   {displayAddress}
                 </span>
               </div>
 
               {/* Names Section (Main highlighted for Priest chanting) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                <span style={{ fontSize: '0.65rem', color: '#777' }}>■ お申込名</span>
-                <span style={{ fontSize: '0.62rem', color: '#888' }}>フリガナ: {displayKana}</span>
-                <strong style={{ fontSize: nameFontSize, color: '#111', display: 'block', margin: '0.05rem 0', lineHeight: nameLineHeight }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isManyChild ? '0.05rem' : '0.15rem' }}>
+                <span style={{ fontSize: isManyChild ? '0.6rem' : '0.65rem', color: '#777' }}>■ お申込名</span>
+                <span style={{ fontSize: isManyChild ? '0.58rem' : '0.62rem', color: '#888' }}>フリガナ: {displayKana}</span>
+                <strong style={{ fontSize: nameFontSize, color: '#111', display: 'block', margin: isManyChild ? '0.02rem 0' : '0.05rem 0', lineHeight: nameLineHeight }}>
                   {displayName}
                 </strong>
                 {/* 団体用参拝代表者役職・氏名をお申込名の下に配置 */}
@@ -391,7 +404,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           )}
 
           {/* Names Section 追加コンテナ（個人メタデータ、連絡先、木札等） */}
-          <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+          <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: isManyChild ? '0.12rem' : '0.2rem' }}>
 
             {/* Individual child metadata (Highlight child & parents info with Ruby) */}
             {isIndiv && (() => {
@@ -399,81 +412,149 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               if (children.length === 0) return null;
               const isMulti = children.length >= 2;
               const isMany = children.length >= 3;
-              return (
-                <div style={{ 
-                  marginTop: '0.25rem', 
-                  padding: isMany ? '0.35rem 0.45rem' : '0.45rem 0.55rem', 
-                  backgroundColor: 'rgba(216, 1, 0, 0.02)', 
-                  border: '1.5px solid rgba(216, 1, 0, 0.12)', 
-                  borderRadius: '4px',
-                  fontSize: isMany ? '0.75rem' : '0.8rem', 
-                  lineHeight: '1.35' 
-                }}>
-                  {children.map((c, cIdx) => (
-                    <div 
-                      key={cIdx} 
-                      style={{ 
-                        borderBottom: cIdx < children.length - 1 ? '1px dashed rgba(216, 1, 0, 0.15)' : 'none', 
-                        paddingBottom: isMany ? '0.15rem' : '0.2rem', 
-                        marginBottom: isMany ? '0.15rem' : '0.2rem' 
-                      }}
-                    >
-                      {(() => {
-                        const isShichigosan = booking.prayer1 === '七五三詣' || booking.prayer2 === '七五三詣';
-                        const celebrationAge = isShichigosan ? getShichigosanAge(c.birthday, booking.booking_date, c.gender, c.age_text) : '';
-                        return (
-                          <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: isMany ? '0.58rem' : '0.6rem', color: '#d80100', fontWeight: 'bold' }}>
-                                祝子{isMulti ? `（第${cIdx + 1}子）` : ''} {c.gender ? `[${c.gender}]` : ''}
-                              </span>
-                              {isShichigosan && (
-                                <span style={{ 
-                                  fontSize: isMany ? '0.85rem' : '0.95rem', 
-                                  color: '#d80100', 
-                                  fontWeight: 'bold', 
-                                  backgroundColor: 'rgba(216, 1, 0, 0.08)',
-                                  border: '1.5px solid #d80100',
-                                  padding: '0.05rem 0.45rem',
-                                  borderRadius: '3px',
-                                  letterSpacing: '0.03em'
-                                }}>
-                                  【七五三祝い: {celebrationAge}】
-                                </span>
-                              )}
-                            </div>
-                            {c.kana && (
-                              <span style={{ fontSize: isMany ? '0.62rem' : '0.65rem', color: '#666', display: 'block' }}>フリガナ: {c.kana}</span>
-                            )}
-                            <strong style={{ fontSize: isMany ? '1.05rem' : '1.15rem', display: 'block', margin: '0.05rem 0' }}>{c.name}</strong>
-                            {c.birthday && (
-                              <span style={{ fontSize: isMany ? '0.65rem' : '0.7rem', color: '#666', display: 'block', marginTop: '0.1rem' }}>
-                                生年月日: {formatImperialDate(c.birthday)} {isShichigosan ? `（満${getFullAge(c.birthday, booking.booking_date)}歳）` : formatAgeSuffix(c.birthday, booking.booking_date)}
-                              </span>
-                            )}
-                          </>
-                        );
-                      })()}
+              const isShichigosan = booking.prayer1 === '七五三詣' || booking.prayer2 === '七五三詣';
+              const hasParents = Boolean(booking.father_name || booking.mother_name);
+
+              // 祝子カード描画ヘルパー
+              const renderChildCard = (c: ChildItem, cIdx: number, spanTwo: boolean = false) => {
+                const celebrationAge = isShichigosan ? getShichigosanAge(c.birthday, booking.booking_date, c.gender, c.age_text) : '';
+                return (
+                  <div 
+                    key={cIdx} 
+                    style={{ 
+                      gridColumn: spanTwo ? 'span 2' : 'auto',
+                      border: isMulti ? '1px solid rgba(216, 1, 0, 0.2)' : 'none',
+                      borderRadius: '3px',
+                      padding: isMulti ? '0.2rem 0.35rem' : '0.15rem 0.2rem',
+                      backgroundColor: isMulti ? '#ffffff' : 'transparent',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      lineHeight: '1.25'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: isMulti ? '0.58rem' : '0.62rem', color: '#d80100', fontWeight: 'bold' }}>
+                        祝子{isMulti ? `（第${cIdx + 1}子）` : ''} {c.gender ? `[${c.gender}]` : ''}
+                      </span>
+                      {isShichigosan && (
+                        <span style={{ 
+                          fontSize: isMulti ? '0.78rem' : '0.92rem', 
+                          color: '#d80100', 
+                          fontWeight: 'bold', 
+                          backgroundColor: 'rgba(216, 1, 0, 0.08)',
+                          border: '1.2px solid #d80100',
+                          padding: '0.02rem 0.35rem',
+                          borderRadius: '3px',
+                          letterSpacing: '0.02em',
+                          lineHeight: '1.15'
+                        }}>
+                          【七五三祝い: {celebrationAge}】
+                        </span>
+                      )}
                     </div>
-                  ))}
-                  
-                  {(booking.father_name || booking.mother_name) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', borderTop: '1px dashed rgba(216, 1, 0, 0.1)', paddingTop: '0.25rem', marginTop: '0.15rem' }}>
+                    {c.kana && (
+                      <span style={{ fontSize: isMulti ? '0.58rem' : '0.64rem', color: '#666', display: 'block', marginTop: '0.02rem', lineHeight: '1.1' }}>
+                        フリガナ: {c.kana}
+                      </span>
+                    )}
+                    <strong style={{ fontSize: isMulti ? (isMany ? '0.98rem' : '1.05rem') : '1.15rem', display: 'block', margin: '0.03rem 0', color: '#111', lineHeight: '1.18' }}>
+                      {c.name}
+                    </strong>
+                    {c.birthday && (
+                      <span style={{ fontSize: isMulti ? '0.62rem' : '0.68rem', color: '#555', display: 'block', lineHeight: '1.15' }}>
+                        生年月日: {formatImperialDate(c.birthday)} {isShichigosan ? `（満${getFullAge(c.birthday, booking.booking_date)}歳）` : formatAgeSuffix(c.birthday, booking.booking_date)}
+                      </span>
+                    )}
+                  </div>
+                );
+              };
+
+              // 保護者（父母）カード描画ヘルパー
+              const renderParentsCard = (isGridCell: boolean = false) => {
+                if (!hasParents) return null;
+                return (
+                  <div 
+                    style={{ 
+                      border: isGridCell ? '1px solid rgba(216, 1, 0, 0.15)' : 'none',
+                      borderTop: !isGridCell ? '1px dashed rgba(216, 1, 0, 0.15)' : undefined,
+                      borderRadius: isGridCell ? '3px' : '0',
+                      padding: isGridCell ? '0.2rem 0.35rem' : '0.2rem 0 0 0',
+                      marginTop: !isGridCell ? '0.15rem' : 0,
+                      backgroundColor: isGridCell ? '#ffffff' : 'transparent',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      gap: '0.1rem',
+                      lineHeight: '1.2'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.58rem', color: '#777', fontWeight: 'bold' }}>保護者（ご両親）</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: isGridCell ? '1fr' : '1fr 1fr', gap: isGridCell ? '0.1rem' : '0.4rem' }}>
                       {booking.father_name && (
                         <div>
-                          <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>父親フリガナ</span>
-                          <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.father_kana || '（ふりがな無）'}</span>
-                          <strong style={{ fontSize: isMany ? '0.88rem' : '0.95rem' }}>{booking.father_name}</strong>
+                          <span style={{ fontSize: '0.55rem', color: '#666' }}>父: {booking.father_kana ? `${booking.father_kana} / ` : ''}</span>
+                          <strong style={{ fontSize: isMany ? '0.85rem' : '0.92rem' }}>{booking.father_name}</strong>
                         </div>
                       )}
                       {booking.mother_name && (
                         <div>
-                          <span style={{ fontSize: '0.6rem', color: '#777', display: 'block' }}>母親フリガナ</span>
-                          <span style={{ fontSize: '0.65rem', color: '#444', display: 'block', fontWeight: 'bold' }}>{booking.mother_kana || '（ふりがな無）'}</span>
-                          <strong style={{ fontSize: isMany ? '0.88rem' : '0.95rem' }}>{booking.mother_name}</strong>
+                          <span style={{ fontSize: '0.55rem', color: '#666' }}>母: {booking.mother_kana ? `${booking.mother_kana} / ` : ''}</span>
+                          <strong style={{ fontSize: isMany ? '0.85rem' : '0.92rem' }}>{booking.mother_name}</strong>
                         </div>
                       )}
                     </div>
+                  </div>
+                );
+              };
+
+              return (
+                <div style={{ 
+                  marginTop: isMany ? '0.12rem' : '0.2rem', 
+                  padding: isMany ? '0.25rem 0.35rem' : '0.35rem 0.45rem', 
+                  backgroundColor: 'rgba(216, 1, 0, 0.02)', 
+                  border: '1.5px solid rgba(216, 1, 0, 0.12)', 
+                  borderRadius: '4px',
+                  fontSize: isMany ? '0.72rem' : '0.78rem', 
+                  lineHeight: '1.3' 
+                }}>
+                  {/* 1名の場合: 従来通りの1カラム表示 */}
+                  {!isMulti && (
+                    <>
+                      {renderChildCard(children[0], 0)}
+                      {renderParentsCard(false)}
+                    </>
+                  )}
+
+                  {/* 2名の場合: 左右2カラムグリッド + 父母情報は下部 */}
+                  {children.length === 2 && (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+                        {renderChildCard(children[0], 0)}
+                        {renderChildCard(children[1], 1)}
+                      </div>
+                      {renderParentsCard(false)}
+                    </>
+                  )}
+
+                  {/* 3名の場合: 2x2グリッド（1行目: 第1子・第2子 / 2行目: 第3子・父母情報 または 第3子2カラムスパン） */}
+                  {children.length === 3 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem' }}>
+                      {renderChildCard(children[0], 0)}
+                      {renderChildCard(children[1], 1)}
+                      {renderChildCard(children[2], 2, !hasParents)}
+                      {hasParents && renderParentsCard(true)}
+                    </div>
+                  )}
+
+                  {/* 4名以上の場合: 2カラムグリッド + 父母情報は下部 */}
+                  {children.length >= 4 && (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem' }}>
+                        {children.map((c, idx) => renderChildCard(c, idx))}
+                      </div>
+                      {renderParentsCard(false)}
+                    </>
                   )}
                 </div>
               );
@@ -580,13 +661,22 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             {/* Contacts & Notes */}
             {(() => {
               const contactName = isIndiv 
-                ? booking.name 
+                ? (isMultiChild ? '' : booking.name) 
                 : (booking.staff_dept_title_name || booking.name || booking.representative_title_name);
               return (
-                <div style={{ marginTop: isMultiEntity ? '0.15rem' : 'auto', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: '#555' }}>
-                  <div><strong>連絡先:</strong> {booking.phone || booking.staff_phone}</div>
+                <div style={{ 
+                  marginTop: isManyChild ? '0.1rem' : (isMultiEntity || isMultiChild ? '0.15rem' : 'auto'), 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: '0.5rem', 
+                  fontSize: isManyChild ? '0.7rem' : '0.75rem', 
+                  color: '#555',
+                  paddingTop: isManyChild ? '0.08rem' : 0,
+                  borderTop: isManyChild ? '1px dashed #eee' : 'none'
+                }}>
+                  <div><strong>連絡先:</strong> {booking.phone || booking.staff_phone || '（未登録）'}</div>
                   {contactName && <div><strong>担当者:</strong> {contactName}</div>}
-                  <div><strong>人数:</strong> {booking.attending_count}名</div>
+                  <div><strong>人数:</strong> {(booking.attending_count ?? 1)}名</div>
                 </div>
               );
             })()}
@@ -741,8 +831,8 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           justifyContent: 'space-between', 
           alignItems: 'flex-end', 
           borderTop: '1.5px solid #d80100', 
-          paddingTop: '0.2rem',
-          marginTop: isMultiEntity ? '0.15rem' : '0.25rem',
+          paddingTop: isManyChild ? '0.12rem' : '0.2rem',
+          marginTop: isManyChild ? '0.1rem' : (isMultiEntity ? '0.15rem' : '0.25rem'),
           backgroundColor: '#ffffff',
           flexShrink: 0,
           zIndex: 10
@@ -750,7 +840,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
           {/* 左下に入れ替えた受付NO.丸枠 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <span style={{ fontSize: '0.6rem', color: '#666', fontWeight: 'bold' }}>受付NO,</span>
-            <div style={{ width: '8mm', height: '8mm', border: '1px solid #999', borderRadius: '50%' }} />
+            <div style={{ width: isManyChild ? '7mm' : '8mm', height: isManyChild ? '7mm' : '8mm', border: '1px solid #999', borderRadius: '50%' }} />
           </div>
 
           {/* 右端に配置した願意と社務所名 */}
@@ -765,7 +855,7 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
             }}>
               <div><strong>願意:</strong> {booking.prayer1 === '寿祝い' ? getLongevityTitle(booking) : booking.prayer1}</div>
             </div>
-            <span style={{ fontSize: '0.8rem', letterSpacing: '0.05em', color: '#333' }}>清瀧神社社務所</span>
+            <span style={{ fontSize: isManyChild ? '0.75rem' : '0.8rem', letterSpacing: '0.05em', color: '#333' }}>清瀧神社社務所</span>
           </div>
         </div>
 
