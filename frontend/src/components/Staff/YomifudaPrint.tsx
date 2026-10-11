@@ -133,9 +133,9 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
 
     // 動的フォントサイズ & 行間調整ロジック (情報量過多・複数対象者への自動縮退対応)
     const nameFontSize = isManyChild
-      ? (displayName.length > 20 ? '0.92rem' : '1.02rem')
+      ? (displayName.length > 15 ? '0.92rem' : '1.02rem')
       : isMultiChild
-        ? (displayName.length > 20 ? '1.02rem' : '1.15rem')
+        ? (displayName.length > 15 ? '0.98rem' : '1.15rem')
         : (displayName.length > 25 ? '1.05rem' : displayName.length > 15 ? '1.25rem' : '1.45rem');
     const nameLineHeight = isMultiChild ? '1.15' : (displayName.length > 15 ? '1.15' : '1.2');
     
@@ -415,54 +415,70 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
               const isShichigosan = booking.prayer1 === '七五三詣' || booking.prayer2 === '七五三詣';
               const hasParents = Boolean(booking.father_name || booking.mother_name);
 
-              // 祝子カード描画ヘルパー
-              const renderChildCard = (c: ChildItem, cIdx: number, spanTwo: boolean = false) => {
+              // 祝子カード描画（1カラム全幅スマートレイアウト：横幅を最大限に活かし、文字の改行割れを防ぎつつ、大きな太字で読みやすさを最大化）
+              const renderChildCard = (c: ChildItem, cIdx: number) => {
                 const celebrationAge = isShichigosan ? getShichigosanAge(c.birthday, booking.booking_date, c.gender, c.age_text) : '';
                 return (
                   <div 
                     key={cIdx} 
                     style={{ 
-                      gridColumn: spanTwo ? 'span 2' : 'auto',
-                      border: isMulti ? '1px solid rgba(216, 1, 0, 0.2)' : 'none',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      border: '1px solid rgba(216, 1, 0, 0.22)',
                       borderRadius: '3px',
-                      padding: isMulti ? '0.2rem 0.35rem' : '0.15rem 0.2rem',
-                      backgroundColor: isMulti ? '#ffffff' : 'transparent',
+                      padding: isMany ? '0.22rem 0.45rem' : '0.28rem 0.55rem',
+                      backgroundColor: '#ffffff',
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'space-between',
+                      gap: '0.03rem',
                       lineHeight: '1.25'
                     }}
                   >
+                    {/* 上段: 祝子区分・性別（左） と 七五三お祝い年齢（右）※横幅が十分あるため改行せず1行で表示 */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: isMulti ? '0.58rem' : '0.62rem', color: '#d80100', fontWeight: 'bold' }}>
+                      <span style={{ fontSize: isMany ? '0.62rem' : '0.66rem', color: '#d80100', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                         祝子{isMulti ? `（第${cIdx + 1}子）` : ''} {c.gender ? `[${c.gender}]` : ''}
                       </span>
                       {isShichigosan && (
                         <span style={{ 
-                          fontSize: isMulti ? '0.78rem' : '0.92rem', 
+                          fontSize: isMany ? '0.82rem' : '0.9rem', 
                           color: '#d80100', 
                           fontWeight: 'bold', 
                           backgroundColor: 'rgba(216, 1, 0, 0.08)',
                           border: '1.2px solid #d80100',
-                          padding: '0.02rem 0.35rem',
+                          padding: '0.02rem 0.45rem',
                           borderRadius: '3px',
-                          letterSpacing: '0.02em',
-                          lineHeight: '1.15'
+                          letterSpacing: '0.04em',
+                          lineHeight: '1.15',
+                          whiteSpace: 'nowrap'
                         }}>
                           【七五三祝い: {celebrationAge}】
                         </span>
                       )}
                     </div>
+
+                    {/* 中段: フリガナ */}
                     {c.kana && (
-                      <span style={{ fontSize: isMulti ? '0.58rem' : '0.64rem', color: '#666', display: 'block', marginTop: '0.02rem', lineHeight: '1.1' }}>
+                      <span style={{ fontSize: isMany ? '0.6rem' : '0.64rem', color: '#666', display: 'block', lineHeight: '1.1' }}>
                         フリガナ: {c.kana}
                       </span>
                     )}
-                    <strong style={{ fontSize: isMulti ? (isMany ? '0.98rem' : '1.05rem') : '1.15rem', display: 'block', margin: '0.03rem 0', color: '#111', lineHeight: '1.18' }}>
+
+                    {/* 中段: 祝子氏名（大きく堂々とした太字で神職が読みやすいサイズ） */}
+                    <strong style={{ 
+                      fontSize: isMany ? '1.14rem' : '1.22rem', 
+                      display: 'block', 
+                      margin: '0.02rem 0', 
+                      color: '#111', 
+                      lineHeight: '1.18', 
+                      letterSpacing: '0.04em' 
+                    }}>
                       {c.name}
                     </strong>
+
+                    {/* 下段: 生年月日・満年齢 */}
                     {c.birthday && (
-                      <span style={{ fontSize: isMulti ? '0.62rem' : '0.68rem', color: '#555', display: 'block', lineHeight: '1.15' }}>
+                      <span style={{ fontSize: isMany ? '0.64rem' : '0.68rem', color: '#555', display: 'block', lineHeight: '1.15' }}>
                         生年月日: {formatImperialDate(c.birthday)} {isShichigosan ? `（満${getFullAge(c.birthday, booking.booking_date)}歳）` : formatAgeSuffix(c.birthday, booking.booking_date)}
                       </span>
                     )}
@@ -470,40 +486,36 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                 );
               };
 
-              // 保護者（父母）カード描画ヘルパー
-              const renderParentsCard = (isGridCell: boolean = false) => {
+              // 保護者（父母）表示
+              const renderParentsCard = () => {
                 if (!hasParents) return null;
                 return (
                   <div 
                     style={{ 
-                      border: isGridCell ? '1px solid rgba(216, 1, 0, 0.15)' : 'none',
-                      borderTop: !isGridCell ? '1px dashed rgba(216, 1, 0, 0.15)' : undefined,
-                      borderRadius: isGridCell ? '3px' : '0',
-                      padding: isGridCell ? '0.2rem 0.35rem' : '0.2rem 0 0 0',
-                      marginTop: !isGridCell ? '0.15rem' : 0,
-                      backgroundColor: isGridCell ? '#ffffff' : 'transparent',
+                      borderTop: '1px dashed rgba(216, 1, 0, 0.22)',
+                      paddingTop: '0.18rem',
+                      marginTop: '0.1rem',
                       display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      gap: '0.1rem',
+                      alignItems: 'baseline',
+                      flexWrap: 'wrap',
+                      gap: '0.8rem',
+                      fontSize: '0.74rem',
                       lineHeight: '1.2'
                     }}
                   >
-                    <span style={{ fontSize: '0.58rem', color: '#777', fontWeight: 'bold' }}>保護者（ご両親）</span>
-                    <div style={{ display: 'grid', gridTemplateColumns: isGridCell ? '1fr' : '1fr 1fr', gap: isGridCell ? '0.1rem' : '0.4rem' }}>
-                      {booking.father_name && (
-                        <div>
-                          <span style={{ fontSize: '0.55rem', color: '#666' }}>父: {booking.father_kana ? `${booking.father_kana} / ` : ''}</span>
-                          <strong style={{ fontSize: isMany ? '0.85rem' : '0.92rem' }}>{booking.father_name}</strong>
-                        </div>
-                      )}
-                      {booking.mother_name && (
-                        <div>
-                          <span style={{ fontSize: '0.55rem', color: '#666' }}>母: {booking.mother_kana ? `${booking.mother_kana} / ` : ''}</span>
-                          <strong style={{ fontSize: isMany ? '0.85rem' : '0.92rem' }}>{booking.mother_name}</strong>
-                        </div>
-                      )}
-                    </div>
+                    <span style={{ fontSize: '0.62rem', color: '#777', fontWeight: 'bold' }}>保護者:</span>
+                    {booking.father_name && (
+                      <span style={{ color: '#333' }}>
+                        <span style={{ fontSize: '0.6rem', color: '#666' }}>父: {booking.father_kana ? `${booking.father_kana} / ` : ''}</span>
+                        <strong style={{ fontSize: '0.9rem' }}>{booking.father_name}</strong>
+                      </span>
+                    )}
+                    {booking.mother_name && (
+                      <span style={{ color: '#333' }}>
+                        <span style={{ fontSize: '0.6rem', color: '#666' }}>母: {booking.mother_kana ? `${booking.mother_kana} / ` : ''}</span>
+                        <strong style={{ fontSize: '0.9rem' }}>{booking.mother_name}</strong>
+                      </span>
+                    )}
                   </div>
                 );
               };
@@ -515,47 +527,12 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                   backgroundColor: 'rgba(216, 1, 0, 0.02)', 
                   border: '1.5px solid rgba(216, 1, 0, 0.12)', 
                   borderRadius: '4px',
-                  fontSize: isMany ? '0.72rem' : '0.78rem', 
-                  lineHeight: '1.3' 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: isMany ? '0.18rem' : '0.25rem'
                 }}>
-                  {/* 1名の場合: 従来通りの1カラム表示 */}
-                  {!isMulti && (
-                    <>
-                      {renderChildCard(children[0], 0)}
-                      {renderParentsCard(false)}
-                    </>
-                  )}
-
-                  {/* 2名の場合: 左右2カラムグリッド + 父母情報は下部 */}
-                  {children.length === 2 && (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
-                        {renderChildCard(children[0], 0)}
-                        {renderChildCard(children[1], 1)}
-                      </div>
-                      {renderParentsCard(false)}
-                    </>
-                  )}
-
-                  {/* 3名の場合: 2x2グリッド（1行目: 第1子・第2子 / 2行目: 第3子・父母情報 または 第3子2カラムスパン） */}
-                  {children.length === 3 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem' }}>
-                      {renderChildCard(children[0], 0)}
-                      {renderChildCard(children[1], 1)}
-                      {renderChildCard(children[2], 2, !hasParents)}
-                      {hasParents && renderParentsCard(true)}
-                    </div>
-                  )}
-
-                  {/* 4名以上の場合: 2カラムグリッド + 父母情報は下部 */}
-                  {children.length >= 4 && (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem' }}>
-                        {children.map((c, idx) => renderChildCard(c, idx))}
-                      </div>
-                      {renderParentsCard(false)}
-                    </>
-                  )}
+                  {children.map((c, idx) => renderChildCard(c, idx))}
+                  {renderParentsCard()}
                 </div>
               );
             })()}
