@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2, Settings } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { type Booking, getBookingChildren } from '../../types';
+import { type Booking, getBookingChildren, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
 import { printElement } from '../../utils/printUtils';
 
@@ -3020,9 +3020,16 @@ export const ScheduleInnerPrint: React.FC<{
                               {isIndiv && (() => {
                                 const children = getBookingChildren(b);
                                 if (children.length === 0) return null;
+                                const isShichigosan = b.prayer1 === '七五三詣' || b.prayer2 === '七五三詣';
                                 return (
                                   <div style={{ fontSize: '0.72rem', color: '#555', marginTop: '1px' }}>
-                                    祝子: {children.map(c => `${c.name}${c.age_text ? `(${c.age_text})` : ''}`).join('、')}
+                                    祝子: {children.map(c => {
+                                      if (isShichigosan) {
+                                        const ageStr = getShichigosanAge(c.birthday, b.booking_date, c.gender, c.age_text);
+                                        return `${c.name} (${ageStr})`;
+                                      }
+                                      return `${c.name}${c.age_text ? `(${c.age_text})` : ''}`;
+                                    }).join('、')}
                                   </div>
                                 );
                               })()}

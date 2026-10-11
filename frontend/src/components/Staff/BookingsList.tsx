@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Booking, ChildItem, WoodTalismanItem, MultiEntityItem } from '../../types';
-import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities } from '../../types';
+import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
 
 const ORGANIZATION_PRAYERS = [
@@ -2016,32 +2016,48 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                   )}
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.4rem' }}>
-                                  {bookingChildren.map((child, cIdx) => (
-                                    <div key={cIdx} style={{ backgroundColor: '#fff', padding: '0.45rem 0.6rem', borderRadius: '4px', border: '1px solid #eee' }}>
-                                      <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                                        {bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name}
-                                        {child.kana && <span style={{ fontSize: '0.72rem', color: '#666', marginLeft: '0.3rem', fontWeight: 'normal' }}>({child.kana})</span>}
-                                        {child.gender && (
-                                          <span style={{
-                                            fontSize: '0.68rem',
-                                            marginLeft: '0.4rem',
-                                            padding: '0.1rem 0.3rem',
-                                            borderRadius: '3px',
-                                            backgroundColor: child.gender === '男' ? '#eff6ff' : '#fdf2f8',
-                                            color: child.gender === '男' ? '#1d4ed8' : '#be185d',
-                                            border: `1px solid ${child.gender === '男' ? '#bfdbfe' : '#fbcfe8'}`
-                                          }}>
-                                            {child.gender}
-                                          </span>
+                                  {bookingChildren.map((child, cIdx) => {
+                                    const isShichigosan = b.prayer1 === '七五三詣' || b.prayer2 === '七五三詣';
+                                    const shichigosanAge = isShichigosan ? getShichigosanAge(child.birthday, b.booking_date, child.gender, child.age_text) : '';
+                                    return (
+                                      <div key={cIdx} style={{ backgroundColor: '#fff', padding: '0.45rem 0.6rem', borderRadius: '4px', border: '1px solid #eee' }}>
+                                        <div style={{ color: 'var(--color-urushi)', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.2rem' }}>
+                                          <span>{bookingChildren.length > 1 ? `第${cIdx + 1}子: ` : ''}{child.name}</span>
+                                          {child.kana && <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'normal' }}>({child.kana})</span>}
+                                          {child.gender && (
+                                            <span style={{
+                                              fontSize: '0.68rem',
+                                              padding: '0.1rem 0.3rem',
+                                              borderRadius: '3px',
+                                              backgroundColor: child.gender === '男' ? '#eff6ff' : '#fdf2f8',
+                                              color: child.gender === '男' ? '#1d4ed8' : '#be185d',
+                                              border: `1px solid ${child.gender === '男' ? '#bfdbfe' : '#fbcfe8'}`
+                                            }}>
+                                              {child.gender}
+                                            </span>
+                                          )}
+                                          {isShichigosan && (
+                                            <span style={{
+                                              fontSize: '0.7rem',
+                                              padding: '0.1rem 0.4rem',
+                                              borderRadius: '3px',
+                                              backgroundColor: '#fef3c7',
+                                              color: '#92400e',
+                                              border: '1px solid #fde68a',
+                                              fontWeight: 'bold'
+                                            }}>
+                                              七五三: {shichigosanAge}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {child.birthday && (
+                                          <div style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>
+                                            生年月日: {child.birthday} {!isShichigosan && child.age_text ? `(${child.age_text})` : ''}
+                                          </div>
                                         )}
                                       </div>
-                                      {child.birthday && (
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>
-                                          生年月日: {child.birthday} {child.age_text ? `(${child.age_text})` : ''}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -2836,48 +2852,71 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                             </button>
                           )}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '0.72rem' }}>氏名</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={child.name || ''}
-                              onChange={(e) => handleUpdateEditChild(idx, 'name', e.target.value)}
-                            />
-                          </div>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '0.72rem' }}>フリガナ</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={child.kana || ''}
-                              onChange={(e) => handleUpdateEditChild(idx, 'kana', e.target.value)}
-                            />
-                          </div>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '0.72rem' }}>生年月日 (YYYY-MM-DD)</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="例: 2020-05-05"
-                              value={child.birthday || ''}
-                              onChange={(e) => handleUpdateEditChild(idx, 'birthday', e.target.value)}
-                            />
-                          </div>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '0.72rem' }}>性別</label>
-                            <select
-                              className="form-control"
-                              value={child.gender || ''}
-                              onChange={(e) => handleUpdateEditChild(idx, 'gender', (e.target.value || undefined) as any)}
-                            >
-                              <option value="">-- 未選択 --</option>
-                              <option value="男">男の子</option>
-                              <option value="女">女の子</option>
-                            </select>
-                          </div>
-                        </div>
+                        {(() => {
+                          const isShichigosan = editFormData.prayer1 === '七五三詣' || editFormData.prayer2 === '七五三詣';
+                          const currentAge = getShichigosanAge(child.birthday, editFormData.booking_date, child.gender, child.age_text);
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: isShichigosan ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr', gap: '0.4rem' }}>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.72rem' }}>氏名</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={child.name || ''}
+                                  onChange={(e) => handleUpdateEditChild(idx, 'name', e.target.value)}
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.72rem' }}>フリガナ</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={child.kana || ''}
+                                  onChange={(e) => handleUpdateEditChild(idx, 'kana', e.target.value)}
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.72rem' }}>生年月日 (YYYY-MM-DD)</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="例: 2020-05-05"
+                                  value={child.birthday || ''}
+                                  onChange={(e) => handleUpdateEditChild(idx, 'birthday', e.target.value)}
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.72rem' }}>性別</label>
+                                <select
+                                  className="form-control"
+                                  value={child.gender || ''}
+                                  onChange={(e) => handleUpdateEditChild(idx, 'gender', (e.target.value || undefined) as any)}
+                                >
+                                  <option value="">-- 未選択 --</option>
+                                  <option value="男">男の子</option>
+                                  <option value="女">女の子</option>
+                                </select>
+                              </div>
+                              {isShichigosan && (
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label style={{ fontSize: '0.72rem', color: '#92400e', fontWeight: 'bold' }}>
+                                    お祝い年齢 (読み上げ)
+                                  </label>
+                                  <select
+                                    className="form-control"
+                                    style={{ borderColor: '#fde68a', backgroundColor: '#fffbeb', color: '#92400e', fontWeight: 'bold' }}
+                                    value={currentAge}
+                                    onChange={(e) => handleUpdateEditChild(idx, 'age_text', `${e.target.value}のお祝い`)}
+                                  >
+                                    <option value="3歳">3歳のお祝い</option>
+                                    <option value="5歳">5歳のお祝い</option>
+                                    <option value="7歳">7歳のお祝い</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>

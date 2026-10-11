@@ -241,6 +241,57 @@ export const getBookingChildren = (b: {
   return list;
 };
 
+/**
+ * 七五三詣における神事・祝詞読み上げ用のお祝い年齢（3歳・5歳・7歳）を算出する
+ */
+export function getShichigosanAge(birthdayStr?: string, bookingDateStr?: string, gender?: '男' | '女', currentAgeText?: string): '3歳' | '5歳' | '7歳' {
+  // すでに「3歳」「5歳」「7歳」が明示されている場合はそれを優先
+  if (currentAgeText) {
+    if (currentAgeText.includes('7歳') || currentAgeText.includes('七歳') || currentAgeText.includes('7')) return '7歳';
+    if (currentAgeText.includes('5歳') || currentAgeText.includes('五歳') || currentAgeText.includes('5')) return '5歳';
+    if (currentAgeText.includes('3歳') || currentAgeText.includes('三歳') || currentAgeText.includes('3')) return '3歳';
+  }
+
+  if (!birthdayStr) return '3歳';
+  const birth = new Date(birthdayStr);
+  const target = bookingDateStr ? new Date(bookingDateStr) : new Date();
+  if (isNaN(birth.getTime()) || isNaN(target.getTime())) return '3歳';
+
+  // 数え年: 参拝年 - 誕生年 + 1
+  const kazoe = target.getFullYear() - birth.getFullYear() + 1;
+  // 満年齢
+  let full = target.getFullYear() - birth.getFullYear();
+  const m = target.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && target.getDate() < birth.getDate())) {
+    full--;
+  }
+
+  // 1. 満年齢または数え年が 3, 5, 7 に直接合致する場合
+  if (full === 3 || kazoe === 3) return '3歳';
+  if (full === 5 || kazoe === 5) return '5歳';
+  if (full === 7 || kazoe === 7) return '7歳';
+
+  // 2. 満2歳以下、または数え3歳以下は「3歳」
+  if (full <= 2 || kazoe <= 3) return '3歳';
+
+  // 3. 4歳前後の場合
+  if (full === 4 || kazoe === 4) {
+    return gender === '女' ? '3歳' : '5歳';
+  }
+
+  // 4. 6歳前後の場合
+  if (full === 6 || kazoe === 6) {
+    return '7歳';
+  }
+
+  // 5. 8歳以上は7歳のお祝いの満後参り
+  if (full >= 8 || kazoe >= 8) {
+    return '7歳';
+  }
+
+  return '3歳';
+}
+
 export interface WoodTalismanItem {
   name: string;             // 墨書名
   prayer1?: string;         // 主願意

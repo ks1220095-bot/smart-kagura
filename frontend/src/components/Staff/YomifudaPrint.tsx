@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { type Booking, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities } from '../../types';
+import { type Booking, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities, getShichigosanAge } from '../../types';
 
 interface YomifudaPrintProps {
   booking?: Booking;
@@ -418,18 +418,42 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                         marginBottom: isMany ? '0.15rem' : '0.2rem' 
                       }}
                     >
-                      <span style={{ fontSize: isMany ? '0.58rem' : '0.6rem', color: '#d80100', fontWeight: 'bold', display: 'block' }}>
-                        祝子{isMulti ? `（第${cIdx + 1}子）` : ''} {c.gender ? `[${c.gender}]` : ''}
-                      </span>
-                      {c.kana && (
-                        <span style={{ fontSize: isMany ? '0.62rem' : '0.65rem', color: '#666', display: 'block' }}>フリガナ: {c.kana}</span>
-                      )}
-                      <strong style={{ fontSize: isMany ? '1.05rem' : '1.15rem', display: 'block', margin: '0.05rem 0' }}>{c.name}</strong>
-                      {c.birthday && (
-                        <span style={{ fontSize: isMany ? '0.65rem' : '0.7rem', color: '#777', display: 'block' }}>
-                          生年月日: {formatImperialDate(c.birthday)} {formatAgeSuffix(c.birthday, booking.booking_date)}
-                        </span>
-                      )}
+                      {(() => {
+                        const isShichigosan = booking.prayer1 === '七五三詣' || booking.prayer2 === '七五三詣';
+                        const celebrationAge = isShichigosan ? getShichigosanAge(c.birthday, booking.booking_date, c.gender, c.age_text) : '';
+                        return (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: isMany ? '0.58rem' : '0.6rem', color: '#d80100', fontWeight: 'bold' }}>
+                                祝子{isMulti ? `（第${cIdx + 1}子）` : ''} {c.gender ? `[${c.gender}]` : ''}
+                              </span>
+                              {isShichigosan && (
+                                <span style={{ 
+                                  fontSize: isMany ? '0.85rem' : '0.95rem', 
+                                  color: '#d80100', 
+                                  fontWeight: 'bold', 
+                                  backgroundColor: 'rgba(216, 1, 0, 0.08)',
+                                  border: '1.5px solid #d80100',
+                                  padding: '0.05rem 0.45rem',
+                                  borderRadius: '3px',
+                                  letterSpacing: '0.03em'
+                                }}>
+                                  【七五三祝い: {celebrationAge}】
+                                </span>
+                              )}
+                            </div>
+                            {c.kana && (
+                              <span style={{ fontSize: isMany ? '0.62rem' : '0.65rem', color: '#666', display: 'block' }}>フリガナ: {c.kana}</span>
+                            )}
+                            <strong style={{ fontSize: isMany ? '1.05rem' : '1.15rem', display: 'block', margin: '0.05rem 0' }}>{c.name}</strong>
+                            {c.birthday && (
+                              <span style={{ fontSize: isMany ? '0.65rem' : '0.7rem', color: '#666', display: 'block', marginTop: '0.1rem' }}>
+                                生年月日: {formatImperialDate(c.birthday)} {isShichigosan ? `（満${getFullAge(c.birthday, booking.booking_date)}歳）` : formatAgeSuffix(c.birthday, booking.booking_date)}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   ))}
                   

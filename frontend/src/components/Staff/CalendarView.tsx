@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Lock, Unlock, CalendarDays, Calendar, Check, X, Edit3, Trash2, Printer, AlertCircle } from 'lucide-react';
 import { getRokuyoAndInu } from '../Visitor/SlotSelector';
-import type { CalendarEvent, Booking } from '../../types';
+import { type CalendarEvent, type Booking, getBookingChildren, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
 
 interface CalendarViewProps {
@@ -1001,11 +1001,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                       厄年区分: {b.yakudoshi_type === 'maeyaku' ? '前厄' : b.yakudoshi_type === 'honyaku' ? '本厄' : '後厄'}
                                     </span>
                                   )}
-                                  {b.child_name && (
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', lineHeight: '1.4' }}>
-                                      祝子: {b.child_name} ({b.child_kana})　生年月日: {b.child_birthday}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const children = getBookingChildren(b);
+                                    const isShichi = b.prayer1 === '七五三詣' || b.prayer2 === '七五三詣';
+                                    if (children && children.length > 0) {
+                                      return (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', lineHeight: '1.4' }}>
+                                          {children.map((c, cIdx) => {
+                                            const ageStr = isShichi ? ` [七五三: ${getShichigosanAge(c.birthday, b.booking_date, c.gender, c.age_text)}]` : '';
+                                            return (
+                                              <div key={cIdx}>
+                                                祝子: {c.name || 'お子様'} ({c.kana || '-'}){ageStr}　生年月日: {c.birthday || '-'}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      );
+                                    } else if (b.child_name) {
+                                      const ageStr = isShichi ? ` [七五三: ${getShichigosanAge(b.child_birthday, b.booking_date, b.child_gender)}]` : '';
+                                      return (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', lineHeight: '1.4' }}>
+                                          祝子: {b.child_name} ({b.child_kana}){ageStr}　生年月日: {b.child_birthday}
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   {b.kotobuki_type && (
                                     <span style={{ fontSize: '0.75rem', backgroundColor: '#fff9e6', color: 'var(--color-gold)', padding: '0.05rem 0.25rem', borderRadius: '2px', marginTop: '0.2rem', display: 'inline-block' }}>
                                       祝区分: {b.kotobuki_type === 'その他' ? b.kotobuki_other_text : b.kotobuki_type}
