@@ -5,9 +5,10 @@ import type { Booking } from '../../types';
 interface BookingSuccessProps {
   bookings: Booking[];
   onReset: () => void;
+  isEditMode?: boolean;
 }
 
-export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onReset }) => {
+export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onReset, isEditMode = false }) => {
   const [copied, setCopied] = useState(false);
   const [showParkingModal, setShowParkingModal] = useState(false);
 
@@ -40,10 +41,12 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({ bookings, onRese
       </div>
 
       <h2 style={{ fontSize: '1.6rem', color: 'var(--color-accent-green)', marginBottom: '0.5rem', fontFamily: 'var(--font-serif)' }}>
-        ご予約が完了いたしました
+        {isEditMode ? 'ご予約の変更が完了いたしました' : 'ご予約が完了いたしました'}
       </h2>
       <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.9rem', marginBottom: '2rem' }}>
-        ご入力いただいたメールアドレス宛に、予約完了メールを自動送信いたしました。
+        {isEditMode
+          ? 'ご入力いただいたメールアドレス宛に、予約変更完了メールを自動送信いたしました。'
+          : 'ご入力いただいたメールアドレス宛に、予約完了メールを自動送信いたしました。'}
       </p>
 
       {/* Screen Save Guideline Warning Banner */}

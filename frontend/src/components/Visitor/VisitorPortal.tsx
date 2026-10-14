@@ -302,6 +302,7 @@ export const VisitorPortal: React.FC = () => {
 
   // Reset dynamic fields when main prayer changes to prevent leftover data
   useEffect(() => {
+    if (isEditMode) return;
     setYakudoshiType('');
     setFatherName('');
     setFatherKana('');
@@ -313,8 +314,7 @@ export const VisitorPortal: React.FC = () => {
     setChildGender('');
     setKotobukiType('');
     setKotobukiOtherText('');
-    // Auto-fill typical price (skip in edit mode to preserve existing fee)
-    if (isEditMode) return;
+    // Auto-fill typical price
     if (prayer1 === '初宮詣（お宮参り）' && isTwin) {
       setHatsuhoryo(15000);
     } else {
@@ -672,6 +672,11 @@ export const VisitorPortal: React.FC = () => {
       construction_period: isConstruction && !skipConstructionDetails ? constructionPeriod.trim() : undefined
     };
 
+    if (isEditMode) {
+      setOrgPrayerItems([newOrgItem]);
+      return;
+    }
+
     setOrgPrayerItems(prev => [...prev, newOrgItem]);
 
     // Reset current prayer inputs
@@ -954,42 +959,181 @@ export const VisitorPortal: React.FC = () => {
   }, [step, name, companyName, selectedDate, prayer1, createdBooking, isEditMode]);
 
   const loadBookingIntoForm = (b: Booking) => {
+    sessionStorage.removeItem('booking_completed');
+    setIsEditMode(true);
+    setEditBookingId(b.id || null);
+
     setBookingType(b.booking_type);
     setSelectedDate(b.booking_date);
     setSelectedTime(b.booking_time);
-    setPrayer1(b.prayer1);
-    setPrayer2(b.prayer2 || '');
     setHatsuhoryo(b.hatsuhoryo);
     setAttendingCount(b.attending_count);
+    setHasPastPrayer(b.has_past_prayer || 0);
+
+    // Parse notes for user birthdate and strip auto-generated tags
+    const rawNotes = b.notes || '';
+    const bdayMatch = rawNotes.match(/【生年月日】.*?\((\d{4})-(\d{2})-(\d{2})\)/);
+    if (bdayMatch) {
+      setUserBirthYear(bdayMatch[1]);
+      setUserBirthMonth(String(Number(bdayMatch[2])));
+      setUserBirthDay(String(Number(bdayMatch[3])));
+    } else {
+      setUserBirthYear('');
+      setUserBirthMonth('');
+      setUserBirthDay('');
+    }
+    const cleanedNotes = rawNotes
+      .split('\n')
+      .filter(line => !line.startsWith('【生年月日】') && !line.startsWith('【お車】'))
+      .join('\n')
+      .trim();
+    setNotes(cleanedNotes);
+
+    const parseYMD = (dateStr?: string): [string, string, string] => {
+      if (!dateStr) return ['', '', ''];
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return ['', '', ''];
+      return [parts[0], String(Number(parts[1])), String(Number(parts[2]))];
+    };
 
     if (b.booking_type === 'individual') {
+      setPrayer1(b.prayer1);
+      setPrayer2(b.prayer2 || '');
+
       setName(b.name || '');
       setKana(b.kana || '');
+      setPrayerName(b.name || '');
+      setPrayerKana(b.kana || '');
       setAddress(b.address || '');
       setAddressKana(b.address_kana || '');
       setPhone(b.phone || '');
       setEmail(b.email || '');
 
       setYakudoshiType(b.yakudoshi_type || '');
+      setKotobukiType(b.kotobuki_type || '');
+      setKotobukiOtherText(b.kotobuki_other_text || '');
+
+      // Parents & Anzan fields
       setFatherName(b.father_name || '');
       setFatherKana(b.father_kana || '');
       setMotherName(b.mother_name || '');
       setMotherKana(b.mother_kana || '');
-      setChildName(b.child_name || '');
-      setChildKana(b.child_kana || '');
-      setChildBirthday(b.child_birthday || '');
-      setKotobukiType(b.kotobuki_type || '');
-      setKotobukiOtherText(b.kotobuki_other_text || '');
+      setChildSkipFather(!b.father_name && Boolean(b.mother_name));
+      setChildSkipMother(!b.mother_name && Boolean(b.father_name));
+
+      setAnzanHusbandName(b.father_name || '');
+      setAnzanHusbandKana(b.father_kana || '');
+      setAnzanWifeName(b.mother_name || '');
+      setAnzanWifeKana(b.mother_kana || '');
+      setAnzanSkipHusband(!b.father_name && Boolean(b.mother_name));
+      setAnzanSkipWife(!b.mother_name && Boolean(b.father_name));
+
+      // Children fields (1..4)
+      const children = getBookingChildren(b);
+      setIsTwin(Boolean(b.is_twin));
+      setShichigosanChildCount(Math.max(1, children.length));
+
+      const c1 = children[0];
+      const c1Bday = c1?.birthday || b.child_birthday || '';
+      setChildName(c1?.name || b.child_name || '');
+      setChildKana(c1?.kana || b.child_kana || '');
+      setChildBirthday(c1Bday);
+      setChildGender(c1?.gender || b.child_gender || '');
+      const [y1, m1, d1] = parseYMD(c1Bday);
+      setBirthYear(y1);
+      setBirthMonth(m1);
+      setBirthDay(d1);
+
+      const c2 = children[1];
+      const c2Bday = c2?.birthday || b.child_birthday2 || '';
+      setChildName2(c2?.name || b.child_name2 || '');
+      setChildKana2(c2?.kana || b.child_kana2 || '');
+      setChildBirthday2(c2Bday);
+      setChildGender2(c2?.gender || b.child_gender2 || '');
+      const [y2, m2, d2] = parseYMD(c2Bday);
+      setBirthYear2(y2);
+      setBirthMonth2(m2);
+      setBirthDay2(d2);
+
+      const c3 = children[2];
+      const c3Bday = c3?.birthday || '';
+      setChildName3(c3?.name || '');
+      setChildKana3(c3?.kana || '');
+      setChildBirthday3(c3Bday);
+      setChildGender3(c3?.gender || '');
+      const [y3, m3, d3] = parseYMD(c3Bday);
+      setBirthYear3(y3);
+      setBirthMonth3(m3);
+      setBirthDay3(d3);
+
+      const c4 = children[3];
+      const c4Bday = c4?.birthday || '';
+      setChildName4(c4?.name || '');
+      setChildKana4(c4?.kana || '');
+      setChildBirthday4(c4Bday);
+      setChildGender4(c4?.gender || '');
+      const [y4, m4, d4] = parseYMD(c4Bday);
+      setBirthYear4(y4);
+      setBirthMonth4(m4);
+      setBirthDay4(d4);
+
+      // Car prayer fields
+      const isPendingCar = b.car_maker === '未定（手書き記入）' || b.car_maker === '未定';
+      setCarInfoPending(isPendingCar);
+      setCarMaker(isPendingCar ? '' : (b.car_maker || ''));
+      setCarModel(isPendingCar || b.car_model === '未定' ? '' : (b.car_model || ''));
+      setCarNumber(isPendingCar || b.car_number === '未定' ? '' : (b.car_number || ''));
+
+      // Populate prayerItems cart so validation and confirmation step work immediately
+      const initialPrayerItem: PrayerItem = {
+        id: 'edit-' + (b.id || Date.now()),
+        prayer1: b.prayer1,
+        prayer2: b.prayer2 || undefined,
+        hatsuhoryo: b.hatsuhoryo,
+        name: b.name || '',
+        kana: b.kana || '',
+        yakudoshi_type: b.yakudoshi_type || undefined,
+        child_name: c1?.name || b.child_name || undefined,
+        child_kana: c1?.kana || b.child_kana || undefined,
+        child_birthday: c1Bday || undefined,
+        child_gender: c1?.gender || b.child_gender || undefined,
+        children_data: b.children_data || (children.length > 0 ? JSON.stringify(children) : undefined),
+        father_name: b.father_name || undefined,
+        father_kana: b.father_kana || undefined,
+        mother_name: b.mother_name || undefined,
+        mother_kana: b.mother_kana || undefined,
+        kotobuki_type: b.kotobuki_type || undefined,
+        kotobuki_other_text: b.kotobuki_other_text || undefined,
+        is_twin: b.is_twin || (children.length > 1 ? 1 : 0),
+        child_name2: c2?.name || b.child_name2 || undefined,
+        child_kana2: c2?.kana || b.child_kana2 || undefined,
+        child_birthday2: c2Bday || undefined,
+        child_gender2: c2?.gender || b.child_gender2 || undefined,
+        car_maker: b.car_maker || undefined,
+        car_model: b.car_model || undefined,
+        car_number: b.car_number || undefined
+      };
+      setPrayerItems([initialPrayerItem]);
     } else {
+      const isCustomP1 = Boolean(b.prayer1 && !ORGANIZATION_PRAYERS.includes(b.prayer1));
+      const isCustomP2 = Boolean(b.prayer2 && !ORGANIZATION_PRAYERS.includes(b.prayer2));
+
+      setPrayer1(isCustomP1 ? 'その他（自由入力）' : b.prayer1);
+      setOrgCustomPrayer1(isCustomP1 ? b.prayer1 : '');
+      setPrayer2(b.prayer2 ? (isCustomP2 ? 'その他（自由入力）' : b.prayer2) : '');
+      setOrgCustomPrayer2(isCustomP2 ? (b.prayer2 || '') : '');
+
       setCompanyName(b.company_name || '');
       setCompanyKana(b.company_kana || '');
       setCompanyAddress(b.company_address || '');
       setCompanyAddressKana(b.company_address_kana || '');
       setRepresentativeTitleName(b.representative_title_name || '');
+      setRepresentativeKana(b.representative_kana || '');
       setStaffDeptTitleName(b.staff_dept_title_name || '');
       setStaffPhone(b.staff_phone || '');
       setStaffEmail(b.staff_email || '');
-      setTalismanName(b.talisman_name || '');
+      setTalismanName(b.talisman_name || b.company_name || '');
+      setOrgItemTalismanName(b.talisman_name || '');
       setAdditionalTalismans(b.additional_talismans || '');
       setWantsReceipt(b.wants_receipt === 1);
       const parsedReceipts = getBookingReceipts(b);
@@ -1013,34 +1157,45 @@ export const VisitorPortal: React.FC = () => {
       setWoodTalismanItems(woodTalismans.standard);
       setWoodTalismanLargeItems(woodTalismans.large);
 
-      // Org dynamic fields
-      if (b.prayer1 !== '社運隆盛' && b.prayer1 !== '商売繁昌' && b.prayer1 !== '安全祈願' && b.prayer1 !== '必勝祈願' && b.prayer1 !== '工事安全') {
-        setOrgCustomPrayer1(b.prayer1);
-      }
-      if (b.prayer2 && b.prayer2 !== '社運隆盛' && b.prayer2 !== '商売繁昌' && b.prayer2 !== '安全祈願' && b.prayer2 !== '必勝祈願' && b.prayer2 !== '工事安全') {
-        setOrgCustomPrayer2(b.prayer2);
-      }
       setTournamentName(b.tournament_name || '');
       setTournamentSchedule(b.tournament_schedule || '');
       setConstructionName(b.construction_name || '');
       setConstructionDesigner(b.construction_designer || '');
       setConstructionBuilder(b.construction_builder || '');
       setConstructionPeriod(b.construction_period || '');
+
+      const initialOrgItem: OrgPrayerItem = {
+        id: 'org-edit-' + (b.id || Date.now()),
+        prayer1: isCustomP1 ? 'その他（自由入力）' : b.prayer1,
+        org_custom_prayer1: isCustomP1 ? b.prayer1 : undefined,
+        prayer2: b.prayer2 ? (isCustomP2 ? 'その他（自由入力）' : b.prayer2) : undefined,
+        org_custom_prayer2: isCustomP2 ? b.prayer2 : undefined,
+        hatsuhoryo: b.hatsuhoryo,
+        talisman_name: b.talisman_name || undefined,
+        tournament_name: b.tournament_name || undefined,
+        tournament_schedule: b.tournament_schedule || undefined,
+        construction_name: b.construction_name || undefined,
+        construction_designer: b.construction_designer || undefined,
+        construction_builder: b.construction_builder || undefined,
+        construction_period: b.construction_period || undefined
+      };
+      setOrgPrayerItems([initialOrgItem]);
     }
 
-    setIsEditMode(true);
-    setEditBookingId(b.id || null);
-    
-    // Clear URL parameters and changeId to close self-service overview portal
-    window.history.replaceState({}, '', window.location.origin);
+    // Clear URL parameters and changeId to close self-service overview portal, switch to form tab and Step 2
+    window.history.replaceState({}, '', window.location.pathname);
     setChangeId(null);
-    setStep(1); // Redirect back to slot/type selector
+    setActiveMainTab('form');
+    setStep(2);
+    setErrorMsg('');
+    window.scrollTo(0, 0);
   };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const cId = params.get('changeId');
     if (cId) {
+      sessionStorage.removeItem('booking_completed');
       setChangeId(cId);
       fetchTargetBooking(cId);
     }
@@ -1410,6 +1565,7 @@ export const VisitorPortal: React.FC = () => {
       if (!res.ok) {
         throw new Error(data.error || '該当する予約が見つかりませんでした。');
       }
+      sessionStorage.removeItem('booking_completed');
       setChangeId(String(data.id));
       fetchTargetBooking(String(data.id));
       window.history.replaceState({}, '', `${window.location.pathname}?changeId=${data.id}`);
@@ -1424,6 +1580,7 @@ export const VisitorPortal: React.FC = () => {
 
   // 1. Manage Hatsuhoryo changes based on willingness and organization headcount
   useEffect(() => {
+    if (isEditMode) return;
     if (bookingType === 'individual') {
       setHatsuhoryo(getIndividualMinPrice(prayer1, isTwin, prayer1 === '七五三詣' ? shichigosanChildCount : 1));
     } else {
@@ -1438,7 +1595,7 @@ export const VisitorPortal: React.FC = () => {
         return prev;
       });
     }
-  }, [prayer1, bookingType, attendingCount, isTwin, shichigosanChildCount]);
+  }, [prayer1, bookingType, attendingCount, isTwin, shichigosanChildCount, isEditMode]);
 
   // Sync Organization names to default receipt name
   useEffect(() => {
@@ -1485,17 +1642,20 @@ export const VisitorPortal: React.FC = () => {
   };
 
   // Form Validation
-  const validateForm = () => {
+  const validateForm = (overridePrayerItems?: PrayerItem[], overrideOrgPrayerItems?: OrgPrayerItem[]) => {
     if (!selectedDate || !selectedTime) {
       return 'ご参拝の希望日時を選択してください。';
     }
 
+    const activePrayerItems = overridePrayerItems ?? prayerItems;
+    const activeOrgPrayerItems = overrideOrgPrayerItems ?? orgPrayerItems;
+
     if (bookingType === 'individual') {
-      if (prayerItems.length === 0) {
+      if (activePrayerItems.length === 0) {
         return 'ご祈祷内容（願意と受ける方のお名前）を入力し、「ご祈祷を予約リストに追加」ボタンを押してリストに1件以上追加してください。';
       }
-      for (let i = 0; i < prayerItems.length; i++) {
-        const item = prayerItems[i];
+      for (let i = 0; i < activePrayerItems.length; i++) {
+        const item = activePrayerItems[i];
         const childCount = item.children_data ? getBookingChildren(item).length : (item.is_twin ? 2 : 1);
         const minPrice = getIndividualMinPrice(item.prayer1, Boolean(item.is_twin), childCount);
         const effectiveMin = (isEditMode && item.prayer1 === '安産祈願' && item.hatsuhoryo >= 5000) ? 5000 : minPrice;
@@ -1521,7 +1681,7 @@ export const VisitorPortal: React.FC = () => {
       }
     } else {
       // Organization validation
-      if (orgPrayerItems.length === 0) {
+      if (activeOrgPrayerItems.length === 0) {
         if (!prayer1) {
           return '主願意を選択し、「このご祈祷（願意）を予約リストに追加」ボタンを押してリストに1件以上追加してください。';
         } else {
@@ -1530,8 +1690,8 @@ export const VisitorPortal: React.FC = () => {
       }
 
       const orgMinPrice = Number(attendingCount) < 5 ? 20000 : 30000;
-      for (let i = 0; i < orgPrayerItems.length; i++) {
-        const item = orgPrayerItems[i];
+      for (let i = 0; i < activeOrgPrayerItems.length; i++) {
+        const item = activeOrgPrayerItems[i];
         if (item.hatsuhoryo < orgMinPrice) {
           const pName = item.prayer1 === 'その他（自由入力）' ? item.org_custom_prayer1 : item.prayer1;
           return `【${pName}】の初穂料（${item.hatsuhoryo.toLocaleString()}円）が目安金額（${orgMinPrice.toLocaleString()}円）を下回っています。目安金額以上の金額をご設定ください。`;
@@ -1605,6 +1765,65 @@ export const VisitorPortal: React.FC = () => {
 
     if (nameToCopy) setName(nameToCopy);
     if (kanaToCopy) setKana(kanaToCopy);
+  };
+
+  const buildCurrentIndividualPrayerItem = (existingId?: string): PrayerItem => {
+    let resolvedName = prayerName || name;
+    let resolvedKana = prayerKana || kana;
+
+    if (prayer1 === '安産祈願') {
+      const parts = [];
+      const kanaParts = [];
+      if (!anzanSkipHusband && anzanHusbandName) {
+        parts.push(`${anzanHusbandName} (夫)`);
+        kanaParts.push(anzanHusbandKana);
+      }
+      if (!anzanSkipWife && anzanWifeName) {
+        parts.push(`${anzanWifeName} (妻)`);
+        kanaParts.push(anzanWifeKana);
+      }
+      if (parts.length > 0) {
+        resolvedName = parts.join('・');
+        resolvedKana = kanaParts.join('・');
+      }
+    }
+
+    const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
+    const isChildPrayer = prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り';
+    const effectiveCount = prayer1 === '七五三詣' ? shichigosanChildCount : (isCurrentTwin ? 2 : 1);
+    const childrenList = isChildPrayer ? buildChildrenData(effectiveCount) : [];
+    const childrenDataStr = childrenList.length > 0 ? JSON.stringify(childrenList) : undefined;
+    const c1 = getChildItemAtIndex(1);
+    const c2 = getChildItemAtIndex(2);
+
+    return {
+      id: existingId || Math.random().toString(36).substring(2, 9),
+      prayer1,
+      prayer2: prayer2 || undefined,
+      hatsuhoryo,
+      name: resolvedName,
+      kana: resolvedKana,
+      yakudoshi_type: prayer1 === '厄年のお祓い' ? yakudoshiType : undefined,
+      child_name: isChildPrayer ? c1.name : undefined,
+      child_kana: isChildPrayer ? c1.kana : undefined,
+      child_birthday: isChildPrayer ? c1.birthday : undefined,
+      child_gender: isChildPrayer ? ((c1.gender === '男' || c1.gender === '女') ? c1.gender : undefined) : undefined,
+      children_data: childrenDataStr,
+      father_name: (isChildPrayer && !childSkipFather) ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
+      father_kana: (isChildPrayer && !childSkipFather) ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
+      mother_name: (isChildPrayer && !childSkipMother) ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
+      mother_kana: (isChildPrayer && !childSkipMother) ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
+      kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
+      kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
+      is_twin: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? 1 : 0,
+      child_name2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.name : undefined,
+      child_kana2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.kana : undefined,
+      child_birthday2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.birthday : undefined,
+      child_gender2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? ((c2.gender === '男' || c2.gender === '女') ? c2.gender : undefined) : undefined,
+      car_maker: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定（手書き記入）' : (carMaker.trim() || '未定')) : undefined,
+      car_model: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carModel.trim() || '未定')) : undefined,
+      car_number: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carNumber.trim() || '未定')) : undefined
+    };
   };
 
   const handleAddPrayerItem = () => {
@@ -1704,61 +1923,12 @@ export const VisitorPortal: React.FC = () => {
       return;
     }
 
-    // Resolve displayed names
-    let resolvedName = prayerName;
-    let resolvedKana = prayerKana;
+    const newItem = buildCurrentIndividualPrayerItem(isEditMode && prayerItems[0]?.id ? prayerItems[0].id : undefined);
 
-    if (prayer1 === '安産祈願') {
-      const parts = [];
-      const kanaParts = [];
-      if (!anzanSkipHusband) {
-        parts.push(`${anzanHusbandName} (夫)`);
-        kanaParts.push(anzanHusbandKana);
-      }
-      if (!anzanSkipWife) {
-        parts.push(`${anzanWifeName} (妻)`);
-        kanaParts.push(anzanWifeKana);
-      }
-      resolvedName = parts.join('・');
-      resolvedKana = kanaParts.join('・');
+    if (isEditMode) {
+      setPrayerItems([newItem]);
+      return;
     }
-
-    // Add to prayerItems
-    const isCurrentTwin = prayer1 === '初宮詣（お宮参り）' && isTwin;
-    const isChildPrayer = prayer1 === '初宮詣（お宮参り）' || prayer1 === '七五三詣' || prayer1 === '十三参り';
-    const effectiveCount = prayer1 === '七五三詣' ? shichigosanChildCount : (isCurrentTwin ? 2 : 1);
-    const childrenList = isChildPrayer ? buildChildrenData(effectiveCount) : [];
-    const childrenDataStr = childrenList.length > 0 ? JSON.stringify(childrenList) : undefined;
-    const c1 = getChildItemAtIndex(1);
-    const c2 = getChildItemAtIndex(2);
-
-    const newItem: PrayerItem = {
-      id: Math.random().toString(36).substring(2, 9),
-      prayer1,
-      hatsuhoryo,
-      name: resolvedName,
-      kana: resolvedKana,
-      yakudoshi_type: prayer1 === '厄年のお祓い' ? yakudoshiType : undefined,
-      child_name: isChildPrayer ? c1.name : undefined,
-      child_kana: isChildPrayer ? c1.kana : undefined,
-      child_birthday: isChildPrayer ? c1.birthday : undefined,
-      child_gender: isChildPrayer ? ((c1.gender === '男' || c1.gender === '女') ? c1.gender : undefined) : undefined,
-      children_data: childrenDataStr,
-      father_name: (isChildPrayer && !childSkipFather) ? fatherName : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandName : undefined,
-      father_kana: (isChildPrayer && !childSkipFather) ? fatherKana : (prayer1 === '安産祈願' && !anzanSkipHusband) ? anzanHusbandKana : undefined,
-      mother_name: (isChildPrayer && !childSkipMother) ? motherName : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeName : undefined,
-      mother_kana: (isChildPrayer && !childSkipMother) ? motherKana : (prayer1 === '安産祈願' && !anzanSkipWife) ? anzanWifeKana : undefined,
-      kotobuki_type: prayer1 === '寿祝い' ? kotobukiType : undefined,
-      kotobuki_other_text: (prayer1 === '寿祝い' && kotobukiType === 'その他') ? kotobukiOtherText : undefined,
-      is_twin: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? 1 : 0,
-      child_name2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.name : undefined,
-      child_kana2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.kana : undefined,
-      child_birthday2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? c2.birthday : undefined,
-      child_gender2: (isCurrentTwin || (prayer1 === '七五三詣' && shichigosanChildCount > 1)) ? ((c2.gender === '男' || c2.gender === '女') ? c2.gender : undefined) : undefined,
-      car_maker: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定（手書き記入）' : (carMaker.trim() || '未定')) : undefined,
-      car_model: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carModel.trim() || '未定')) : undefined,
-      car_number: prayer1 === '車祓（お車のお祓い）' ? (carInfoPending ? '未定' : (carNumber.trim() || '未定')) : undefined
-    };
 
     setPrayerItems([...prayerItems, newItem]);
 
@@ -1784,8 +1954,8 @@ export const VisitorPortal: React.FC = () => {
           kanaToCopy = motherKana;
         }
       } else {
-        nameToCopy = resolvedName;
-        kanaToCopy = resolvedKana;
+        nameToCopy = newItem.name;
+        kanaToCopy = newItem.kana;
       }
 
       if (!name && nameToCopy) setName(nameToCopy);
@@ -1849,7 +2019,38 @@ export const VisitorPortal: React.FC = () => {
   };
 
   const handleNextStep = () => {
-    const error = validateForm();
+    let overridePrayerItems: PrayerItem[] | undefined = undefined;
+    let overrideOrgPrayerItems: OrgPrayerItem[] | undefined = undefined;
+
+    if (isEditMode) {
+      if (bookingType === 'individual' && prayer1) {
+        const updatedItem = buildCurrentIndividualPrayerItem(prayerItems[0]?.id || 'edit-1');
+        overridePrayerItems = [updatedItem];
+        setPrayerItems(overridePrayerItems);
+      } else if (bookingType === 'organization' && prayer1) {
+        const isVictory = prayer1 === '必勝祈願' || prayer2 === '必勝祈願';
+        const isConstruction = prayer1 === '工事安全' || prayer2 === '工事安全';
+        const updatedOrgItem: OrgPrayerItem = {
+          id: orgPrayerItems[0]?.id || 'org-edit-1',
+          prayer1,
+          org_custom_prayer1: prayer1 === 'その他（自由入力）' ? orgCustomPrayer1.trim() : undefined,
+          prayer2: prayer2 || undefined,
+          org_custom_prayer2: prayer2 === 'その他（自由入力）' ? orgCustomPrayer2.trim() : undefined,
+          hatsuhoryo,
+          talisman_name: orgItemTalismanName.trim() || talismanName.trim() || undefined,
+          tournament_name: isVictory && !skipVictoryDetails ? tournamentName.trim() : undefined,
+          tournament_schedule: isVictory && !skipVictoryDetails ? tournamentSchedule.trim() : undefined,
+          construction_name: isConstruction && !skipConstructionDetails ? constructionName.trim() : undefined,
+          construction_designer: isConstruction && !skipConstructionDetails ? constructionDesigner.trim() : undefined,
+          construction_builder: isConstruction && !skipConstructionDetails ? constructionBuilder.trim() : undefined,
+          construction_period: isConstruction && !skipConstructionDetails ? constructionPeriod.trim() : undefined
+        };
+        overrideOrgPrayerItems = [updatedOrgItem];
+        setOrgPrayerItems(overrideOrgPrayerItems);
+      }
+    }
+
+    const error = validateForm(overridePrayerItems, overrideOrgPrayerItems);
     if (error) {
       setErrorMsg(error);
       window.scrollTo(0, 0);
@@ -2124,10 +2325,13 @@ export const VisitorPortal: React.FC = () => {
 
   const handleReset = () => {
     setCreatedBooking(null);
+    setIsEditMode(false);
+    setEditBookingId(null);
     sessionStorage.removeItem('booking_completed');
     localStorage.removeItem('kagura_booking_form_state');
     setStep(1);
     setPrayerItems([]);
+    setOrgPrayerItems([]);
     setSelectedDate('');
     setSelectedTime('');
     setPrayer1('');
@@ -2201,7 +2405,7 @@ export const VisitorPortal: React.FC = () => {
   };
 
   // Double submission block screen on browser-back
-  if (isCompleted && step !== 4) {
+  if (isCompleted && step !== 4 && !isEditMode && !changeId) {
     return (
       <div style={{ padding: '3rem 0' }}>
         <div className="container" style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -2228,7 +2432,7 @@ export const VisitorPortal: React.FC = () => {
   }
 
   if (step === 4 && createdBookings.length > 0) {
-    return <BookingSuccess bookings={createdBookings} onReset={handleReset} />;
+    return <BookingSuccess bookings={createdBookings} onReset={handleReset} isEditMode={isEditMode} />;
   }
 
   if (settingsLoading) {
@@ -2486,7 +2690,7 @@ export const VisitorPortal: React.FC = () => {
   }
 
   // If already completed and user tries to access forms via direct navigation/back
-  if (isCompleted && step !== 4 && !createdBooking) {
+  if (isCompleted && step !== 4 && !createdBooking && !isEditMode && !changeId) {
     return (
       <div style={{ padding: '3rem 0' }}>
         <div className="container" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
@@ -2782,15 +2986,52 @@ export const VisitorPortal: React.FC = () => {
         {/* STEP 2: FILL IN RESERVATION FORM */}
         {step === 2 && (
           <form style={{ maxWidth: '800px', margin: '0 auto' }} onSubmit={(e) => { e.preventDefault(); handleNextStep(); }}>
-            
+            {isEditMode && (
+              <div style={{
+                backgroundColor: '#e6f7ff',
+                border: '1px solid #91d5ff',
+                padding: '0.85rem 1.15rem',
+                borderRadius: '4px',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '0.92rem', color: '#0050b3', fontWeight: 'bold' }}>
+                  ✏️ ご予約内容の変更手続き中（受付番号: {targetBooking?.receipt_number || editBookingId}）
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#096dd9' }}>
+                  ご希望の日時や修正箇所をご変更の上、ページ下部の「確認画面へ進む」を押してください。
+                </span>
+              </div>
+            )}
+
             {/* Header info */}
             <div className="card kamidana-border">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-serif)', margin: 0 }}>
                   {bookingType === 'individual' ? '個人のご祈祷 予約フォーム' : '団体（企業）のご祈祷 予約フォーム'}
                 </h3>
-                <button type="button" onClick={() => setStep(1)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                  戻る
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isEditMode) {
+                      setIsEditMode(false);
+                      setEditBookingId(null);
+                      setActiveMainTab('lookup');
+                      if (targetBooking?.id) {
+                        setChangeId(String(targetBooking.id));
+                      }
+                    } else {
+                      setStep(1);
+                    }
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                >
+                  {isEditMode ? '変更を中止して照会画面に戻る' : '戻る'}
                 </button>
               </div>
 
@@ -3831,7 +4072,7 @@ export const VisitorPortal: React.FC = () => {
                     className="btn btn-gold"
                     style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}
                   >
-                    ➕ このご祈祷（願意）を予約リストに追加
+                    {isEditMode ? '🔄 ご祈祷内容の変更をリストに反映' : '➕ このご祈祷（願意）を予約リストに追加'}
                   </button>
                 </div>
               )}
@@ -3844,7 +4085,7 @@ export const VisitorPortal: React.FC = () => {
                     className="btn btn-gold"
                     style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}
                   >
-                    ➕ このご祈祷（願意）を予約リストに追加
+                    {isEditMode ? '🔄 ご祈祷内容の変更をリストに反映' : '➕ このご祈祷（願意）を予約リストに追加'}
                   </button>
                 </div>
               )}
@@ -5043,8 +5284,23 @@ export const VisitorPortal: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '3rem' }}>
-              <button type="button" onClick={() => setStep(1)} className="btn btn-secondary">
-                区分選択に戻る
+              <button
+                type="button"
+                onClick={() => {
+                  if (isEditMode) {
+                    setIsEditMode(false);
+                    setEditBookingId(null);
+                    setActiveMainTab('lookup');
+                    if (targetBooking?.id) {
+                      setChangeId(String(targetBooking.id));
+                    }
+                  } else {
+                    setStep(1);
+                  }
+                }}
+                className="btn btn-secondary"
+              >
+                {isEditMode ? '変更を中止して照会画面に戻る' : '区分選択に戻る'}
               </button>
               <button type="submit" className="btn btn-primary">
                 確認画面へ進む
