@@ -464,17 +464,24 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDateTime();
   setupEventListeners();
   loadGridColsSetting();
+
+  // 1. ローカルキャッシュからマスタと取引データを0秒で即時復元して初期描画（GAS応答待ちゼロ）
+  restoreCachedMasterAndDashboardImmediately();
+
+  // 2. マスタとダッシュボードの最新化を実行
   loadMasterData();
-  initMemoControl();
   restoreCartState(); // ページ読み込み時にカート状態とお預かり金額を復元
-  if (state.transactions.length === 0) {
-    state.transactions = getMockTransactions(); // 動作確認用の美しい過去履歴を初期セット
-  }
   setupOfflineMonitoring();
-  syncOfflineTransactions();
-  initMonthlyInventoryControls();
-  checkAutoMonthlyClose();
   initOrderPlanControls();
+
+  // 3. 優先度の低いバックグラウンド処理（共有メモ同期・月次在庫台帳・未送信キュー同期）は
+  //    メインのダッシュボード表示を妨げないよう遅延実行してGASの同時実行ロック渋滞を防止
+  setTimeout(() => {
+    initMemoControl();
+    initMonthlyInventoryControls();
+    syncOfflineTransactions();
+    checkAutoMonthlyClose();
+  }, 1500);
 });
 
 function setupDateTime() {
@@ -1424,10 +1431,23 @@ async function loadMasterData(forceReload = false) {
     state.items = sortItemsBySavedOrder(MOCK_ITEMS);
     renderItems();
     renderMasterGrid();
+    if (state.currentTab === 'dashboard') {
+      loadDashboardData();
+    }
     return;
   }
 
-  showLoader(true);
+  // ダッシュボードデータの取得を getMaster の完了を待たずに即座に並列開始する（直列2往復待ちを解消）
+  if (!forceReload && state.currentTab === 'dashboard') {
+    loadDashboardData();
+  }
+
+  // すでにローカルキャッシュから復元済みの場合は全画面ローダーを出さずバックグラウンド更新
+  const hasCachedMaster = state.items && state.items.length > 0;
+  if (forceReload || !hasCachedMaster) {
+    showLoader(true);
+  }
+
   try {
     const res = await fetch(`${GAS_API_URL}?action=getMaster`);
     const data = await res.json();
@@ -1461,7 +1481,17 @@ async function loadMasterData(forceReload = false) {
       
       renderItems();
       renderMasterGrid();
-      if (forceReload) showToast('マスタデータをスプレッドシートと同期しました。', 'success');
+      // マスタ確定後に在庫アラートと授与品別統計のカテゴリ表示を軽く再反映
+      if (state.currentTab === 'dashboard') {
+        renderStockAlertsOnly();
+        renderItemStatsSection();
+      }
+      if (forceReload) {
+        showToast('マスタデータをスプレッドシートと同期しました。', 'success');
+        if (state.currentTab === 'dashboard') {
+          loadDashboardData(false, true);
+        }
+      }
       updateNetworkStatusUI(true);
     } else {
       throw new Error(data.message);
@@ -1477,7 +1507,9 @@ async function loadMasterData(forceReload = false) {
         
         renderItems();
         renderMasterGrid();
-        showToast('接続エラーのため、ローカルキャッシュから商品データを読み込みました（オフラインモード）。', 'warning');
+        if (forceReload) {
+          showToast('接続エラーのため、ローカルキャッシュから商品データを読み込みました（オフラインモード）。', 'warning');
+        }
         updateNetworkStatusUI(false);
       } catch (parseErr) {
         console.error('Failed to parse cached items:', parseErr);
@@ -1488,9 +1520,6 @@ async function loadMasterData(forceReload = false) {
     }
   } finally {
     showLoader(false);
-    if (state.currentTab === 'dashboard') {
-      loadDashboardData();
-    }
   }
 }
 
@@ -4100,12 +4129,85 @@ function setupOfflineMonitoring() {
 // ==========================================
 
 /**
+ * 起動時 (DOMContentLoaded) に localStorage からマスタ品目とダッシュボード取引キャッシュを 0ms で同期復元して初期描画
+ */
+function restoreCachedMasterAndDashboardImmediately() {
+  // 1. マスタ品目の即時復元
+  const cachedItemsRaw = localStorage.getItem('cached_master_items');
+  if (cachedItemsRaw) {
+    try {
+      const parsedItems = JSON.parse(cachedItemsRaw);
+      if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+        state.items = sortItemsBySavedOrder(parsedItems);
+        renderItems();
+        renderMasterGrid();
+      }
+    } catch (e) {
+      console.warn('Failed to restore cached master items:', e);
+    }
+  }
+
+  // 2. ダッシュボード取引明細＆取得済み区間キャッシュの即時復元
+  const cachedDashRaw = localStorage.getItem('regi_dashboard_tx_cache_v1');
+  if (cachedDashRaw) {
+    try {
+      const parsedDash = JSON.parse(cachedDashRaw);
+      if (parsedDash && Array.isArray(parsedDash.transactions)) {
+        mergeTransactionsIntoDashboardCache(parsedDash.transactions, false);
+      }
+      if (parsedDash && Array.isArray(parsedDash.fetchedRanges)) {
+        parsedDash.fetchedRanges.forEach(r => {
+          if (r && r.start && r.end) {
+            markRangeAsFetched(r.start, r.end, false);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to restore dashboard tx cache:', e);
+    }
+  }
+
+  syncLocalTransactionsToDashboardCache();
+
+  // 3. 初回からGAS通信完了を待たずに0秒でダッシュボード（KPI・グラフ・授与品別統計）を即時描画
+  if (state.currentTab === 'dashboard') {
+    renderDashboard(false);
+  }
+}
+
+/**
+ * ダッシュボードの取引明細と取得済み日付区間を localStorage へ永続化保存（次回以降の読み込み・期間切替を0秒化）
+ */
+let _persistDashCacheTimer = null;
+function persistDashboardCacheToStorage() {
+  if (_persistDashCacheTimer) clearTimeout(_persistDashCacheTimer);
+  _persistDashCacheTimer = setTimeout(() => {
+    try {
+      const allTxs = state.dashboard.rangeTransactions || [];
+      // 容量上限対策として直近・有効データ中心に最大8000件まで保持
+      const txsToSave = allTxs.length > 8000 ? allTxs.slice(-8000) : allTxs;
+      const payload = {
+        savedAt: Date.now(),
+        fetchedRanges: state.dashboard.fetchedRanges || [],
+        transactions: txsToSave
+      };
+      localStorage.setItem('regi_dashboard_tx_cache_v1', JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Dashboard cache persist warning:', e);
+    }
+  }, 200);
+}
+
+/**
  * 取得済み区間リスト (state.dashboard.fetchedRanges) に [startStr, endStr] を登録して隣接・重複区間をマージ
  */
-function markRangeAsFetched(startStr, endStr) {
+function markRangeAsFetched(startStr, endStr, shouldPersist = true) {
+  const todayStr = getJstDateString(new Date());
   const s = normalizeDateStr(startStr);
-  const e = normalizeDateStr(endStr);
-  if (!s || !e || s > e) return;
+  let e = normalizeDateStr(endStr);
+  if (!s || !e) return;
+  if (e > todayStr) e = todayStr; // 未来日は本日までに丸める
+  if (s > e) return;
 
   const ranges = [...(state.dashboard.fetchedRanges || []), { start: s, end: e }];
   ranges.sort((a, b) => a.start.localeCompare(b.start));
@@ -4135,16 +4237,24 @@ function markRangeAsFetched(startStr, endStr) {
   if (!state.dashboard.latestFetchedDate || e > state.dashboard.latestFetchedDate) {
     state.dashboard.latestFetchedDate = e;
   }
+
+  if (shouldPersist) {
+    persistDashboardCacheToStorage();
+  }
 }
 
 /**
  * 指定された [startStr, endStr] がすでに漏れなく（歯抜けなく）取得済みかを判定
+ * ※未来日（今日より後）には取引データが存在し得ないため、endStr が未来の場合は今日 (todayStr) までのキャッシュで完全取得済みと判定
  */
 function isRangeFullyCached(startStr, endStr) {
+  const todayStr = getJstDateString(new Date());
   const s = normalizeDateStr(startStr);
-  const e = normalizeDateStr(endStr);
+  let e = normalizeDateStr(endStr);
   if (!s || !e || s > e) return false;
-  if (!state.dashboard.rangeTransactions || state.dashboard.rangeTransactions.length === 0) return false;
+  if (e > todayStr) e = todayStr;
+  if (s > e) return true; // 開始日自体が未来日の場合は通信不要
+
   const ranges = state.dashboard.fetchedRanges || [];
   return ranges.some(r => r.start <= s && r.end >= e);
 }
@@ -4189,7 +4299,7 @@ function isTransactionActive(tx) {
 /**
  * 取引明細配列を正規化して cachedTransactionsMap に安全にマージ（キー衝突・日付スラッシュ混在防止）
  */
-function mergeTransactionsIntoDashboardCache(rawTransactions) {
+function mergeTransactionsIntoDashboardCache(rawTransactions, shouldPersist = true) {
   if (!Array.isArray(rawTransactions)) return;
   const todayStr = getJstDateString(new Date());
 
@@ -4235,6 +4345,9 @@ function mergeTransactionsIntoDashboardCache(rawTransactions) {
   });
 
   state.dashboard.rangeTransactions = Object.values(state.dashboard.cachedTransactionsMap);
+  if (shouldPersist && rawTransactions.length > 0) {
+    persistDashboardCacheToStorage();
+  }
 }
 
 /**
@@ -4353,33 +4466,53 @@ async function updateChartRangeDataAndRender() {
   const { start, end } = getActiveChartDateBounds();
   const seq = ++state.dashboard.chartFetchSeq;
 
+  // まず手元のキャッシュで即座に描画
+  renderDashboardChartsOnly();
+
   if (!isRangeFullyCached(start, end)) {
     await fetchTransactionsForDateRange(start, end);
+    if (seq !== state.dashboard.chartFetchSeq) return;
+    renderDashboardChartsOnly();
   }
-  if (seq !== state.dashboard.chartFetchSeq) return;
-  renderDashboardChartsOnly();
 }
 
 /**
- * 🎁 授与品別統計の期間ボタン・年月セレクター切替時：必要なデータのみ取得し、授与品別統計テーブルだけを単独で高速更新
+ * 🎁 授与品別統計の期間ボタン・年月セレクター切替時：
+ * 1. まず手元のキャッシュ・月次確定スナップショット・過去実績台帳で **0ms（即座）にテーブルを描画**
+ * 2. 未取得の日付範囲がある場合のみ、テーブルを消さずにバックグラウンドでGASから差分取得して再反映（Stale-While-Revalidate）
  */
 async function updateStatsRangeDataAndRender() {
   const { start, end } = getActiveStatsDateBounds();
   const seq = ++state.dashboard.statsFetchSeq;
 
-  // すでにキャッシュ済みの場合はネットワーク待ちゼロで即座にテーブルのみ更新
+  // Step 1: ネットワーク待ちゼロで即座に手元データ（キャッシュ＋スナップショット＋過去実績台帳）から描画
+  const renderedCount = renderItemStatsSection();
+
+  // 月別モードで既に「月次確定スナップショット」が存在する場合は、確定値が最優先のため追加通信不要
+  if (state.dashboard.statsRange === 'month') {
+    const y = Number(state.dashboard.statsSelectedYear) || new Date().getFullYear();
+    const m = Number(state.dashboard.statsSelectedMonth) || (new Date().getMonth() + 1);
+    const ymStr = `${y}-${String(m).padStart(2, '0')}`;
+    if (localStorage.getItem('monthly_snapshot_' + ymStr) && renderedCount > 0) {
+      return;
+    }
+  }
+
+  // すでに該当期間が完全にキャッシュ済みの場合は即完了
   if (isRangeFullyCached(start, end)) {
-    renderItemStatsSection();
     return;
   }
 
-  // 未取得期間がある場合はテーブル内にローディング表示を出してから非同期取得
+  // Step 2: 未取得期間がある場合は、既にデータが表示されていればテーブルを維持したままサブタイトルに同期中アイコンを表示
   const subtitleEl = document.getElementById('dashboard-stats-subtitle');
   if (subtitleEl) {
-    subtitleEl.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin" style="margin-right:0.25rem; color:var(--color-vermilion);"></i> 期間データ (${start} 〜 ${end}) を取得・集計中...`;
+    const currentText = subtitleEl.textContent || '';
+    subtitleEl.innerHTML = `${currentText} <span style="margin-left:0.5rem; font-size:0.78rem; color:var(--color-vermilion);"><i class="fa-solid fa-circle-notch fa-spin"></i> 最新データを同期中...</span>`;
   }
+
+  // もし手元データで1件も表示できる行がない場合のみ、テーブル内にローディング表示を出す
   const statsTableBody = document.getElementById('dashboard-item-stats');
-  if (statsTableBody) {
+  if (statsTableBody && renderedCount === 0) {
     statsTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2.2rem; color: var(--color-text-muted);"><i class="fa-solid fa-spinner fa-spin" style="margin-right:0.4rem; color:var(--color-gold);"></i>指定期間の授与データを読み込んでいます...</td></tr>`;
   }
 
@@ -4411,6 +4544,7 @@ async function loadDashboardData(isBackground = false, forceRefresh = false) {
   let fetchEndDate = todayStr;
   if (chartBounds.end > fetchEndDate) fetchEndDate = chartBounds.end;
   if (statsBounds.end > fetchEndDate) fetchEndDate = statsBounds.end;
+  if (fetchEndDate > todayStr) fetchEndDate = todayStr;
 
   if (isBackground) {
     fetchStartDate = startOfWeekStr;
@@ -4419,8 +4553,14 @@ async function loadDashboardData(isBackground = false, forceRefresh = false) {
 
   syncLocalTransactionsToDashboardCache();
 
+  // キャッシュがあればGAS通信完了を待たずにまず即座に描画（体感待ち時間0秒）
+  if (!isBackground && state.dashboard.rangeTransactions && state.dashboard.rangeTransactions.length > 0) {
+    renderDashboard(false);
+  }
+
   if (!forceRefresh && !isBackground && isRangeFullyCached(fetchStartDate, fetchEndDate)) {
-    renderDashboard();
+    renderDashboard(false);
+    scheduleCurrentYearBackgroundPrefetch();
     return;
   }
 
@@ -4433,29 +4573,39 @@ async function loadDashboardData(isBackground = false, forceRefresh = false) {
   }
 
   const subtitleEl = document.getElementById('dashboard-stats-subtitle');
-  if (subtitleEl && !isBackground) {
+  if (subtitleEl && !isBackground && (!state.dashboard.rangeTransactions || state.dashboard.rangeTransactions.length === 0)) {
     subtitleEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="margin-right:0.25rem;"></i> データを集計中...';
   }
 
   try {
-    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${fetchStartDate}&endDate=${fetchEndDate}`);
-    const data = await res.json();
-
-    if (data.status === 'success' && Array.isArray(data.transactions)) {
-      mergeTransactionsIntoDashboardCache(data.transactions);
-      markRangeAsFetched(fetchStartDate, fetchEndDate);
-      renderDashboard(!isBackground);
-    } else {
-      throw new Error(data.message || 'データ取得に失敗しました');
+    await fetchTransactionsForDateRange(fetchStartDate, fetchEndDate, forceRefresh);
+    renderDashboard(!isBackground);
+    if (!isBackground) {
+      scheduleCurrentYearBackgroundPrefetch();
     }
   } catch (err) {
     console.warn('Dashboard data fetch issue:', err);
     syncLocalTransactionsToDashboardCache();
     renderDashboard(!isBackground);
-    if (!isBackground) {
-      showToast('ダッシュボードデータを更新しました。', 'info');
-    }
   }
+}
+
+/**
+ * 初回当月ロード完了後、アイドル時に今年の年初〜前月末までの取引データを裏でプリフェッチしておく
+ * （職員が「月別」で先月以前を選んだり「年別」へ切り替えた瞬間に0msで即表示できるようにする）
+ */
+let _yearPrefetchScheduled = false;
+function scheduleCurrentYearBackgroundPrefetch() {
+  if (_yearPrefetchScheduled) return;
+  _yearPrefetchScheduled = true;
+  setTimeout(() => {
+    const now = new Date();
+    const yearStartStr = `${now.getFullYear()}-01-01`;
+    const todayStr = getJstDateString(now);
+    if (!isRangeFullyCached(yearStartStr, todayStr)) {
+      fetchTransactionsForDateRange(yearStartStr, todayStr);
+    }
+  }, 800);
 }
 
 /**
@@ -5124,6 +5274,7 @@ function renderItemStatsSection() {
       }).join('');
     }
   }
+  return sortedStats.length;
 }
 
 // 動作確認用モックダミー売上データを生成する関数（日付単位キャッシュ対応で再生成フリーズを防止）
@@ -5646,37 +5797,79 @@ function initMonthlyInventoryControls() {
 }
 
 /**
- * 月次在庫データの取得（GAS または 動的集計）
-/**
  * 指定期間の取引履歴をGASから取得してキャッシュにマージ
+ * ・未来日の丸め込み
+ * ・既に取得済みの前後区間を除いた「未取得の差分期間のみ」に縮小してGAS負荷を最小化
+ * ・同一区間の同時重複リクエストを1本に統合（In-Flight Deduplication）
  */
-async function fetchTransactionsForDateRange(startDate, endDate) {
-  const sNorm = normalizeDateStr(startDate);
-  const eNorm = normalizeDateStr(endDate);
-  if (!sNorm || !eNorm || sNorm > eNorm) return;
+const _inFlightRangePromises = {};
+async function fetchTransactionsForDateRange(startDate, endDate, forceRefresh = false) {
+  const todayStr = getJstDateString(new Date());
+  let sNorm = normalizeDateStr(startDate);
+  let eNorm = normalizeDateStr(endDate);
+  if (!sNorm || !eNorm) return;
+  if (eNorm > todayStr) eNorm = todayStr;
+  if (sNorm > eNorm) return;
+
+  const originalStart = sNorm;
+  const originalEnd = eNorm;
 
   // すでにこの区間が完全にキャッシュ済みの場合はネットワーク通信をスキップ
-  if (isRangeFullyCached(sNorm, eNorm)) {
+  if (!forceRefresh && isRangeFullyCached(sNorm, eNorm)) {
+    return;
+  }
+
+  // 既にキャッシュ済みの区間と重なる先頭・末尾を削り、未取得の差分期間だけをリクエストする
+  if (!forceRefresh && Array.isArray(state.dashboard.fetchedRanges)) {
+    for (const r of state.dashboard.fetchedRanges) {
+      if (r.start <= sNorm && r.end >= sNorm && r.end < eNorm) {
+        const d = new Date(r.end.replace(/-/g, '/'));
+        d.setDate(d.getDate() + 1);
+        sNorm = getJstDateString(d);
+      }
+      if (r.start > sNorm && r.start <= eNorm && r.end >= eNorm) {
+        const d = new Date(r.start.replace(/-/g, '/'));
+        d.setDate(d.getDate() - 1);
+        eNorm = getJstDateString(d);
+      }
+    }
+  }
+
+  if (sNorm > eNorm) {
+    markRangeAsFetched(originalStart, originalEnd);
     return;
   }
 
   if (state.isUsingMock || GAS_API_URL === 'YOUR_GAS_API_URL') {
     const mockTxs = getMockRangeTransactions(sNorm, eNorm);
     mergeTransactionsIntoDashboardCache(mockTxs);
-    markRangeAsFetched(sNorm, eNorm);
+    markRangeAsFetched(originalStart, originalEnd);
     return;
   }
 
-  try {
-    const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${sNorm}&endDate=${eNorm}`);
-    const data = await res.json();
-    if (data.status === 'success' && Array.isArray(data.transactions)) {
-      mergeTransactionsIntoDashboardCache(data.transactions);
-      markRangeAsFetched(sNorm, eNorm);
-    }
-  } catch (err) {
-    console.warn('fetchTransactionsForDateRange error:', err);
+  const rangeKey = `${sNorm}_${eNorm}`;
+  if (!forceRefresh && _inFlightRangePromises[rangeKey]) {
+    await _inFlightRangePromises[rangeKey];
+    return;
   }
+
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch(`${GAS_API_URL}?action=getRangeTransactions&startDate=${sNorm}&endDate=${eNorm}`);
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.transactions)) {
+        mergeTransactionsIntoDashboardCache(data.transactions);
+        markRangeAsFetched(originalStart, originalEnd);
+      }
+    } catch (err) {
+      console.warn('fetchTransactionsForDateRange error:', err);
+    } finally {
+      delete _inFlightRangePromises[rangeKey];
+    }
+  })();
+
+  _inFlightRangePromises[rangeKey] = fetchPromise;
+  await fetchPromise;
 }
 
 /**
