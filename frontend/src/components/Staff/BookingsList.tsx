@@ -3,6 +3,7 @@ import { Search, Download, Trash2, Printer, Edit3, ChevronDown, ChevronUp } from
 import type { Booking, ChildItem, WoodTalismanItem, MultiEntityItem } from '../../types';
 import { getBookingReceipts, getBookingChildren, getBookingWoodTalismans, getBookingMultiEntities, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
+import StaffSlotPicker, { DateSlotSummaryBar } from './StaffSlotPicker';
 
 const ORGANIZATION_PRAYERS = [
   '社運隆昌',
@@ -25,6 +26,7 @@ interface BookingsListProps {
   onSelectReceipt: (booking: Booking) => void;
   onSelectBulkYomifuda?: (bookings: Booking[]) => void;
   onSelectBulkReceipt?: (bookings: Booking[]) => void;
+  onOpenManualAdd?: (date?: string, time?: string) => void;
 }
 
 // Helper: Determine visually distinct pastel colors based on prayer types
@@ -57,7 +59,8 @@ export const BookingsList: React.FC<BookingsListProps> = ({
   onSelectYomifuda,
   onSelectReceipt,
   onSelectBulkYomifuda,
-  onSelectBulkReceipt
+  onSelectBulkReceipt,
+  onOpenManualAdd
 }) => {
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -783,6 +786,14 @@ export const BookingsList: React.FC<BookingsListProps> = ({
           </button>
         </div>
       </div>
+
+      {/* 指定日の時間枠別 空き枠状況 ＆ 手動登録ショートカットバー */}
+      <DateSlotSummaryBar
+        date={filterDate}
+        onDateChange={setFilterDate}
+        bookings={bookings}
+        onSelectSlotForManualAdd={onOpenManualAdd}
+      />
 
       {selectedBookingIds.length > 0 && (
         <div style={{
@@ -2680,26 +2691,19 @@ export const BookingsList: React.FC<BookingsListProps> = ({
             {/* 1. 基本情報セクション */}
             <div style={{ marginBottom: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '1rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', display: 'block', marginBottom: '0.5rem' }}>■ 予約基本設定</span>
+              <StaffSlotPicker
+                selectedDate={editFormData.booking_date || ''}
+                onDateChange={(val) => setEditFormData(prev => ({ ...prev, booking_date: val }))}
+                selectedTime={editFormData.booking_time || '09:30'}
+                onTimeChange={(val) => setEditFormData(prev => ({ ...prev, booking_time: val }))}
+                bookings={bookings}
+                bookingType={editFormData.booking_type || 'individual'}
+                excludeBookingIds={editTargetBooking.id ? [editTargetBooking.id] : []}
+                dateLabel="参拝日 (YYYY-MM-DD)"
+                timeLabel="参拝時間 (HH:MM)"
+                required
+              />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '0.75rem' }}>参拝日 (YYYY-MM-DD) <span className="required">*</span></label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={editFormData.booking_date || ''}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, booking_date: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '0.75rem' }}>参拝時間 (HH:MM) <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="例: 09:30"
-                    value={editFormData.booking_time || ''}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, booking_time: e.target.value }))}
-                  />
-                </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: '0.75rem' }}>初穂料 (円) <span className="required">*</span></label>
                   <input

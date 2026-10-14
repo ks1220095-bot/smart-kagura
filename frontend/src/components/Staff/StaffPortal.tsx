@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key, Coins, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Calendar, ListFilter, Settings, Plus, X, Lock, Key, Coins } from 'lucide-react';
 import type { Booking } from '../../types';
 import { getApiUrl } from '../../config/api';
 import Dashboard, { ScheduleInnerPrint, DailyReportPrint, MonthlyReportPrint, type ScheduleSortMode } from './Dashboard';
@@ -8,6 +8,7 @@ import BookingsList from './BookingsList';
 import SettingsView from './SettingsView';
 import YomifudaPrint from './YomifudaPrint';
 import ReceiptPrint from './ReceiptPrint';
+import StaffSlotPicker, { getJstTodayString } from './StaffSlotPicker';
 
 // Era helper to display dates in both Japanese Wareki and Western AD
 const getEraString = (y: number) => {
@@ -211,7 +212,7 @@ export const StaffPortal: React.FC = () => {
   // Manual Booking Add Form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [manualType, setManualType] = useState<'individual' | 'organization'>('individual');
-  const [manualDate, setManualDate] = useState('');
+  const [manualDate, setManualDate] = useState(() => getJstTodayString());
   const [manualTime, setManualTime] = useState('09:30');
   const [manualPrayer1, setManualPrayer1] = useState('家内安全');
   const [manualPrayer2, setManualPrayer2] = useState('');
@@ -482,34 +483,6 @@ export const StaffPortal: React.FC = () => {
     setManualStaffEmail('');
     setManualOrgCustomPrayer1('');
   };
-
-  const [manualEvents, setManualEvents] = useState<any[]>([]);
-
-  const timeToMinutes = (timeStr: string): number => {
-    if (!timeStr) return 0;
-    const parts = timeStr.split(':').map(Number);
-    return (parts[0] || 0) * 60 + (parts[1] || 0);
-  };
-
-  useEffect(() => {
-    if (!manualDate) {
-      setManualEvents([]);
-      return;
-    }
-    const fetchManualDateEvents = async () => {
-      try {
-        const apiUrl = getApiUrl();
-        const res = await fetch(`${apiUrl}/api/events?date=${manualDate}`);
-        if (res.ok) {
-          const data = await res.json();
-          setManualEvents(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch events for manual date:', err);
-      }
-    };
-    fetchManualDateEvents();
-  }, [manualDate]);
 
   // Sync offline queue to backend when connection is restored
   const syncOfflineQueue = async () => {
@@ -866,7 +839,7 @@ export const StaffPortal: React.FC = () => {
       }
 
       resetManualForm();
-      setManualDate('');
+      setManualDate(getJstTodayString());
       setShowAddForm(false);
       
       fetchBookings();
@@ -892,7 +865,7 @@ export const StaffPortal: React.FC = () => {
           safeStorage.setItem('smart_kagura_offline_bookings', JSON.stringify([...tempBookings, ...cached]));
 
           resetManualForm();
-          setManualDate('');
+          setManualDate(getJstTodayString());
           setShowAddForm(false);
           alert('📡【オフライン登録完了】現在インターネット回線が切断されているため、端末内に予約データを一時保管しました。\n画面の日程表・名簿には即座に反映され、内訳印刷等も可能です。回線復旧時に自動でサーバーへ本登録されます。');
         } catch (e) {
@@ -1116,6 +1089,7 @@ export const StaffPortal: React.FC = () => {
               onClick={() => {
                 resetManualForm('individual');
                 setManualType('individual');
+                if (!manualDate) setManualDate(getJstTodayString());
                 setShowAddForm(true);
               }} 
               className="btn btn-primary" 
@@ -1156,7 +1130,7 @@ export const StaffPortal: React.FC = () => {
             overflowY: 'auto'
           }}>
             <div className="card washi-bg" style={{ 
-              maxWidth: '650px', 
+              maxWidth: '680px', 
               width: '100%', 
               margin: '2rem 0',
               padding: '1.5rem', 
@@ -1201,148 +1175,18 @@ export const StaffPortal: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label>希望参拝日 <span className="required">*</span></label>
-                    <input type="date" className="form-control" value={manualDate} onChange={(e) => setManualDate(e.target.value)} required />
-                  </div>
-                  <div className="form-group">
-                    <label>希望時間割 <span className="required">*</span></label>
-                    <select className="form-control" value={manualTime} onChange={(e) => setManualTime(e.target.value)} required>
-                      {['07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'].map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* リアルタイム空き状況確認ミニカレンダービューア */}
-                {manualDate && (() => {
-                  const currentSlotCount = bookings.filter(b => b.booking_date === manualDate && b.booking_time === manualTime && Number(b.is_cancelled) === 0).length;
-                  const currentSlotIsClosed = manualEvents.some((event: any) => {
-                    if (Number(event.is_closed_slot) !== 1) return false;
-                    const slotMin = timeToMinutes(manualTime);
-                    const startMin = timeToMinutes(event.start_time);
-                    const endMin = timeToMinutes(event.end_time);
-                    return slotMin >= startMin && slotMin < endMin;
-                  });
-                  const isCurrentSlotException = currentSlotCount >= 8 || currentSlotIsClosed;
-
-                  return (
-                    <div style={{
-                      backgroundColor: '#faf7f0',
-                      border: '1px solid var(--color-gold)',
-                      borderRadius: '4px',
-                      padding: '0.75rem',
-                      marginBottom: '1rem',
-                      fontSize: '0.8rem'
-                    }}>
-                      <div style={{ fontWeight: 'bold', color: 'var(--color-urushi)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>📅 {manualDate} の時間枠別空き状況 (予約件数 / 通常最大8枠)</span>
-                        <span style={{ fontSize: '0.72rem', color: '#d4380d', fontWeight: 'normal' }}>※満席枠もクリックで例外追加可能</span>
-                      </div>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                        gap: '0.4rem',
-                        maxHeight: '120px',
-                        overflowY: 'auto',
-                        paddingRight: '0.2rem'
-                      }}>
-                        {['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'].map(t => {
-                          const count = bookings.filter(b => b.booking_date === manualDate && b.booking_time === t && Number(b.is_cancelled) === 0).length;
-                          
-                          // Check if slot falls inside any closed event period
-                          const isClosedEvent = manualEvents.some((event: any) => {
-                            if (Number(event.is_closed_slot) !== 1) return false;
-                            const slotMin = timeToMinutes(t);
-                            const startMin = timeToMinutes(event.start_time);
-                            const endMin = timeToMinutes(event.end_time);
-                            return slotMin >= startMin && slotMin < endMin;
-                          });
-
-                          const isFull = count >= 8;
-                          const isSelected = manualTime === t;
-                          
-                          let btnBg = '#ffffff';
-                          let btnColor = 'var(--color-urushi)';
-                          let btnBorder = '1px solid var(--color-border)';
-                          
-                          if (isSelected) {
-                            if (isFull || isClosedEvent) {
-                              btnBg = '#cf1322';
-                              btnColor = '#ffffff';
-                              btnBorder = '1px solid #a8071a';
-                            } else {
-                              btnBg = 'var(--color-mizuiro)';
-                              btnColor = '#ffffff';
-                              btnBorder = '1px solid var(--color-mizuiro)';
-                            }
-                          } else if (isClosedEvent) {
-                            btnBg = 'rgba(50, 136, 163, 0.08)';
-                            btnColor = 'var(--color-mizuiro)';
-                            btnBorder = '1px solid rgba(50, 136, 163, 0.3)';
-                          } else if (isFull) {
-                            btnBg = '#fff1f0';
-                            btnColor = '#cf1322';
-                            btnBorder = '1px solid #ffa39e';
-                          }
-                          
-                          return (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setManualTime(t)}
-                              title={isFull ? `現在${count}件（満席）。クリックして例外的に予約可能です。` : undefined}
-                              style={{
-                                backgroundColor: btnBg,
-                                color: btnColor,
-                                border: btnBorder,
-                                borderRadius: '2px',
-                                padding: '0.3rem 0.5rem',
-                                fontSize: '0.75rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                transition: 'all 0.2s',
-                                fontWeight: isSelected ? 'bold' : 'normal'
-                              }}
-                            >
-                              <span>{t}</span>
-                              <span style={{ fontSize: '0.65rem', opacity: isSelected ? 1 : 0.85 }}>
-                                {isClosedEvent ? '🔒ロック(例外可)' : isFull ? `満席(${count}件)` : `${count}件/8`}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* 満席枠・受付停止枠への例外登録警告インジケータ */}
-                      {isCurrentSlotException && (
-                        <div style={{
-                          marginTop: '0.65rem',
-                          padding: '0.55rem 0.75rem',
-                          backgroundColor: '#fff2e8',
-                          border: '1px solid #ffbb96',
-                          borderRadius: '4px',
-                          fontSize: '0.78rem',
-                          color: '#d4380d',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.45rem',
-                          lineHeight: '1.4'
-                        }}>
-                          <AlertCircle size={16} style={{ flexShrink: 0, color: '#fa541c' }} />
-                          <div>
-                            <strong>【職員例外枠】</strong>
-                            選択された <strong>{manualTime}</strong> の枠は現在 <strong>{currentSlotCount}件</strong>（{currentSlotCount >= 8 ? '満枠到達' : ''}{currentSlotIsClosed ? '／祭典等により受付停止中' : ''}）ですが、職員権限により<strong>特別枠として追加登録</strong>されます。
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {/* 参拝日・時間割選択 ＆ リアルタイム空き枠確認 */}
+                <StaffSlotPicker
+                  selectedDate={manualDate}
+                  onDateChange={setManualDate}
+                  selectedTime={manualTime}
+                  onTimeChange={setManualTime}
+                  bookings={bookings}
+                  bookingType={manualType}
+                  dateLabel="希望参拝日"
+                  timeLabel="希望時間割"
+                  required
+                />
 
                 {/* 手動登録用の複数願意カート表示 */}
                 <div style={{ marginBottom: '1.25rem', padding: '0.85rem', backgroundColor: 'var(--color-washi-dark)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
@@ -2082,6 +1926,13 @@ export const StaffPortal: React.FC = () => {
               onSelectReceipt={setSelectedReceipt}
               onSelectBulkYomifuda={setSelectedBulkYomifuda}
               onSelectBulkReceipt={setSelectedBulkReceipt}
+              onOpenManualAdd={(date, time) => {
+                resetManualForm('individual');
+                setManualType('individual');
+                setManualDate(date || getJstTodayString());
+                setManualTime(time || '09:30');
+                setShowAddForm(true);
+              }}
             />
           )}
 

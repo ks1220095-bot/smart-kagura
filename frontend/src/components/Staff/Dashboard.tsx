@@ -6,11 +6,7 @@ import { jsPDF } from 'jspdf';
 import { type Booking, getBookingChildren, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
 import { printElement } from '../../utils/printUtils';
-
-const TIME_SLOTS = [
-  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
-];
+import StaffSlotPicker from './StaffSlotPicker';
 
 export type ScheduleSortMode = 'created_asc' | 'created_desc' | 'name_asc' | 'receipt_asc' | 'custom';
 
@@ -1654,7 +1650,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Body Form */}
-      <form onSubmit={handleSaveEdit} style={{ padding: '1.25rem' }}>
+      <form onSubmit={handleSaveEdit} style={{ padding: '1.25rem', maxHeight: '82vh', overflowY: 'auto' }}>
         {actionMessage && (
           <div style={{
             padding: '0.6rem 0.9rem',
@@ -1669,52 +1665,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
-              📅 ご祈祷予定日 <span style={{ color: 'red' }}>*</span>
-            </label>
-            <input
-              type="date"
-              value={editingBooking.booking_date}
-              onChange={(e) => setEditingBooking({ ...editingBooking, booking_date: e.target.value })}
-              required
-              style={{
-                width: '100%',
-                padding: '0.45rem 0.6rem',
-                fontSize: '0.85rem',
-                border: '1px solid var(--color-gold)',
-                borderRadius: '3px',
-                outline: 'none',
-                backgroundColor: '#fcfaf5'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
-              ⏰ ご祈祷時間 <span style={{ color: 'red' }}>*</span>
-            </label>
-            <select
-              value={editingBooking.booking_time}
-              onChange={(e) => setEditingBooking({ ...editingBooking, booking_time: e.target.value })}
-              required
-              style={{
-                width: '100%',
-                padding: '0.45rem 0.6rem',
-                fontSize: '0.85rem',
-                border: '1px solid var(--color-gold)',
-                borderRadius: '3px',
-                outline: 'none',
-                backgroundColor: '#fcfaf5'
-              }}
-            >
-              {TIME_SLOTS.map(t => (
-                <option key={t} value={t}>{t}の回</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <StaffSlotPicker
+          selectedDate={editingBooking.booking_date}
+          onDateChange={(val) => setEditingBooking({ ...editingBooking, booking_date: val })}
+          selectedTime={editingBooking.booking_time}
+          onTimeChange={(val) => setEditingBooking({ ...editingBooking, booking_time: val })}
+          bookings={bookings}
+          bookingType={editingBooking.booking_type}
+          excludeBookingIds={[
+            ...(editingBooking.id ? [editingBooking.id] : []),
+            ...(batchRescheduleRelated ? editRelatedBookings.map(r => r.id!).filter(Boolean) : [])
+          ]}
+          dateLabel="📅 ご祈祷予定日"
+          timeLabel="⏰ ご祈祷時間"
+          required
+        />
 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#333' }}>

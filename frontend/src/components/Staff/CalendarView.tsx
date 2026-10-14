@@ -4,6 +4,7 @@ import { Plus, Lock, Unlock, CalendarDays, Calendar, Check, X, Edit3, Trash2, Pr
 import { getRokuyoAndInu } from '../Visitor/SlotSelector';
 import { type CalendarEvent, type Booking, getBookingChildren, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
+import StaffSlotPicker from './StaffSlotPicker';
 
 interface CalendarViewProps {
   bookings: Booking[];
@@ -1524,7 +1525,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               } finally {
                 setActionLoading(false);
               }
-            }} style={{ padding: '1.25rem' }}>
+            }} style={{ padding: '1.25rem', maxHeight: '82vh', overflowY: 'auto' }}>
               {actionMessage && (
                 <div style={{
                   padding: '0.6rem 0.9rem',
@@ -1539,35 +1540,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
-                    📅 ご祈祷予定日 <span style={{ color: 'red' }}>*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={editingBooking.booking_date}
-                    onChange={(e) => setEditingBooking({ ...editingBooking, booking_date: e.target.value })}
-                    required
-                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid var(--color-gold)', borderRadius: '3px', outline: 'none', backgroundColor: '#fcfaf5' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--color-urushi)' }}>
-                    ⏰ ご祈祷時間 <span style={{ color: 'red' }}>*</span>
-                  </label>
-                  <select
-                    value={editingBooking.booking_time}
-                    onChange={(e) => setEditingBooking({ ...editingBooking, booking_time: e.target.value })}
-                    required
-                    style={{ width: '100%', padding: '0.45rem 0.6rem', fontSize: '0.85rem', border: '1px solid var(--color-gold)', borderRadius: '3px', outline: 'none', backgroundColor: '#fcfaf5' }}
-                  >
-                    {TIME_SLOTS.map(t => (
-                      <option key={t} value={t}>{t}の回</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <StaffSlotPicker
+                selectedDate={editingBooking.booking_date}
+                onDateChange={(val) => setEditingBooking({ ...editingBooking, booking_date: val })}
+                selectedTime={editingBooking.booking_time}
+                onTimeChange={(val) => setEditingBooking({ ...editingBooking, booking_time: val })}
+                bookings={bookings}
+                bookingType={editingBooking.booking_type}
+                excludeBookingIds={[
+                  ...(editingBooking.id ? [editingBooking.id] : []),
+                  ...(batchRescheduleRelated ? editRelatedBookings.map(r => r.id!).filter(Boolean) : [])
+                ]}
+                dateLabel="📅 ご祈祷予定日"
+                timeLabel="⏰ ご祈祷時間"
+                required
+              />
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>
