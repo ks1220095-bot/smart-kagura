@@ -166,11 +166,42 @@
         <!-- 🎁 授与品別統計セクション -->
         <div class="dashboard-card full-width" style="margin-top: 1.5rem;">
           <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="card-title" style="margin-right: auto; display: flex; align-items: center; gap: 0.5rem; width: auto;"><i class="fa-solid fa-gift"></i> 授与品別統計 <span class="card-subtitle" style="font-size: 0.8rem; color: var(--color-text-muted); font-weight: 500;" id="dashboard-stats-subtitle">期間中の授与数と合計初穂料</span></h3>
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-right: auto;">
+              <h3 class="card-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem; width: auto;">
+                <i class="fa-solid fa-gift"></i> 授与品別統計
+                <span class="card-subtitle" style="font-size: 0.8rem; color: var(--color-text-muted); font-weight: 500;" id="dashboard-stats-subtitle">期間中の授与数と合計初穂料</span>
+              </h3>
+              <div id="dashboard-stats-summary-badge" style="font-size: 0.8rem; background: rgba(63, 81, 69, 0.08); color: var(--color-green); padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; border: 1px solid rgba(63, 81, 69, 0.15);">
+                <span>総授与数: <strong>0体</strong></span>
+                <span style="opacity: 0.4;">|</span>
+                <span>合計初穂料: <strong style="color: var(--color-vermilion);">¥0</strong></span>
+              </div>
+            </div>
             <div class="chart-controls" style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
-              <button class="btn-chart-range active" id="btn-stats-week">週毎</button>
-              <button class="btn-chart-range" id="btn-stats-month">月毎</button>
-              <button class="btn-chart-range" id="btn-stats-year">年毎</button>
+              <button class="btn-chart-range active" id="btn-stats-week">直近7日間</button>
+              <button class="btn-chart-range" id="btn-stats-month">月別</button>
+              <button class="btn-chart-range" id="btn-stats-year">年別</button>
+
+              <!-- 月別・年別 選択時の対象年月セレクター（初期は非表示） -->
+              <div id="stats-ym-selectors" style="display: none; align-items: center; gap: 0.25rem; background: rgba(63, 81, 69, 0.06); padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid rgba(63, 81, 69, 0.2);">
+                <i class="fa-regular fa-calendar-check" style="font-size: 0.8rem; color: var(--color-green);"></i>
+                <select id="select-stats-year" style="border: 1px solid var(--color-border); border-radius: 4px; padding: 0.18rem 0.4rem; font-size: 0.82rem; font-weight: 700; background: white; color: var(--color-text); cursor: pointer;"></select>
+                <select id="select-stats-month" style="border: 1px solid var(--color-border); border-radius: 4px; padding: 0.18rem 0.4rem; font-size: 0.82rem; font-weight: 700; background: white; color: var(--color-text); cursor: pointer;">
+                  <option value="1">1月</option>
+                  <option value="2">2月</option>
+                  <option value="3">3月</option>
+                  <option value="4">4月</option>
+                  <option value="5">5月</option>
+                  <option value="6">6月</option>
+                  <option value="7">7月</option>
+                  <option value="8">8月</option>
+                  <option value="9">9月</option>
+                  <option value="10">10月</option>
+                  <option value="11">11月</option>
+                  <option value="12">12月</option>
+                </select>
+              </div>
+
               <button class="btn-chart-range" id="btn-stats-all">全期間</button>
               <button class="btn-chart-range" id="btn-stats-custom">期間指定</button>
               
@@ -1244,6 +1275,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.3.0"></script>
+  <script src="app.js?v=2.4.0"></script>
 </body>
 </html>
