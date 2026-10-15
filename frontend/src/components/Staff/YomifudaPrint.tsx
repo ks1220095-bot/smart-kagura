@@ -37,17 +37,6 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
     return bookingDate.getFullYear() - birth.getFullYear() + 1;
   };
 
-  // 年齢表示テキストの生成
-  const formatAgeSuffix = (birthdayStr: string, bookingDateStr: string): string => {
-    try {
-      const full = getFullAge(birthdayStr, bookingDateStr);
-      const kazoe = getKazoeAge(birthdayStr, bookingDateStr);
-      return `（満${full}歳 / 数え${kazoe}歳）`;
-    } catch (e) {
-      return '';
-    }
-  };
-
   // notes から生年月日や年齢を抽出するヘルパー
   const parseNotesPersonalInfo = (notes: string) => {
     if (!notes) return null;
@@ -476,10 +465,10 @@ export const YomifudaPrint: React.FC<YomifudaPrintProps> = ({ booking, bookings,
                       {c.name}
                     </strong>
 
-                    {/* 下段: 生年月日・満年齢 */}
+                    {/* 下段: 生年月日 */}
                     {c.birthday && (
                       <span style={{ fontSize: isMany ? '0.64rem' : '0.68rem', color: '#555', display: 'block', lineHeight: '1.15' }}>
-                        生年月日: {formatImperialDate(c.birthday)} {isShichigosan ? `（満${getFullAge(c.birthday, booking.booking_date)}歳）` : formatAgeSuffix(c.birthday, booking.booking_date)}
+                        生年月日: {formatImperialDate(c.birthday)}
                       </span>
                     )}
                   </div>

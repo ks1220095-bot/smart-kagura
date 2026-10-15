@@ -2993,7 +2993,7 @@ export const ScheduleInnerPrint: React.FC<{
                                         const ageStr = getShichigosanAge(c.birthday, b.booking_date, c.gender, c.age_text);
                                         return `${c.name} (${ageStr})`;
                                       }
-                                      return `${c.name}${c.age_text ? `(${c.age_text})` : ''}`;
+                                      return c.name;
                                     }).join('、')}
                                   </div>
                                 );

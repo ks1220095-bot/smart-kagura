@@ -2063,7 +2063,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                                         </div>
                                         {child.birthday && (
                                           <div style={{ fontSize: '0.72rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem' }}>
-                                            生年月日: {child.birthday} {!isShichigosan && child.age_text ? `(${child.age_text})` : ''}
+                                            生年月日: {child.birthday}
                                           </div>
                                         )}
                                       </div>
