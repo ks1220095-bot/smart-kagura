@@ -6,7 +6,7 @@ const router = Router();
 
 // 1. Get calendar events
 router.get('/', async (req, res) => {
-  const { month, date } = req.query;
+  const { month, date, event_type } = req.query;
 
   try {
     const db = getDb();
@@ -24,6 +24,11 @@ router.get('/', async (req, res) => {
       params.push(date);
     }
 
+    if (event_type && typeof event_type === 'string') {
+      query += ` AND event_type = $${pIdx++}`;
+      params.push(event_type);
+    }
+
     query += ` ORDER BY event_date ASC, start_time ASC`;
     const result = await db.query(query, params);
     res.json(result.rows);
@@ -33,7 +38,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 2. Create a new event (Festival / Close slot)
+// 2. Create a new event (Festival / Close slot / Outbound ritual)
 router.post('/', async (req, res) => {
   const event: CalendarEvent = req.body;
   if (!event.title || !event.event_date || !event.start_time || !event.end_time) {
@@ -43,15 +48,32 @@ router.post('/', async (req, res) => {
   try {
     const db = getDb();
     const result = await db.query(
-      `INSERT INTO events (title, event_date, start_time, end_time, description, is_closed_slot) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      `INSERT INTO events (
+        title, event_date, start_time, end_time, description, is_closed_slot,
+        event_type, ritual_name, ceremony_time, applicant_name, applicant_kana,
+        builder_name, location_address, contact_phone, saishu, hatsuhoryo,
+        payment_status, preparation_notes
+       ) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
       [
         event.title,
         event.event_date,
         event.start_time,
         event.end_time,
         event.description || null,
-        event.is_closed_slot || 0
+        event.is_closed_slot || 0,
+        event.event_type || 'shrine_event',
+        event.ritual_name || null,
+        event.ceremony_time || null,
+        event.applicant_name || null,
+        event.applicant_kana || null,
+        event.builder_name || null,
+        event.location_address || null,
+        event.contact_phone || null,
+        event.saishu || null,
+        Number(event.hatsuhoryo) || 0,
+        event.payment_status || 'unpaid',
+        event.preparation_notes || null
       ]
     );
 
@@ -96,8 +118,11 @@ router.put('/:id', async (req, res) => {
 
     await db.query(
       `UPDATE events 
-       SET title = $1, event_date = $2, start_time = $3, end_time = $4, description = $5, is_closed_slot = $6
-       WHERE id = $7`,
+       SET title = $1, event_date = $2, start_time = $3, end_time = $4, description = $5, is_closed_slot = $6,
+           event_type = $7, ritual_name = $8, ceremony_time = $9, applicant_name = $10, applicant_kana = $11,
+           builder_name = $12, location_address = $13, contact_phone = $14, saishu = $15, hatsuhoryo = $16,
+           payment_status = $17, preparation_notes = $18
+       WHERE id = $19`,
       [
         event.title,
         event.event_date,
@@ -105,6 +130,18 @@ router.put('/:id', async (req, res) => {
         event.end_time,
         event.description || null,
         event.is_closed_slot || 0,
+        event.event_type || 'shrine_event',
+        event.ritual_name || null,
+        event.ceremony_time || null,
+        event.applicant_name || null,
+        event.applicant_kana || null,
+        event.builder_name || null,
+        event.location_address || null,
+        event.contact_phone || null,
+        event.saishu || null,
+        Number(event.hatsuhoryo) || 0,
+        event.payment_status || 'unpaid',
+        event.preparation_notes || null,
         req.params.id
       ]
     );

@@ -130,6 +130,19 @@ export interface CalendarEvent {
   end_time: string;    // HH:MM
   description?: string;
   is_closed_slot: number; // 0 or 1 (予約枠を自動クローズするか)
+  // 出張祭（外のお祓い）拡張フィールド
+  event_type?: 'shrine_event' | 'outbound_ritual';
+  ritual_name?: string;
+  ceremony_time?: string;
+  applicant_name?: string;
+  applicant_kana?: string;
+  builder_name?: string;
+  location_address?: string;
+  contact_phone?: string;
+  saishu?: string;
+  hatsuhoryo?: number;
+  payment_status?: 'unpaid' | 'paid';
+  preparation_notes?: string;
 }
 
 export interface SlotAvailability {

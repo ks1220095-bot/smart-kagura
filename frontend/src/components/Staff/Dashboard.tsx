@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2, Settings } from 'lucide-react';
+import { Calendar, DollarSign, Users, Award, Printer, ArrowLeft, ArrowUpDown, ChevronUp, ChevronDown, RotateCcw, Edit3, Trash2, Check, X, AlertCircle, BarChart2, TrendingUp, Download, Filter, FileText, Layers, Loader2, Settings, Plus } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { type Booking, getBookingChildren, getShichigosanAge } from '../../types';
+import { type Booking, type CalendarEvent, getBookingChildren, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
 import { printElement } from '../../utils/printUtils';
 import StaffSlotPicker from './StaffSlotPicker';
+import { OutboundRitualModal, OutboundRitualCard, isOutboundRitual, getCachedEventsSync, fetchAllEventsCached, updateEventsCache } from './OutboundRitualModal';
 
 export type ScheduleSortMode = 'created_asc' | 'created_desc' | 'name_asc' | 'receipt_asc' | 'custom';
 
@@ -309,22 +310,91 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const editRelatedBookings = editingBooking ? findRelatedBookings(editingBooking) : [];
   const cancelRelatedBookings = cancellingBooking ? findRelatedBookings(cancellingBooking) : [];
 
+  // Outbound Rituals (出張祭・外のお祓い) state & instant cache
+  const [events, setEvents] = useState<CalendarEvent[]>(() => getCachedEventsSync());
+  const [showOutboundModal, setShowOutboundModal] = useState(false);
+  const [outboundInitialDate, setOutboundInitialDate] = useState<string | undefined>(undefined);
+  const [editingOutboundRitual, setEditingOutboundRitual] = useState<CalendarEvent | null>(null);
+  const [outboundViewTab, setOutboundViewTab] = useState<'date' | 'upcoming'>('date');
+
+  const refreshEvents = async (force = true) => {
+    const data = await fetchAllEventsCached(force);
+    setEvents(data);
+  };
+
+  useEffect(() => {
+    refreshEvents(false);
+  }, []);
+
+  const handleToggleOutboundPaid = async (ritual: CalendarEvent) => {
+    if (!ritual.id) return;
+    const nextStatus = ritual.payment_status === 'paid' ? 'unpaid' : 'paid';
+    const updated: CalendarEvent = { ...ritual, payment_status: nextStatus };
+    const nextList = events.map(item => (item.id === ritual.id ? updated : item));
+    setEvents(nextList);
+    updateEventsCache(nextList);
+    try {
+      const apiUrl = getApiUrl();
+      await fetch(`${apiUrl}/api/events/${ritual.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error(err);
+      refreshEvents(true);
+    }
+  };
+
+  const handleDeleteOutboundRitual = async (ritual: CalendarEvent) => {
+    if (!ritual.id) return;
+    const label = ritual.ritual_name || ritual.title;
+    if (!window.confirm(`出張祭「${label}」を削除してもよろしいですか？`)) return;
+    try {
+      const apiUrl = getApiUrl();
+      const res = await fetch(`${apiUrl}/api/events/${ritual.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('出張祭の削除に失敗しました。');
+      const nextList = events.filter(item => item.id !== ritual.id);
+      setEvents(nextList);
+      updateEventsCache(nextList);
+      if (onRefreshBookings) onRefreshBookings();
+    } catch (err: any) {
+      alert(err.message || '削除中にエラーが発生しました。');
+    }
+  };
+
+  const outboundRituals = events.filter(isOutboundRitual);
+  const todayOutboundRituals = outboundRituals.filter(e => e.event_date === today);
+  const reportDateOutboundRituals = outboundRituals.filter(e => e.event_date === reportDate);
+  const upcomingOutboundRituals = outboundRituals
+    .filter(e => e.event_date >= today)
+    .sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.ceremony_time || a.start_time).localeCompare(b.ceremony_time || b.start_time));
+
   // Filter out cancelled bookings for active schedule calculation
   const activeBookings = bookings.filter(b => Number(b.is_cancelled) !== 1);
 
   const todayBookings = activeBookings.filter(b => b.booking_date === today);
   
+  const todayOutboundPaidRevenue = todayOutboundRituals
+    .filter(e => e.payment_status === 'paid')
+    .reduce((sum, e) => sum + (e.hatsuhoryo || 0), 0);
+
+  const todayOutboundUnpaidRevenue = todayOutboundRituals
+    .filter(e => e.payment_status !== 'paid')
+    .reduce((sum, e) => sum + (e.hatsuhoryo || 0), 0);
+
   const todayRevenue = todayBookings
     .filter(b => b.payment_status === 'paid')
-    .reduce((sum, b) => sum + b.hatsuhoryo, 0);
+    .reduce((sum, b) => sum + b.hatsuhoryo, 0) + todayOutboundPaidRevenue;
 
   const todayUnpaidRevenue = todayBookings
     .filter(b => b.payment_status === 'unpaid')
-    .reduce((sum, b) => sum + b.hatsuhoryo, 0);
+    .reduce((sum, b) => sum + b.hatsuhoryo, 0) + todayOutboundUnpaidRevenue;
 
   const totalCount = activeBookings.length;
   const indivCount = activeBookings.filter(b => b.booking_type === 'individual').length;
   const orgCount = activeBookings.filter(b => b.booking_type === 'organization').length;
+  const totalOutboundCount = outboundRituals.length;
 
   const [dashboardSortMode, setDashboardSortMode] = useState<ScheduleSortMode>('created_asc');
   const [dashboardList, setDashboardList] = useState<Booking[]>([]);
@@ -547,12 +617,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // Target month bookings for report
+  // Target month bookings & outbound rituals for report
   const monthlyBookings = bookings.filter(b => b.booking_date.startsWith(reportMonth) && Number(b.is_cancelled) !== 1);
-  const monthlyTotalPrayers = monthlyBookings.length;
+  const monthlyOutboundRituals = outboundRituals.filter(e => e.event_date.startsWith(reportMonth));
+  const monthlyTotalPrayers = monthlyBookings.length + monthlyOutboundRituals.length;
   const monthlyIndividualPrayers = monthlyBookings.filter(b => b.booking_type === 'individual').length;
   const monthlyOrganizationPrayers = monthlyBookings.filter(b => b.booking_type === 'organization').length;
-  const monthlyTotalRevenue = monthlyBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+  const monthlyOutboundCount = monthlyOutboundRituals.length;
+  const monthlyTotalRevenue = monthlyBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0)
+    + monthlyOutboundRituals.reduce((sum, e) => sum + (e.hatsuhoryo || 0), 0);
 
   // Monthly Prayer breakdown
   const monthlyPrayerDetails: { [key: string]: { count: number; fee: number } } = {};
@@ -564,6 +637,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
     monthlyPrayerDetails[prayer].count++;
     monthlyPrayerDetails[prayer].fee += fee;
+  });
+  monthlyOutboundRituals.forEach(e => {
+    const ritualLabel = `【出張祭】${e.ritual_name || e.title.replace(/^【出張祭】/, '')}`;
+    const fee = e.hatsuhoryo || 0;
+    if (!monthlyPrayerDetails[ritualLabel]) {
+      monthlyPrayerDetails[ritualLabel] = { count: 0, fee: 0 };
+    }
+    monthlyPrayerDetails[ritualLabel].count++;
+    monthlyPrayerDetails[ritualLabel].fee += fee;
   });
 
   const getWarekiMonthString = (monthStr: string) => {
@@ -762,9 +844,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <Calendar size={22} />
             </div>
             <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block' }}>本日の予約件数</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block' }}>本日の予約・出張祭</span>
               <h3 style={{ fontSize: '1.6rem', margin: 0, fontFamily: 'var(--font-serif)' }}>
                 {todayBookings.length} <span style={{ fontSize: '0.85rem', fontWeight: 'normal', fontFamily: 'var(--font-sans)' }}>組</span>
+                {todayOutboundRituals.length > 0 && (
+                  <span style={{ fontSize: '0.82rem', color: '#5e4388', marginLeft: '0.45rem', fontFamily: 'var(--font-sans)' }}>
+                    ＋出張 {todayOutboundRituals.length}件
+                  </span>
+                )}
               </h3>
             </div>
           </div>
@@ -824,7 +911,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-gray)', display: 'block' }}>累計登録件数</span>
               <h3 style={{ fontSize: '1.6rem', margin: 0, fontFamily: 'var(--font-serif)' }}>
-                {totalCount} <span style={{ fontSize: '0.85rem', fontWeight: 'normal', fontFamily: 'var(--font-sans)' }}>件</span>
+                {totalCount + totalOutboundCount} <span style={{ fontSize: '0.85rem', fontWeight: 'normal', fontFamily: 'var(--font-sans)' }}>件</span>
               </h3>
             </div>
           </div>
@@ -870,7 +957,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {orgCount > 0 && `団体 (${Math.round((orgCount / totalCount) * 100)}%)`}
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.85rem', color: 'var(--color-urushi-light)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--color-urushi-light)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '10px', height: '10px', backgroundColor: 'var(--color-mizuiro)' }}></div>
               個人祈祷: {indivCount} 件
@@ -878,6 +965,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '10px', height: '10px', backgroundColor: 'var(--color-gold)' }}></div>
               団体祈祷: {orgCount} 件
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ width: '10px', height: '10px', backgroundColor: '#5e4388' }}></div>
+              出張祭（外祭）: {totalOutboundCount} 件
             </div>
           </div>
         </div>
@@ -912,7 +1003,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingOutboundRitual(null);
+                    setOutboundInitialDate(reportDate);
+                    setShowOutboundModal(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '0.25rem 0.55rem',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    backgroundColor: '#5e4388',
+                    borderColor: '#5e4388',
+                    color: '#ffffff'
+                  }}
+                >
+                  <Plus size={12} />
+                  🚗 出張祭を記録
+                </button>
                 <button 
                   onClick={() => onSelectDailyReportPrint && onSelectDailyReportPrint(reportDate)}
                   className="btn btn-secondary"
@@ -997,7 +1110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {dashboardList.length === 0 ? (
             <p style={{ color: 'var(--color-accent-gray)', fontSize: '0.85rem', textAlign: 'center', margin: '2rem 0' }}>
-              選択された日に予定されているご祈祷はございません。
+              選択された日に予定されている社内ご祈祷はございません。
             </p>
           ) : (
             <div style={{ 
@@ -1139,6 +1252,118 @@ export const Dashboard: React.FC<DashboardProps> = ({
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Outbound Rituals (出張祭・外のお祓い) Schedule Panel */}
+      <div className="card" style={{ marginTop: '1.5rem', backgroundColor: '#ffffff', border: '1px solid #dcd0ec', borderRadius: '6px', overflow: 'hidden' }}>
+        <div style={{
+          backgroundColor: '#faf8fc',
+          padding: '0.85rem 1.25rem',
+          borderBottom: '1px solid #e2d9f3',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <h3 style={{ fontSize: '1rem', margin: 0, fontFamily: 'var(--font-serif)', color: '#3b2d54', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <span>🚗</span>
+              出張祭（外のお祓い）スケジュール管理
+            </h3>
+            <div style={{ display: 'flex', gap: '0.3rem' }}>
+              <button
+                type="button"
+                onClick={() => setOutboundViewTab('date')}
+                style={{
+                  padding: '0.22rem 0.65rem',
+                  fontSize: '0.78rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: outboundViewTab === 'date' ? 'bold' : 'normal',
+                  backgroundColor: outboundViewTab === 'date' ? '#5e4388' : '#ffffff',
+                  color: outboundViewTab === 'date' ? '#ffffff' : '#4a356b',
+                  border: '1px solid #5e4388'
+                }}
+              >
+                📅 対象日 ({reportDate.replace(/-/g, '/')})：{reportDateOutboundRituals.length}件
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutboundViewTab('upcoming')}
+                style={{
+                  padding: '0.22rem 0.65rem',
+                  fontSize: '0.78rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: outboundViewTab === 'upcoming' ? 'bold' : 'normal',
+                  backgroundColor: outboundViewTab === 'upcoming' ? '#5e4388' : '#ffffff',
+                  color: outboundViewTab === 'upcoming' ? '#ffffff' : '#4a356b',
+                  border: '1px solid #5e4388'
+                }}
+              >
+                📋 今後の予定一覧：{upcomingOutboundRituals.length}件
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingOutboundRitual(null);
+              setOutboundInitialDate(reportDate);
+              setShowOutboundModal(true);
+            }}
+            className="btn btn-primary"
+            style={{
+              padding: '0.35rem 0.85rem',
+              fontSize: '0.8rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              backgroundColor: '#5e4388',
+              borderColor: '#5e4388',
+              color: '#ffffff',
+              fontWeight: 'bold'
+            }}
+          >
+            <Plus size={14} />
+            🚗 出張祭（外のお祓い）を新規記録
+          </button>
+        </div>
+
+        <div style={{ padding: '1rem 1.25rem' }}>
+          {(() => {
+            const targetList = outboundViewTab === 'date' ? reportDateOutboundRituals : upcomingOutboundRituals;
+            if (targetList.length === 0) {
+              return (
+                <p style={{ margin: '1rem 0', fontSize: '0.85rem', color: 'var(--color-accent-gray)', textAlign: 'center' }}>
+                  {outboundViewTab === 'date'
+                    ? `対象日（${reportDate}）に記録されている出張祭はございません。右上の「＋ 🚗 出張祭を新規記録」または社務カレンダーから登録できます。`
+                    : '本日以降に予定されている出張祭はございません。'}
+                </p>
+              );
+            }
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '340px', overflowY: 'auto' }}>
+                {targetList.map(ritual => (
+                  <OutboundRitualCard
+                    key={ritual.id}
+                    ritual={ritual}
+                    showDate={outboundViewTab === 'upcoming'}
+                    compact
+                    onEdit={(r) => {
+                      setEditingOutboundRitual(r);
+                      setShowOutboundModal(true);
+                    }}
+                    onDelete={handleDeleteOutboundRitual}
+                    onTogglePaid={handleToggleOutboundPaid}
+                  />
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -1561,6 +1786,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>団体祈祷数</span>
                 <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-urushi)' }}>{monthlyOrganizationPrayers} 件</span>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>🚗 出張祭数</span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#5e4388' }}>{monthlyOutboundCount} 件</span>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', display: 'block' }}>初穂料総額</span>
@@ -2029,6 +2258,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
   </div>,
   document.body
 )}
+
+      {/* OUTBOUND RITUAL REGISTRATION / EDIT MODAL */}
+      <OutboundRitualModal
+        isOpen={showOutboundModal}
+        initialDate={outboundInitialDate || reportDate}
+        editingRitual={editingOutboundRitual}
+        onClose={() => {
+          setShowOutboundModal(false);
+          setEditingOutboundRitual(null);
+        }}
+        onSaved={() => {
+          refreshEvents(true);
+          if (onRefreshBookings) onRefreshBookings();
+        }}
+      />
     </div>
   );
 };

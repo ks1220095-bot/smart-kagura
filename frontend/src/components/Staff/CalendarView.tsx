@@ -5,6 +5,7 @@ import { getRokuyoAndInu } from '../Visitor/SlotSelector';
 import { type CalendarEvent, type Booking, getBookingChildren, getShichigosanAge } from '../../types';
 import { getApiUrl } from '../../config/api';
 import StaffSlotPicker from './StaffSlotPicker';
+import { OutboundRitualModal, OutboundRitualCard, isOutboundRitual, getCachedEventsSync, fetchAllEventsCached } from './OutboundRitualModal';
 
 interface CalendarViewProps {
   bookings: Booking[];
@@ -76,7 +77,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onSelectDailyReportPrint
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => getCachedEventsSync());
   const [showAddForm, setShowAddForm] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
@@ -85,6 +86,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   // Detailed Day Popup Modal state
   const [selectedDayModalDate, setSelectedDayModalDate] = useState<string | null>(null);
+
+  // Outbound Ritual Modal state
+  const [showOutboundModal, setShowOutboundModal] = useState(false);
+  const [outboundInitialDate, setOutboundInitialDate] = useState<string | undefined>(undefined);
+  const [editingOutboundRitual, setEditingOutboundRitual] = useState<CalendarEvent | null>(null);
 
   // Find related bookings (same applicant / same email / same phone / same name in the same time slot)
   const findRelatedBookings = (target: Booking | null): Booking[] => {
@@ -279,10 +285,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/events?month=${year}-${month}`);
       if (!res.ok) throw new Error('行事情報の取得に失敗しました。');
-      const data = await res.json();
+      const data: CalendarEvent[] = await res.json();
       setEvents(data);
+      // Merge into shared cache so Dashboard stays instantly in sync
+      fetchAllEventsCached(true).catch(() => {});
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleToggleOutboundPaid = async (ritual: CalendarEvent) => {
+    if (!ritual.id) return;
+    const nextStatus = ritual.payment_status === 'paid' ? 'unpaid' : 'paid';
+    const updated: CalendarEvent = { ...ritual, payment_status: nextStatus };
+    // Optimistic UI update
+    setEvents(prev => prev.map(item => (item.id === ritual.id ? updated : item)));
+    try {
+      const apiUrl = getApiUrl();
+      await fetch(`${apiUrl}/api/events/${ritual.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      fetchAllEventsCached(true).catch(() => {});
+    } catch (err) {
+      console.error(err);
+      fetchEvents();
     }
   };
 
@@ -330,7 +358,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           start_time: startTime,
           end_time: endTime,
           description,
-          is_closed_slot: isClosedSlot ? 1 : 0
+          is_closed_slot: isClosedSlot ? 1 : 0,
+          event_type: 'shrine_event'
         })
       });
 
@@ -361,6 +390,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...editingEvent,
           title: editTitle,
           event_date: editEventDate,
           start_time: editStartTime,
@@ -419,10 +449,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
-
-
-
-
   const renderCells = () => {
     const cells = [];
     
@@ -474,7 +500,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             overflow: 'hidden',
             transition: 'all 0.15s ease'
           }}
-          title="タップしてこの日の詳細（ご祈祷予約・行事）を表示"
+          title="タップしてこの日の詳細（ご祈祷予約・出張祭・行事）を表示"
         >
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.15rem' }}>
@@ -504,41 +530,65 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               })()}
             </div>
             
-            {/* Display shrine events inside cells (PC-matching visual style) */}
+            {/* Display shrine events & outbound rituals inside cells */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.15rem' }} className="no-print">
-              {dayEvents.map(e => (
-                <div 
-                  key={e.id} 
-                  onClick={(evt) => {
-                    evt.stopPropagation();
-                    setEditingEvent(e);
-                    setEditTitle(e.title);
-                    setEditEventDate(e.event_date);
-                    setEditStartTime(e.start_time);
-                    setEditEndTime(e.end_time);
-                    setEditDescription(e.description || '');
-                    setEditIsClosedSlot(e.is_closed_slot === 1);
-                    setShowAddForm(false);
-                  }}
-                  style={{ 
-                    backgroundColor: e.is_closed_slot ? 'rgba(50, 136, 163, 0.08)' : 'rgba(197, 160, 89, 0.08)', 
-                    color: e.is_closed_slot ? 'var(--color-mizuiro)' : 'var(--color-gold)',
-                    border: e.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.25)' : '1px solid rgba(197, 160, 89, 0.25)',
-                    fontSize: isMobile ? '0.55rem' : '0.62rem', 
-                    padding: '0.1rem 0.2rem', 
-                    borderRadius: '2px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    lineHeight: '1.2'
-                  }}
-                >
-                  <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                    {e.is_closed_slot ? '🔒' : '📢'} {e.title}
-                  </span>
-                </div>
-              ))}
+              {dayEvents.map(e => {
+                const isOutbound = isOutboundRitual(e);
+                const cellLabel = isOutbound
+                  ? `${e.ceremony_time || e.start_time} ${e.ritual_name || e.title.replace(/^【出張祭】/, '')}${e.applicant_name ? `(${e.applicant_name})` : ''}`
+                  : e.title;
+                return (
+                  <div 
+                    key={e.id} 
+                    onClick={(evt) => {
+                      evt.stopPropagation();
+                      if (isOutbound) {
+                        setEditingOutboundRitual(e);
+                        setShowOutboundModal(true);
+                      } else {
+                        setEditingEvent(e);
+                        setEditTitle(e.title);
+                        setEditEventDate(e.event_date);
+                        setEditStartTime(e.start_time);
+                        setEditEndTime(e.end_time);
+                        setEditDescription(e.description || '');
+                        setEditIsClosedSlot(e.is_closed_slot === 1);
+                        setShowAddForm(false);
+                      }
+                    }}
+                    style={{ 
+                      backgroundColor: isOutbound
+                        ? 'rgba(94, 67, 136, 0.12)'
+                        : e.is_closed_slot
+                          ? 'rgba(50, 136, 163, 0.08)'
+                          : 'rgba(197, 160, 89, 0.08)', 
+                      color: isOutbound
+                        ? '#4a3270'
+                        : e.is_closed_slot
+                          ? 'var(--color-mizuiro)'
+                          : 'var(--color-gold)',
+                      border: isOutbound
+                        ? '1px solid rgba(94, 67, 136, 0.35)'
+                        : e.is_closed_slot
+                          ? '1px solid rgba(50, 136, 163, 0.25)'
+                          : '1px solid rgba(197, 160, 89, 0.25)',
+                      fontSize: isMobile ? '0.55rem' : '0.62rem', 
+                      fontWeight: isOutbound ? 'bold' : 'normal',
+                      padding: '0.1rem 0.2rem', 
+                      borderRadius: '2px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      lineHeight: '1.2'
+                    }}
+                  >
+                    <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                      {isOutbound ? '🚗' : e.is_closed_slot ? '🔒' : '📢'} {cellLabel}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -581,14 +631,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <button onClick={handleNextMonth} className="btn btn-secondary" style={{ padding: '0.35rem 0.7rem', fontSize: '0.8rem' }}>翌月</button>
           </div>
 
-          <button 
-            onClick={() => setShowAddForm(!showAddForm)} 
-            className="btn btn-primary" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.45rem 0.9rem' }}
-          >
-            <Plus size={14} />
-            神社行事の登録
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button 
+              type="button"
+              onClick={() => {
+                setEditingOutboundRitual(null);
+                setOutboundInitialDate(focusedDate || undefined);
+                setShowOutboundModal(true);
+              }} 
+              className="btn btn-primary" 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.85rem',
+                padding: '0.45rem 0.9rem',
+                backgroundColor: '#5e4388',
+                borderColor: '#5e4388',
+                color: '#ffffff'
+              }}
+            >
+              <Plus size={14} />
+              🚗 出張祭（外のお祓い）を登録
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setShowAddForm(!showAddForm)} 
+              className="btn btn-secondary" 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.45rem 0.9rem' }}
+            >
+              <Plus size={14} />
+              神社行事の登録
+            </button>
+          </div>
         </div>
 
         {/* Edit Shrine event form */}
@@ -885,18 +961,64 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               {/* Daily Summary statistics */}
               {(() => {
                 const todayBookings = bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1);
+                const todayOutbound = events.filter(e => e.event_date === focusedDate && isOutboundRitual(e));
                 const stats = getUniqueGroupStats(todayBookings);
                 const totalHatsuhoryo = todayBookings.reduce((sum, b) => sum + (b.hatsuhoryo || 0), 0);
+                const outboundFee = todayOutbound.reduce((sum, e) => sum + (e.hatsuhoryo || 0), 0);
                 return (
-                  <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap' }}>
-                    <div>総件数: <strong style={{ color: 'var(--color-urushi)' }}>{todayBookings.length} 件</strong></div>
-                    <div>総組数: <strong style={{ color: 'var(--color-mizuiro-hover)' }}>{stats.groupsCount} 組</strong></div>
-                    <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{totalHatsuhoryo.toLocaleString()}円</strong></div>
+                  <div style={{ display: 'flex', gap: '0.5rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--color-washi-dark)', padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '2px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div>社内祈祷: <strong style={{ color: 'var(--color-urushi)' }}>{todayBookings.length} 件 ({stats.groupsCount} 組)</strong></div>
+                    {todayOutbound.length > 0 && (
+                      <div>🚗 出張祭: <strong style={{ color: '#5e4388' }}>{todayOutbound.length} 件 (¥{outboundFee.toLocaleString()})</strong></div>
+                    )}
+                    <div>総初穂料: <strong style={{ color: 'var(--color-accent-green)' }}>{(totalHatsuhoryo + outboundFee).toLocaleString()}円</strong></div>
                     <div>総参列者数: <strong style={{ color: 'var(--color-gold)' }}>{stats.totalAttending} 名</strong></div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingOutboundRitual(null);
+                        setOutboundInitialDate(focusedDate);
+                        setShowOutboundModal(true);
+                      }}
+                      style={{
+                        padding: '0.2rem 0.55rem',
+                        fontSize: '0.75rem',
+                        backgroundColor: '#5e4388',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      ＋ 🚗 出張祭を追加
+                    </button>
                   </div>
                 );
               })()}
             </div>
+
+            {/* Outbound Rituals on Focused Date */}
+            {(() => {
+              const todayOutbound = events.filter(e => e.event_date === focusedDate && isOutboundRitual(e));
+              if (todayOutbound.length === 0) return null;
+              return (
+                <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {todayOutbound.map(ritual => (
+                    <OutboundRitualCard
+                      key={ritual.id}
+                      ritual={ritual}
+                      onEdit={(r) => {
+                        setEditingOutboundRitual(r);
+                        setShowOutboundModal(true);
+                      }}
+                      onDelete={(r) => handleDeleteEventById(r.id, r.ritual_name || r.title)}
+                      onTogglePaid={handleToggleOutboundPaid}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
 
             {(() => {
               const todayBookings = bookings.filter(b => b.booking_date === focusedDate && b.is_cancelled !== 1);
@@ -1140,6 +1262,64 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {/* Modal Scrollable Body */}
             <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
+              {/* SECTION 0: Outbound Rituals (出張祭・外のお祓い) */}
+              <div style={{ backgroundColor: '#faf8fc', padding: '1rem 1.25rem', borderRadius: '6px', border: '1px solid #dcd0ec' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid #e2d9f3', paddingBottom: '0.4rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#3b2d54' }}>
+                    🚗 当日の出張祭（外のお祓い）
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingOutboundRitual(null);
+                      setOutboundInitialDate(selectedDayModalDate);
+                      setShowOutboundModal(true);
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                      padding: '0.22rem 0.65rem',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      backgroundColor: '#5e4388',
+                      borderColor: '#5e4388',
+                      color: '#ffffff'
+                    }}
+                  >
+                    <Plus size={12} />
+                    出張祭を記録
+                  </button>
+                </div>
+
+                {(() => {
+                  const dayOutbound = events.filter(e => e.event_date === selectedDayModalDate && isOutboundRitual(e));
+                  if (dayOutbound.length === 0) {
+                    return (
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
+                        この日に登録されている出張祭（外のお祓い）はございません。
+                      </p>
+                    );
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {dayOutbound.map(ritual => (
+                        <OutboundRitualCard
+                          key={ritual.id}
+                          ritual={ritual}
+                          onEdit={(r) => {
+                            setEditingOutboundRitual(r);
+                            setShowOutboundModal(true);
+                          }}
+                          onDelete={(r) => handleDeleteEventById(r.id, r.ritual_name || r.title)}
+                          onTogglePaid={handleToggleOutboundPaid}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* SECTION 1: Shrine Events */}
               <div style={{ backgroundColor: 'var(--color-washi)', padding: '1rem 1.25rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem' }}>
@@ -1161,7 +1341,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
 
                 {(() => {
-                  const dayEvents = events.filter(e => e.event_date === selectedDayModalDate);
+                  const dayEvents = events.filter(e => e.event_date === selectedDayModalDate && !isOutboundRitual(e));
                   if (dayEvents.length === 0) {
                     return (
                       <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-accent-gray)' }}>
@@ -1854,6 +2034,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>,
         document.body
       )}
+
+      {/* OUTBOUND RITUAL REGISTRATION / EDIT MODAL */}
+      <OutboundRitualModal
+        isOpen={showOutboundModal}
+        initialDate={outboundInitialDate || focusedDate}
+        editingRitual={editingOutboundRitual}
+        onClose={() => {
+          setShowOutboundModal(false);
+          setEditingOutboundRitual(null);
+        }}
+        onSaved={() => {
+          fetchEvents();
+          onRefreshBookings();
+        }}
+      />
     </div>
   );
 };

@@ -266,9 +266,35 @@ async function initSqlite() {
           start_time TEXT NOT NULL,
           end_time TEXT NOT NULL,
           description TEXT,
-          is_closed_slot INTEGER DEFAULT 0
+          is_closed_slot INTEGER DEFAULT 0,
+          event_type TEXT DEFAULT 'shrine_event',
+          ritual_name TEXT,
+          ceremony_time TEXT,
+          applicant_name TEXT,
+          applicant_kana TEXT,
+          builder_name TEXT,
+          location_address TEXT,
+          contact_phone TEXT,
+          saishu TEXT,
+          hatsuhoryo INTEGER DEFAULT 0,
+          payment_status TEXT DEFAULT 'unpaid',
+          preparation_notes TEXT
         )
       `);
+
+      // Safe check migrations for events table (outbound rituals)
+      try { await db.run(`ALTER TABLE events ADD COLUMN event_type TEXT DEFAULT 'shrine_event'`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN ritual_name TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN ceremony_time TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN applicant_name TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN applicant_kana TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN builder_name TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN location_address TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN contact_phone TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN saishu TEXT`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN hatsuhoryo INTEGER DEFAULT 0`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN payment_status TEXT DEFAULT 'unpaid'`); } catch(e) {}
+      try { await db.run(`ALTER TABLE events ADD COLUMN preparation_notes TEXT`); } catch(e) {}
 
       // 4. Push Subscriptions Table
       await client.query(`
@@ -511,9 +537,34 @@ async function verifyPostgresSchema() {
         start_time VARCHAR(50) NOT NULL,
         end_time VARCHAR(50) NOT NULL,
         description TEXT,
-        is_closed_slot INTEGER DEFAULT 0
+        is_closed_slot INTEGER DEFAULT 0,
+        event_type VARCHAR(50) DEFAULT 'shrine_event',
+        ritual_name VARCHAR(255),
+        ceremony_time VARCHAR(50),
+        applicant_name VARCHAR(255),
+        applicant_kana VARCHAR(255),
+        builder_name VARCHAR(255),
+        location_address TEXT,
+        contact_phone VARCHAR(100),
+        saishu VARCHAR(100),
+        hatsuhoryo INTEGER DEFAULT 0,
+        payment_status VARCHAR(50) DEFAULT 'unpaid',
+        preparation_notes TEXT
       )
     `);
+
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type VARCHAR(50) DEFAULT 'shrine_event'`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ritual_name VARCHAR(255)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ceremony_time VARCHAR(50)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS applicant_name VARCHAR(255)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS applicant_kana VARCHAR(255)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS builder_name VARCHAR(255)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_address TEXT`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(100)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS saishu VARCHAR(100)`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS hatsuhoryo INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unpaid'`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS preparation_notes TEXT`);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS push_subscriptions (
