@@ -103,7 +103,10 @@ export const BookingsList: React.FC<BookingsListProps> = ({
     if (bReceipts.length > 0) {
       setEditReceipts(bReceipts.map(r => ({ name: r.name, amount: Number(r.amount) || 0 })));
     } else {
-      setEditReceipts([{ name: booking.receipt_name || booking.company_name || '', amount: booking.receipt_amount || booking.hatsuhoryo || 20000 }]);
+      setEditReceipts([{
+        name: booking.receipt_name || booking.company_name || booking.name || '',
+        amount: booking.receipt_amount || booking.hatsuhoryo || (booking.booking_type === 'individual' ? 5000 : 20000)
+      }]);
     }
 
     const bChildren = getBookingChildren(booking);
@@ -384,8 +387,18 @@ export const BookingsList: React.FC<BookingsListProps> = ({
         child_kana2: validChildren[1]?.kana || (editFormData.is_twin === 1 ? editFormData.child_kana2 : undefined),
         child_birthday2: validChildren[1]?.birthday || (editFormData.is_twin === 1 ? editFormData.child_birthday2 : undefined),
         child_gender2: validChildren[1]?.gender || (editFormData.is_twin === 1 ? editFormData.child_gender2 : undefined),
-        receipts: Number(editFormData.wants_receipt) === 1 ? editReceipts : undefined,
-        receipts_data: Number(editFormData.wants_receipt) === 1 ? JSON.stringify(editReceipts) : undefined,
+        receipts: Number(editFormData.wants_receipt) === 1
+          ? editReceipts.map((r, idx) => ({
+              name: (r.name || '').trim() || (idx === 0 ? (editFormData.company_name || editFormData.name || '').trim() : ''),
+              amount: Number(r.amount) || 0
+            }))
+          : undefined,
+        receipts_data: Number(editFormData.wants_receipt) === 1
+          ? JSON.stringify(editReceipts.map((r, idx) => ({
+              name: (r.name || '').trim() || (idx === 0 ? (editFormData.company_name || editFormData.name || '').trim() : ''),
+              amount: Number(r.amount) || 0
+            })))
+          : undefined,
         wood_talisman_items_data: woodTalismanItemsDataStr,
         wood_talisman_name: combinedWoodTalismanName
       };
@@ -1190,17 +1203,15 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         <Printer size={12} />
                         お札
                       </button>
-                      {!isIndiv && b.wants_receipt === 1 && (
-                        <button
-                          onClick={() => !isCancelled && onSelectReceipt(b)}
-                          disabled={isCancelled}
-                          className="btn btn-secondary"
-                          style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', borderColor: 'var(--color-gold)', color: 'var(--color-gold)' }}
-                        >
-                          <Printer size={12} />
-                          領収
-                        </button>
-                      )}
+                      <button
+                        onClick={() => !isCancelled && onSelectReceipt(b)}
+                        disabled={isCancelled}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', borderColor: 'var(--color-gold)', color: 'var(--color-gold)' }}
+                      >
+                        <Printer size={12} />
+                        領収
+                      </button>
                       <button
                         onClick={() => b.id && handleDeleteBooking(b)}
                         style={{
@@ -1442,6 +1453,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                         if (hasCar) parts.push('車両情報');
                         if (hasTournament || hasConstruction) parts.push('行事・工事');
                         if (hasOrgDetails) parts.push('団体・授与品');
+                        if (isIndiv && (b.wants_receipt === 1 || !!b.receipt_name || !!b.receipt_amount)) parts.push('領収証');
                         if (b.notes) parts.push('備考');
                         if (parts.length === 0) {
                           if (isIndiv && b.address) parts.push('住所・詳細');
@@ -1712,26 +1724,24 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                           <Printer size={14} />
                           <span style={{ fontSize: '0.7rem', marginLeft: '0.15rem' }}>お札</span>
                         </button>
-                        {!isIndiv && b.wants_receipt === 1 && (
-                          <button
-                            onClick={() => !isCancelled && onSelectReceipt(b)}
-                            disabled={isCancelled}
-                            title="領収証を印刷"
-                            style={{
-                              border: '1px solid var(--color-gold)',
-                              backgroundColor: 'rgba(197, 160, 89, 0.05)',
-                              padding: '0.2rem',
-                              cursor: isCancelled ? 'not-allowed' : 'pointer',
-                              color: 'var(--color-gold)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              opacity: isCancelled ? 0.4 : 1
-                            }}
-                          >
-                            <Printer size={14} />
-                            <span style={{ fontSize: '0.7rem', marginLeft: '0.15rem' }}>領収</span>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => !isCancelled && onSelectReceipt(b)}
+                          disabled={isCancelled}
+                          title="領収証を印刷"
+                          style={{
+                            border: '1px solid var(--color-gold)',
+                            backgroundColor: 'rgba(197, 160, 89, 0.05)',
+                            padding: '0.2rem',
+                            cursor: isCancelled ? 'not-allowed' : 'pointer',
+                            color: 'var(--color-gold)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            opacity: isCancelled ? 0.4 : 1
+                          }}
+                        >
+                          <Printer size={14} />
+                          <span style={{ fontSize: '0.7rem', marginLeft: '0.15rem' }}>領収</span>
+                        </button>
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
@@ -2132,6 +2142,52 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                               </div>
                             )}
 
+                            {/* D-2. 個人祈祷 領収証詳細（設定時） */}
+                            {isIndiv && (b.wants_receipt === 1 || !!b.receipt_name || !!b.receipt_amount) && (() => {
+                              const bReceipts = getBookingReceipts(b);
+                              return (
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  backgroundColor: '#fbf9f5',
+                                  border: '1px solid rgba(197, 160, 89, 0.35)',
+                                  padding: '0.6rem 0.85rem',
+                                  borderRadius: '6px'
+                                }}>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--color-urushi)', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                    <span>🧾 領収証 宛名・金額 {bReceipts.length > 1 ? `（全${bReceipts.length}枚）` : ''}</span>
+                                    <span style={{
+                                      fontSize: '0.65rem',
+                                      padding: '0.05rem 0.35rem',
+                                      borderRadius: '3px',
+                                      fontWeight: 'bold',
+                                      backgroundColor: Number(b.is_receipt_issued) === 1 ? '#dcfce7' : '#fef3c7',
+                                      color: Number(b.is_receipt_issued) === 1 ? '#15803d' : '#92400e',
+                                      border: `1px solid ${Number(b.is_receipt_issued) === 1 ? '#bbf7d0' : '#fde68a'}`
+                                    }}>
+                                      {Number(b.is_receipt_issued) === 1 ? '✅ 発行済' : '⏳ 未発行'}
+                                    </span>
+                                  </div>
+                                  {bReceipts.length > 1 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
+                                      {bReceipts.map((r, rIdx) => (
+                                        <div key={rIdx} style={{ fontSize: '0.8rem', borderBottom: rIdx < bReceipts.length - 1 ? '1px dashed #eee' : 'none', paddingBottom: rIdx < bReceipts.length - 1 ? '0.2rem' : '0' }}>
+                                          {rIdx + 1}枚目: <strong>{r.name || '（未指定）'}</strong> ({Number(r.amount) ? `${Number(r.amount).toLocaleString()} 円` : '未設定'})
+                                        </div>
+                                      ))}
+                                      <div style={{ fontSize: '0.78rem', fontWeight: 'bold', color: 'var(--color-urushi)', borderTop: '1px solid #ddd', paddingTop: '0.25rem', marginTop: '0.15rem' }}>
+                                        合計: {bReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0).toLocaleString()} 円
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                                      <div style={{ fontSize: '0.82rem' }}>宛名: <strong>{bReceipts[0]?.name || b.receipt_name || b.name || '（未指定）'}</strong></div>
+                                      <div style={{ fontSize: '0.82rem' }}>金額: <strong>{bReceipts[0]?.amount ? `${Number(bReceipts[0].amount).toLocaleString()} 円` : `${(b.receipt_amount || b.hatsuhoryo || 0).toLocaleString()} 円`}</strong></div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
                             {/* E-1. 団体参拝・授与品・連名・領収証詳細 */}
                             {!isIndiv && hasOrgDetails && (
                               <div style={{
@@ -2464,7 +2520,7 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                   style={{ border: '1px solid var(--color-border)' }}
                 />
                 <span style={{ fontSize: '0.7rem', color: 'var(--color-accent-gray)', marginTop: '0.2rem', display: 'block' }}>
-                  ※宛名: {selectedBooking.receipt_name}
+                  ※宛名: {selectedBooking.receipt_name || selectedBooking.company_name || selectedBooking.name}
                 </span>
               </div>
             )}
@@ -3637,159 +3693,6 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                   </div>
                 </div>
 
-                {/* 3-b. 領収証設定 */}
-                <div style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>🧾 領収証の発行</span>
-                    <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-gold)' }}>
-                      <input
-                        type="checkbox"
-                        checked={Number(editFormData.wants_receipt) === 1}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setEditFormData(prev => ({ ...prev, wants_receipt: checked ? 1 : 0 }));
-                          if (checked && editReceipts.length === 0) {
-                            setEditReceipts([{ name: editFormData.receipt_name || editFormData.company_name || '', amount: editFormData.receipt_amount || editFormData.hatsuhoryo || 20000 }]);
-                          }
-                        }}
-                      />
-                      領収証を希望する
-                    </label>
-                  </div>
-                  {Number(editFormData.wants_receipt) === 1 && (() => {
-                    const totalAmt = editReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-                    const targetHatsuhoryo = Number(editFormData.hatsuhoryo) || 0;
-                    const isMatched = totalAmt === targetHatsuhoryo;
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {editReceipts.map((rc, idx) => (
-                          <div
-                            key={idx}
-                            style={{
-                              backgroundColor: idx === 0 ? '#ffffff' : '#fffdf7',
-                              border: idx === 0 ? '1px solid var(--color-border)' : '1px solid var(--color-gold)',
-                              borderLeft: idx === 0 ? '4px solid var(--color-mizuiro)' : '4px solid var(--color-gold)',
-                              borderRadius: '4px',
-                              padding: '0.6rem 0.75rem',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed rgba(0,0,0,0.08)', paddingBottom: '0.25rem' }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
-                                📄 {editReceipts.length > 1 ? `領収証（${idx + 1}社目）` : '領収証情報'}
-                              </span>
-                              {editReceipts.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveEditReceipt(idx)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#d3381c',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    padding: '0.1rem 0.3rem',
-                                    fontWeight: 'bold'
-                                  }}
-                                  title="この領収証を削除"
-                                >
-                                  ✕ 削除
-                                </button>
-                              )}
-                            </div>
-
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                              <div className="form-group" style={{ margin: 0, flex: '2 1 200px' }}>
-                                <label style={{ fontSize: '0.7rem', color: '#555' }}>
-                                  宛名 {editReceipts.length > 1 ? `（${idx + 1}社目）` : '(未記入時は会社・団体名)'}
-                                </label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  placeholder={idx === 0 ? (editFormData.company_name || '宛名') : '宛名'}
-                                  value={rc.name || ''}
-                                  onChange={(e) => handleUpdateEditReceipt(idx, 'name', e.target.value)}
-                                  style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }}
-                                />
-                              </div>
-                              <div className="form-group" style={{ margin: 0, flex: '1 1 120px' }}>
-                                <label style={{ fontSize: '0.7rem', color: '#555' }}>
-                                  金額（円）
-                                </label>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  placeholder={String(targetHatsuhoryo || 0)}
-                                  value={rc.amount !== undefined && rc.amount !== null ? rc.amount : ''}
-                                  onChange={(e) => handleUpdateEditReceipt(idx, 'amount', parseInt(e.target.value) || 0)}
-                                  style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* 追加ボタン */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="btn btn-outline-gold"
-                            onClick={handleAddEditReceipt}
-                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-                          >
-                            <span>＋</span>
-                            <span>領収証を追加（他社名義・分割）</span>
-                          </button>
-                          <span style={{ fontSize: '0.7rem', color: '#777' }}>
-                            ※何社分でも無制限に追加可能です
-                          </span>
-                        </div>
-
-                        {/* 合計と初穂料の照合バー */}
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '0.4rem 0.6rem',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid rgba(197, 160, 89, 0.35)',
-                          borderRadius: '4px',
-                          flexWrap: 'wrap',
-                          gap: '0.4rem',
-                          marginTop: '0.1rem'
-                        }}>
-                          <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                            <span style={{ fontWeight: 'bold', color: isMatched ? 'var(--color-accent-green)' : '#d3381c' }}>
-                              {isMatched ? '✓' : '⚠'} 領収証合計: {totalAmt.toLocaleString()} 円
-                              {editReceipts.length > 1 && `（全${editReceipts.length}社分）`}
-                            </span>
-                            <span style={{ color: '#666', fontSize: '0.7rem' }}>
-                              お初穂料: <strong>{targetHatsuhoryo.toLocaleString()} 円</strong>
-                              {!isMatched && (
-                                <span style={{ color: '#d3381c', marginLeft: '0.3rem' }}>
-                                  (差額: {(totalAmt - targetHatsuhoryo > 0 ? '+' : '') + (totalAmt - targetHatsuhoryo).toLocaleString()} 円)
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                          {editReceipts.length > 1 && (
-                            <button
-                              type="button"
-                              className="btn btn-outline-gold"
-                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', whiteSpace: 'nowrap' }}
-                              onClick={handleDistributeEditReceiptsEqually}
-                            >
-                              初穂料を均等配分
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
                 {/* 3-c. 必勝祈願・工事安全 */}
                 <div style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', display: 'block', marginBottom: '0.5rem' }}>🏆 必勝祈願・工事安全詳細</span>
@@ -3852,6 +3755,164 @@ export const BookingsList: React.FC<BookingsListProps> = ({
                 </div>
               </div>
             )}
+
+            {/* 3-b. 領収証設定（個人・団体共通） */}
+            <div style={{ padding: '0.75rem', border: '1px solid rgba(197, 160, 89, 0.25)', borderRadius: '4px', backgroundColor: '#faf8f5' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>🧾 領収証の発行・宛名／金額設定</span>
+                <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-gold)' }}>
+                  <input
+                    type="checkbox"
+                    checked={Number(editFormData.wants_receipt) === 1}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setEditFormData(prev => ({ ...prev, wants_receipt: checked ? 1 : 0 }));
+                      if (checked && editReceipts.length === 0) {
+                        setEditReceipts([{
+                          name: editFormData.receipt_name || editFormData.company_name || editFormData.name || '',
+                          amount: editFormData.receipt_amount || editFormData.hatsuhoryo || (editFormData.booking_type === 'individual' ? 5000 : 20000)
+                        }]);
+                      }
+                    }}
+                  />
+                  領収証を発行する（宛名・金額・分割設定）
+                </label>
+              </div>
+              {Number(editFormData.wants_receipt) === 1 && (() => {
+                const totalAmt = editReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                const targetHatsuhoryo = Number(editFormData.hatsuhoryo) || 0;
+                const isMatched = totalAmt === targetHatsuhoryo;
+                const isIndivEdit = editFormData.booking_type === 'individual';
+                const unitLabel = isIndivEdit ? '枚目' : '社目';
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {editReceipts.map((rc, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          backgroundColor: idx === 0 ? '#ffffff' : '#fffdf7',
+                          border: idx === 0 ? '1px solid var(--color-border)' : '1px solid var(--color-gold)',
+                          borderLeft: idx === 0 ? '4px solid var(--color-mizuiro)' : '4px solid var(--color-gold)',
+                          borderRadius: '4px',
+                          padding: '0.6rem 0.75rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed rgba(0,0,0,0.08)', paddingBottom: '0.25rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                            📄 {editReceipts.length > 1 ? `領収証（${idx + 1}${unitLabel}）` : '領収証情報'}
+                          </span>
+                          {editReceipts.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditReceipt(idx)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#d3381c',
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                padding: '0.1rem 0.3rem',
+                                fontWeight: 'bold'
+                              }}
+                              title="この領収証を削除"
+                            >
+                              ✕ 削除
+                            </button>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div className="form-group" style={{ margin: 0, flex: '2 1 200px' }}>
+                            <label style={{ fontSize: '0.7rem', color: '#555' }}>
+                              宛名 {editReceipts.length > 1 ? `（${idx + 1}${unitLabel}）` : (isIndivEdit ? '(未記入時は祈祷者氏名)' : '(未記入時は会社・団体名)')}
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder={idx === 0 ? (editFormData.company_name || editFormData.name || '宛名') : '宛名'}
+                              value={rc.name || ''}
+                              onChange={(e) => handleUpdateEditReceipt(idx, 'name', e.target.value)}
+                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }}
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0, flex: '1 1 120px' }}>
+                            <label style={{ fontSize: '0.7rem', color: '#555' }}>
+                              金額（円）
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder={String(targetHatsuhoryo || 0)}
+                              value={rc.amount !== undefined && rc.amount !== null ? rc.amount : ''}
+                              onChange={(e) => handleUpdateEditReceipt(idx, 'amount', parseInt(e.target.value) || 0)}
+                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* 追加ボタン */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline-gold"
+                        onClick={handleAddEditReceipt}
+                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        <span>＋</span>
+                        <span>領収証を追加（別名義・分割）</span>
+                      </button>
+                      <span style={{ fontSize: '0.7rem', color: '#777' }}>
+                        ※何枚でも無制限に追加可能です
+                      </span>
+                    </div>
+
+                    {/* 合計と初穂料の照合バー */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.4rem 0.6rem',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid rgba(197, 160, 89, 0.35)',
+                      borderRadius: '4px',
+                      flexWrap: 'wrap',
+                      gap: '0.4rem',
+                      marginTop: '0.1rem'
+                    }}>
+                      <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                        <span style={{ fontWeight: 'bold', color: isMatched ? 'var(--color-accent-green)' : '#d3381c' }}>
+                          {isMatched ? '✓' : '⚠'} 領収証合計: {totalAmt.toLocaleString()} 円
+                          {editReceipts.length > 1 && `（全${editReceipts.length}枚）`}
+                        </span>
+                        <span style={{ color: '#666', fontSize: '0.7rem' }}>
+                          お初穂料: <strong>{targetHatsuhoryo.toLocaleString()} 円</strong>
+                          {!isMatched && (
+                            <span style={{ color: '#d3381c', marginLeft: '0.3rem' }}>
+                              (差額: {(totalAmt - targetHatsuhoryo > 0 ? '+' : '') + (totalAmt - targetHatsuhoryo).toLocaleString()} 円)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {editReceipts.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-gold"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', whiteSpace: 'nowrap' }}
+                          onClick={handleDistributeEditReceiptsEqually}
+                        >
+                          初穂料を均等配分
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* 4. 備考欄セクション */}
             <div className="form-group">

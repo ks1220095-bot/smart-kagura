@@ -37,36 +37,74 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
     id: string | number;
     receiptDate: string;
     address: string;
+    honorific: '御中' | '様' | '';
     amount: number;
     booking: Booking;
     splitIndex?: number;
   }
 
-  const receiptItems: ReceiptItem[] = [];
-  targetBookings.forEach((b, bIdx) => {
-    const dateStr = getReceiptDateString(b);
-    const bReceipts = getBookingReceipts(b);
-    if (bReceipts.length > 0) {
-      bReceipts.forEach((r, rIdx) => {
-        receiptItems.push({
-          id: `${b.id || bIdx}-${rIdx + 1}`,
-          receiptDate: dateStr,
-          address: r.name || b.company_name || b.name || '',
-          amount: Number(r.amount) || 0,
-          booking: b,
-          splitIndex: bReceipts.length > 1 ? rIdx + 1 : undefined
+  const buildInitialReceiptItems = (): ReceiptItem[] => {
+    const items: ReceiptItem[] = [];
+    targetBookings.forEach((b, bIdx) => {
+      const dateStr = getReceiptDateString(b);
+      const defaultHonorific: '御中' | '様' = b.booking_type === 'individual' ? '様' : '御中';
+      const bReceipts = getBookingReceipts(b);
+      if (bReceipts.length > 0) {
+        bReceipts.forEach((r, rIdx) => {
+          items.push({
+            id: `${b.id || bIdx}-${rIdx + 1}`,
+            receiptDate: dateStr,
+            address: r.name || b.company_name || b.name || '',
+            honorific: defaultHonorific,
+            amount: Number(r.amount) || 0,
+            booking: b,
+            splitIndex: bReceipts.length > 1 ? rIdx + 1 : undefined
+          });
         });
-      });
-    } else {
-      receiptItems.push({
-        id: b.id || bIdx,
-        receiptDate: dateStr,
-        address: b.receipt_name || b.company_name || b.name || '',
-        amount: b.receipt_amount || b.hatsuhoryo || 0,
-        booking: b
-      });
-    }
-  });
+      } else {
+        items.push({
+          id: `${b.id || bIdx}-1`,
+          receiptDate: dateStr,
+          address: b.receipt_name || b.company_name || b.name || '',
+          honorific: defaultHonorific,
+          amount: b.receipt_amount || b.hatsuhoryo || 0,
+          booking: b
+        });
+      }
+    });
+    return items;
+  };
+
+  const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>(buildInitialReceiptItems);
+
+  const handleUpdateItem = (index: number, field: keyof ReceiptItem, value: any) => {
+    setReceiptItems(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleAddSplitSheet = () => {
+    const base = receiptItems[0];
+    if (!base) return;
+    setReceiptItems(prev => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}-${prev.length + 1}`,
+        receiptDate: base.receiptDate,
+        address: base.address,
+        honorific: base.honorific,
+        amount: 0,
+        booking: base.booking,
+        splitIndex: prev.length + 1
+      }
+    ]);
+  };
+
+  const handleRemoveSplitSheet = (index: number) => {
+    setReceiptItems(prev => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== index)));
+  };
 
   const handlePrint = () => {
     const title = receiptItems.length === 1
@@ -137,59 +175,193 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
         backgroundColor: 'var(--color-urushi)',
         padding: '0.75rem 1.5rem',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
+        gap: '0.6rem',
         color: 'white',
-        borderBottom: '2px solid var(--color-gold)',
-        flexWrap: 'wrap',
-        gap: '0.5rem'
+        borderBottom: '2px solid var(--color-gold)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
-            {receiptItems.length > 1
-              ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚・中央揃え）`
-              : '領収証 印刷プレビュー（A5横・中央揃え）'}
-          </h4>
-          <span style={{ fontSize: '0.75rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#fffae6' }}>
-            ※ 印刷時は詳細設定で 用紙サイズ:「A5」、両面印刷:「オフ（片面）」をご指定ください
-          </span>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <h4 style={{ margin: 0, color: 'white', fontFamily: 'var(--font-serif)' }}>
+              {receiptItems.length > 1
+                ? `領収証 印刷プレビュー（全 ${receiptItems.length} 枚・中央揃え）`
+                : '領収証 印刷プレビュー（A5横・中央揃え）'}
+            </h4>
+            <span style={{ fontSize: '0.75rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#fffae6' }}>
+              ※ 印刷時は詳細設定で 用紙サイズ:「A5」、両面印刷:「オフ（片面）」をご指定ください
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button 
+              onClick={handlePrint} 
+              className="btn btn-primary" 
+              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <Printer size={14} />
+              {receiptItems.length > 1 ? `印刷する (${receiptItems.length}枚 / A5横)` : '印刷する (A5横)'}
+            </button>
+            <button 
+              onClick={handleDownloadPdf} 
+              disabled={isGeneratingPdf}
+              className="btn" 
+              style={{ 
+                padding: '0.4rem 0.9rem', 
+                fontSize: '0.85rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.4rem',
+                backgroundColor: '#1890ff',
+                color: '#ffffff',
+                border: '1px solid #1890ff',
+                cursor: isGeneratingPdf ? 'wait' : 'pointer'
+              }}
+            >
+              {isGeneratingPdf ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />}
+              {isGeneratingPdf ? 'PDF生成中...' : (receiptItems.length > 1 ? `A5 PDF保存 (${receiptItems.length}枚)` : 'A5 PDF保存')}
+            </button>
+            <button 
+              onClick={onClose} 
+              className="btn btn-secondary" 
+              style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <ArrowLeft size={14} />
+              元の管理画面に戻る
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button 
-            onClick={handlePrint} 
-            className="btn btn-primary" 
-            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-          >
-            <Printer size={14} />
-            {receiptItems.length > 1 ? `印刷する (${receiptItems.length}枚 / A5横)` : '印刷する (A5横)'}
-          </button>
-          <button 
-            onClick={handleDownloadPdf} 
-            disabled={isGeneratingPdf}
-            className="btn" 
-            style={{ 
-              padding: '0.4rem 0.9rem', 
-              fontSize: '0.85rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.4rem',
-              backgroundColor: '#1890ff',
-              color: '#ffffff',
-              border: '1px solid #1890ff',
-              cursor: isGeneratingPdf ? 'wait' : 'pointer'
-            }}
-          >
-            {isGeneratingPdf ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />}
-            {isGeneratingPdf ? 'PDF生成中...' : (receiptItems.length > 1 ? `A5 PDF保存 (${receiptItems.length}枚)` : 'A5 PDF保存')}
-          </button>
-          <button 
-            onClick={onClose} 
-            className="btn btn-secondary" 
-            style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'white', borderColor: 'var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-          >
-            <ArrowLeft size={14} />
-            元の管理画面に戻る
-          </button>
+
+        {/* 宛名・敬称・金額 クイック調整バー（プレビュー上での即時編集・分割対応） */}
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(197, 160, 89, 0.4)',
+          borderRadius: '6px',
+          padding: '0.5rem 0.75rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.4rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.75rem', color: '#fffae6', fontWeight: 'bold' }}>
+              ✏️ 印字内容の微調整（宛名・敬称「様／御中」・金額をこの場で直接変更できます）
+            </span>
+            <button
+              type="button"
+              onClick={handleAddSplitSheet}
+              style={{
+                fontSize: '0.72rem',
+                padding: '0.2rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid var(--color-gold)',
+                backgroundColor: 'rgba(197, 160, 89, 0.2)',
+                color: '#fffae6',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ＋ 領収証をもう1枚追加（分割）
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '140px', overflowY: 'auto' }}>
+            {receiptItems.map((item, idx) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                  padding: '0.3rem 0.5rem',
+                  borderRadius: '4px'
+                }}
+              >
+                <span style={{ fontSize: '0.72rem', color: '#fffae6', minWidth: '48px', fontWeight: 'bold' }}>
+                  {receiptItems.length > 1 ? `${idx + 1}枚目:` : '印字:'}
+                </span>
+                <label style={{ fontSize: '0.72rem', color: '#ddd', display: 'flex', alignItems: 'center', gap: '0.25rem', margin: 0, flex: '2 1 200px' }}>
+                  <span>宛名:</span>
+                  <input
+                    type="text"
+                    value={item.address}
+                    onChange={(e) => handleUpdateItem(idx, 'address', e.target.value)}
+                    placeholder="宛名を入力"
+                    style={{
+                      flex: 1,
+                      padding: '0.2rem 0.45rem',
+                      fontSize: '0.8rem',
+                      borderRadius: '3px',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      backgroundColor: '#fff',
+                      color: '#111'
+                    }}
+                  />
+                </label>
+                <label style={{ fontSize: '0.72rem', color: '#ddd', display: 'flex', alignItems: 'center', gap: '0.25rem', margin: 0 }}>
+                  <span>敬称:</span>
+                  <select
+                    value={item.honorific}
+                    onChange={(e) => handleUpdateItem(idx, 'honorific', e.target.value as '御中' | '様' | '')}
+                    style={{
+                      padding: '0.2rem 0.4rem',
+                      fontSize: '0.8rem',
+                      borderRadius: '3px',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      backgroundColor: '#fff',
+                      color: '#111',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="様">様（個人・氏名）</option>
+                    <option value="御中">御中（団体・企業）</option>
+                    <option value="">なし（宛名に含める）</option>
+                  </select>
+                </label>
+                <label style={{ fontSize: '0.72rem', color: '#ddd', display: 'flex', alignItems: 'center', gap: '0.25rem', margin: 0 }}>
+                  <span>金額(円):</span>
+                  <input
+                    type="number"
+                    value={item.amount}
+                    onChange={(e) => handleUpdateItem(idx, 'amount', Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    style={{
+                      width: '105px',
+                      padding: '0.2rem 0.45rem',
+                      fontSize: '0.8rem',
+                      borderRadius: '3px',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      backgroundColor: '#fff',
+                      color: '#111',
+                      textAlign: 'right',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </label>
+                {receiptItems.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSplitSheet(idx)}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #ff7875',
+                      color: '#ffccc7',
+                      fontSize: '0.7rem',
+                      padding: '0.15rem 0.4rem',
+                      borderRadius: '3px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    削除
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -216,7 +388,9 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
       >
         {receiptItems.map((item) => {
           const amount = item.amount;
-          const address = item.address;
+          const address = item.address.trim();
+          const alreadyHasHonorific = address.endsWith('様') || address.endsWith('御中');
+          const displayHonorific = !alreadyHasHonorific && item.honorific ? `　${item.honorific}` : '';
 
           return (
             <div 
@@ -313,7 +487,7 @@ export const ReceiptPrint: React.FC<ReceiptPrintProps> = ({ booking, bookings, o
                         fontFamily: '"Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif',
                         textAlign: 'center'
                       }}>
-                        {address}　御中
+                        {address}{displayHonorific}
                       </h3>
                     </div>
 
