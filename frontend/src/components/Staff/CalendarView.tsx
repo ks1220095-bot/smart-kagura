@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Lock, Unlock, CalendarDays, Calendar, Check, X, Edit3, Trash2, Printer, AlertCircle } from 'lucide-react';
 import { getRokuyoAndInu } from '../Visitor/SlotSelector';
@@ -86,6 +86,34 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   // Detailed Day Popup Modal state
   const [selectedDayModalDate, setSelectedDayModalDate] = useState<string | null>(null);
+
+  // Zoomed Day Preview Popup state (PC Hover / Mobile 1st Tap)
+  const [zoomPreviewDate, setZoomPreviewDate] = useState<string | null>(null);
+  const [zoomPreviewRect, setZoomPreviewRect] = useState<{
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [zoomTriggerMode, setZoomTriggerMode] = useState<'hover' | 'tap'>('hover');
+  const hoverCloseTimerRef = useRef<number | null>(null);
+  const lastTouchTimeRef = useRef<number>(0);
+
+  const clearHoverCloseTimer = () => {
+    if (hoverCloseTimerRef.current !== null) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  };
+
+  const scheduleHoverClose = () => {
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      setZoomPreviewDate(prev => (zoomTriggerMode === 'hover' ? null : prev));
+    }, 160);
+  };
 
   // Outbound Ritual Modal state
   const [showOutboundModal, setShowOutboundModal] = useState(false);
@@ -336,10 +364,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const { firstDay, totalDays, year, month } = getMonthData();
 
   const handlePrevMonth = () => {
+    setZoomPreviewDate(null);
     setCurrentDate(new Date(year, month - 1, 1));
   };
   
   const handleNextMonth = () => {
+    setZoomPreviewDate(null);
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
@@ -469,6 +499,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const dayBookings = bookings.filter(b => b.booking_date === dateStr && b.is_cancelled !== 1);
       const dayEvents = events.filter(e => e.event_date === dateStr);
       const isFocused = focusedDate === dateStr;
+      const isZoomed = zoomPreviewDate === dateStr;
       const dayOfWeek = (firstDay + day - 1) % 7;
       const dayNumberColor = isFocused 
         ? 'var(--color-mizuiro-hover)' 
@@ -481,26 +512,83 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       cells.push(
         <div 
           key={day} 
-          onClick={() => {
+          onTouchStart={() => {
+            lastTouchTimeRef.current = Date.now();
+          }}
+          onMouseEnter={(e) => {
+            // Ignore synthetic mouseenter events fired immediately after touch
+            if (isMobile || Date.now() - lastTouchTimeRef.current < 800) return;
+            clearHoverCloseTimer();
+            const rect = e.currentTarget.getBoundingClientRect();
+            setZoomTriggerMode('hover');
+            setZoomPreviewDate(dateStr);
+            setZoomPreviewRect({
+              top: rect.top,
+              left: rect.left,
+              right: rect.right,
+              bottom: rect.bottom,
+              width: rect.width,
+              height: rect.height
+            });
+          }}
+          onMouseLeave={() => {
+            if (isMobile || Date.now() - lastTouchTimeRef.current < 800) return;
+            if (zoomTriggerMode === 'hover') {
+              scheduleHoverClose();
+            }
+          }}
+          onClick={(e) => {
             setFocusedDate(dateStr);
-            setSelectedDayModalDate(dateStr);
+            const isTouch = isMobile || Date.now() - lastTouchTimeRef.current < 800;
+            if (isTouch) {
+              if (zoomPreviewDate === dateStr) {
+                setZoomPreviewDate(null);
+                setSelectedDayModalDate(dateStr);
+              } else {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setZoomTriggerMode('tap');
+                setZoomPreviewDate(dateStr);
+                setZoomPreviewRect({
+                  top: rect.top,
+                  left: rect.left,
+                  right: rect.right,
+                  bottom: rect.bottom,
+                  width: rect.width,
+                  height: rect.height
+                });
+              }
+            } else {
+              clearHoverCloseTimer();
+              setZoomPreviewDate(null);
+              setSelectedDayModalDate(dateStr);
+            }
           }}
           style={{ 
-            outline: isFocused ? '2px solid var(--color-mizuiro)' : 'none', 
+            outline: isZoomed
+              ? '2px solid var(--color-gold)'
+              : isFocused
+                ? '2px solid var(--color-mizuiro)'
+                : 'none', 
             outlineOffset: '-1px',
             minHeight: isMobile ? '76px' : '105px', 
             padding: isMobile ? '0.2rem 0.15rem' : '0.4rem', 
-            backgroundColor: isFocused ? 'var(--color-mizuiro-light)' : '#ffffff', 
+            backgroundColor: isZoomed
+              ? '#fffdf5'
+              : isFocused
+                ? 'var(--color-mizuiro-light)'
+                : '#ffffff', 
             display: 'flex', 
             flexDirection: 'column', 
             justifyContent: 'space-between',
             position: 'relative',
+            zIndex: isZoomed ? 5 : 1,
+            transform: isZoomed ? 'scale(1.02)' : 'none',
+            boxShadow: isZoomed ? '0 4px 14px rgba(0,0,0,0.16)' : 'none',
             cursor: 'pointer',
             boxSizing: 'border-box',
             overflow: 'hidden',
             transition: 'all 0.15s ease'
           }}
-          title="タップしてこの日の詳細（ご祈祷予約・出張祭・行事）を表示"
         >
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.15rem' }}>
@@ -541,7 +629,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   <div 
                     key={e.id} 
                     onClick={(evt) => {
+                      const isTouch = isMobile || Date.now() - lastTouchTimeRef.current < 800;
+                      // On touch devices, 1st tap on the cell should open the zoom preview first
+                      if (isTouch && zoomPreviewDate !== dateStr) {
+                        return;
+                      }
                       evt.stopPropagation();
+                      clearHoverCloseTimer();
+                      setZoomPreviewDate(null);
                       if (isOutbound) {
                         setEditingOutboundRitual(e);
                         setShowOutboundModal(true);
@@ -583,7 +678,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       lineHeight: '1.2'
                     }}
                   >
-                    <span title={`${e.title} (${e.start_time}-${e.end_time})`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                       {isOutbound ? '🚗' : e.is_closed_slot ? '🔒' : '📢'} {cellLabel}
                     </span>
                   </div>
@@ -1184,6 +1279,406 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             })()}
           </div>
         </div>
+      )}
+
+      {/* ZOOMED DAY PREVIEW POPUP (PC Hover / Mobile 1st Tap) */}
+      {zoomPreviewDate && !selectedDayModalDate && createPortal(
+        (() => {
+          const previewBookings = bookings
+            .filter(b => b.booking_date === zoomPreviewDate && Number(b.is_cancelled) !== 1)
+            .sort((a, b) => (a.booking_time || '').localeCompare(b.booking_time || ''));
+          const previewEvents = events.filter(e => e.event_date === zoomPreviewDate);
+          const previewOutbound = previewEvents.filter(e => isOutboundRitual(e));
+          const previewShrineEvents = previewEvents.filter(e => !isOutboundRitual(e) && !(e.is_closed_slot === 1 && e.title === '臨時受付停止'));
+          const previewManualLocks = previewEvents.filter(e => !isOutboundRitual(e) && e.is_closed_slot === 1 && e.title === '臨時受付停止');
+          const { rokuyo, isInu } = getRokuyoAndInu(zoomPreviewDate);
+          const stats = getUniqueGroupStats(previewBookings);
+
+          const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+          const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+          const popupWidth = Math.min(390, vw - 24);
+          const estimatedHeight = 380;
+
+          let popupLeft = (vw - popupWidth) / 2;
+          let popupTop = Math.max(24, (vh - estimatedHeight) / 2);
+
+          if (!isMobile && zoomPreviewRect) {
+            if (zoomPreviewRect.right + popupWidth + 14 <= vw) {
+              popupLeft = zoomPreviewRect.right + 8;
+            } else if (zoomPreviewRect.left - popupWidth - 14 >= 0) {
+              popupLeft = zoomPreviewRect.left - popupWidth - 8;
+            } else {
+              popupLeft = Math.min(Math.max(12, zoomPreviewRect.left + zoomPreviewRect.width / 2 - popupWidth / 2), vw - popupWidth - 12);
+            }
+            popupTop = Math.min(Math.max(16, zoomPreviewRect.top - 12), Math.max(16, vh - estimatedHeight - 16));
+          }
+
+          return (
+            <>
+              {/* Mobile/Tap backdrop to dismiss on outside tap */}
+              {(isMobile || zoomTriggerMode === 'tap') && (
+                <div
+                  onClick={() => setZoomPreviewDate(null)}
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    zIndex: 9994
+                  }}
+                />
+              )}
+              <div
+                className="no-print"
+                onMouseEnter={() => {
+                  if (!isMobile && zoomTriggerMode === 'hover') {
+                    clearHoverCloseTimer();
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (!isMobile && zoomTriggerMode === 'hover') {
+                    scheduleHoverClose();
+                  }
+                }}
+                style={{
+                  position: 'fixed',
+                  top: `${popupTop}px`,
+                  left: `${popupLeft}px`,
+                  width: `${popupWidth}px`,
+                  maxHeight: '82vh',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '8px',
+                  border: '2px solid var(--color-gold)',
+                  boxShadow: '0 14px 36px rgba(0, 0, 0, 0.28)',
+                  zIndex: 9995,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  animation: 'fadeIn 0.12s ease-out'
+                }}
+              >
+                {/* Popup Header */}
+                <div style={{
+                  backgroundColor: 'var(--color-urushi)',
+                  color: '#ffffff',
+                  padding: '0.65rem 0.9rem',
+                  borderBottom: '2px solid var(--color-gold)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', color: '#ffffff' }}>
+                        🔍 {getWarekiDateString(zoomPreviewDate)}
+                      </span>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        backgroundColor: 'rgba(255,255,255,0.16)',
+                        color: '#fffae6',
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '3px',
+                        fontWeight: 'bold'
+                      }}>
+                        {rokuyo}
+                      </span>
+                      {isInu && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          backgroundColor: '#e27344',
+                          color: '#ffffff',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '3px',
+                          fontWeight: 'bold'
+                        }}>
+                          🐕 戌の日
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#e6dec8', marginTop: '0.2rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <span>⛩️ 社内祈祷: <strong>{stats.groupsCount}組 ({previewBookings.length}件)</strong></span>
+                      {previewOutbound.length > 0 && <span>🚗 出張祭: <strong>{previewOutbound.length}件</strong></span>}
+                      {previewShrineEvents.length > 0 && <span>📢 行事: <strong>{previewShrineEvents.length}件</strong></span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setZoomPreviewDate(null)}
+                    style={{
+                      background: 'rgba(255,255,255,0.15)',
+                      border: 'none',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      padding: '0.25rem',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                    title="拡大表示を閉じる"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Popup Body */}
+                <div style={{
+                  padding: '0.75rem 0.85rem',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.65rem',
+                  maxHeight: '340px',
+                  backgroundColor: '#fdfbf7'
+                }}>
+                  {/* 1. 出張祭（外のお祓い） */}
+                  {previewOutbound.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#4a3270', borderBottom: '1px dashed rgba(94, 67, 136, 0.3)', paddingBottom: '0.15rem' }}>
+                        🚗 出張祭（外のお祓い）
+                      </div>
+                      {previewOutbound.map(rit => (
+                        <div
+                          key={rit.id}
+                          onClick={() => {
+                            setZoomPreviewDate(null);
+                            setEditingOutboundRitual(rit);
+                            setShowOutboundModal(true);
+                          }}
+                          style={{
+                            backgroundColor: '#f5f0ff',
+                            border: '1px solid #d3adf7',
+                            borderLeft: '4px solid #5e4388',
+                            borderRadius: '4px',
+                            padding: '0.45rem 0.6rem',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', color: '#3b2d54' }}>
+                            <span>
+                              {rit.ceremony_time || rit.start_time}　{rit.ritual_name || rit.title.replace(/^【出張祭】/, '')}
+                            </span>
+                            {rit.saishu && (
+                              <span style={{ fontSize: '0.7rem', backgroundColor: '#ffffff', padding: '0.05rem 0.35rem', borderRadius: '3px', border: '1px solid #d3adf7' }}>
+                                斎主: {rit.saishu}
+                              </span>
+                            )}
+                          </div>
+                          {rit.applicant_name && (
+                            <div style={{ fontSize: '0.78rem', color: '#222', marginTop: '0.15rem' }}>
+                              申込: <strong>{rit.applicant_name}</strong> 様
+                            </div>
+                          )}
+                          {rit.location_address && (
+                            <div style={{ fontSize: '0.74rem', color: '#555', marginTop: '0.1rem' }}>
+                              📍 {rit.location_address}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 2. 神社行事・受付制限 */}
+                  {(previewShrineEvents.length > 0 || previewManualLocks.length > 0) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-urushi)', borderBottom: '1px dashed var(--color-border)', paddingBottom: '0.15rem' }}>
+                        📢 神社行事・受付制限
+                      </div>
+                      {previewShrineEvents.map(ev => (
+                        <div
+                          key={ev.id}
+                          onClick={() => {
+                            setZoomPreviewDate(null);
+                            setEditingEvent(ev);
+                            setEditTitle(ev.title);
+                            setEditEventDate(ev.event_date);
+                            setEditStartTime(ev.start_time);
+                            setEditEndTime(ev.end_time);
+                            setEditDescription(ev.description || '');
+                            setEditIsClosedSlot(ev.is_closed_slot === 1);
+                            setShowAddForm(false);
+                          }}
+                          style={{
+                            backgroundColor: ev.is_closed_slot ? '#f0f7fa' : '#fffdf5',
+                            border: ev.is_closed_slot ? '1px solid rgba(50, 136, 163, 0.35)' : '1px solid rgba(197, 160, 89, 0.45)',
+                            borderLeft: ev.is_closed_slot ? '4px solid var(--color-mizuiro)' : '4px solid var(--color-gold)',
+                            borderRadius: '4px',
+                            padding: '0.4rem 0.6rem',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', color: 'var(--color-urushi)' }}>
+                            <span>{ev.is_closed_slot ? '🔒' : '📢'} {ev.title}</span>
+                            <span style={{ fontSize: '0.72rem', color: '#555', whiteSpace: 'nowrap' }}>
+                              {ev.start_time}〜{ev.end_time}
+                            </span>
+                          </div>
+                          {ev.description && (
+                            <div style={{ fontSize: '0.74rem', color: '#555', marginTop: '0.15rem' }}>
+                              {ev.description}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {previewManualLocks.length > 0 && (
+                        <div style={{
+                          backgroundColor: '#f0f7fa',
+                          border: '1px solid rgba(50, 136, 163, 0.3)',
+                          borderRadius: '4px',
+                          padding: '0.35rem 0.55rem',
+                          fontSize: '0.75rem',
+                          color: 'var(--color-mizuiro)'
+                        }}>
+                          🔒 <strong>臨時受付停止（{previewManualLocks.length}枠）:</strong>{' '}
+                          {previewManualLocks.map(l => l.start_time).sort().join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 3. 社内ご祈祷予約一覧 */}
+                  {previewBookings.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-mizuiro)', borderBottom: '1px dashed rgba(216, 1, 0, 0.25)', paddingBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>⛩️ ご祈祷予約内訳（{stats.groupsCount}組 / {previewBookings.length}件）</span>
+                        <span>計 {stats.totalAttending}名</span>
+                      </div>
+                      {previewBookings.map((b, bIdx) => {
+                        const isIndiv = b.booking_type === 'individual';
+                        const bName = isIndiv ? b.name : (b.talisman_name || b.company_name);
+                        return (
+                          <div
+                            key={b.id || bIdx}
+                            onClick={() => {
+                              setZoomPreviewDate(null);
+                              setSelectedDayModalDate(zoomPreviewDate);
+                            }}
+                            style={{
+                              backgroundColor: '#ffffff',
+                              border: '1px solid var(--color-border)',
+                              borderLeft: `3px solid ${isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)'}`,
+                              borderRadius: '4px',
+                              padding: '0.38rem 0.55rem',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '0.4rem'
+                            }}
+                          >
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  backgroundColor: 'var(--color-urushi)',
+                                  color: '#ffffff',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 'bold',
+                                  padding: '0.05rem 0.35rem',
+                                  borderRadius: '2px',
+                                  fontFamily: 'var(--font-serif)'
+                                }}>
+                                  {b.booking_time}
+                                </span>
+                                <span style={{
+                                  fontSize: '0.66rem',
+                                  padding: '0.05rem 0.3rem',
+                                  borderRadius: '2px',
+                                  backgroundColor: isIndiv ? '#e6f4ea' : '#fef7e0',
+                                  color: isIndiv ? 'var(--color-accent-green)' : 'var(--color-urushi)',
+                                  border: `1px solid ${isIndiv ? 'var(--color-accent-green)' : 'var(--color-gold)'}`,
+                                  fontWeight: 'bold'
+                                }}>
+                                  {isIndiv ? '個人' : '団体'}
+                                </span>
+                                <strong style={{ color: 'var(--color-urushi)', fontSize: '0.85rem' }}>
+                                  {bName} 様
+                                </strong>
+                              </div>
+                              <div style={{ fontSize: '0.74rem', color: '#555', marginTop: '0.12rem' }}>
+                                🙏 {b.prayer1}{b.prayer2 ? `・${b.prayer2}` : ''}（参列 {b.attending_count || 1}名 / ¥{(b.hatsuhoryo || 0).toLocaleString()}）
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {previewOutbound.length === 0 && previewShrineEvents.length === 0 && previewManualLocks.length === 0 && previewBookings.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '1.1rem 0.5rem', fontSize: '0.82rem', color: 'var(--color-accent-gray)' }}>
+                      この日のご祈祷予約・出張祭・行事は登録されていません。
+                    </div>
+                  )}
+                </div>
+
+                {/* Popup Footer Quick Actions */}
+                <div style={{
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#f5f2eb',
+                  borderTop: '1px solid var(--color-border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = zoomPreviewDate;
+                      setZoomPreviewDate(null);
+                      setFocusedDate(target);
+                      setSelectedDayModalDate(target);
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                      flex: 1,
+                      padding: '0.35rem 0.6rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem'
+                    }}
+                  >
+                    📋 詳細・編集画面を開く
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = zoomPreviewDate;
+                      setZoomPreviewDate(null);
+                      setFocusedDate(target);
+                      setEditingOutboundRitual(null);
+                      setOutboundInitialDate(target);
+                      setShowOutboundModal(true);
+                    }}
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      backgroundColor: '#5e4388',
+                      color: '#ffffff',
+                      border: '1px solid #5e4388',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    ＋ 🚗 出張祭
+                  </button>
+                </div>
+              </div>
+            </>
+          );
+        })(),
+        document.body
       )}
 
       {/* DETAILED DAY POPUP MODAL */}
